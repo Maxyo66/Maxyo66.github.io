@@ -274,10 +274,11 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <div class="surf-bubbles {{surfDir}}" aria-hidden="true"><i style="--x: 4%; --s: 10px; --d: 0.0s; --w: 8px"></i><i style="--x: 11%; --s: 6px; --d: 0.15s; --w: -6px"></i><i style="--x: 17%; --s: 14px; --d: 0.05s; --w: 10px"></i><i style="--x: 23%; --s: 8px; --d: 0.3s; --w: -8px"></i><i style="--x: 30%; --s: 12px; --d: 0.1s; --w: 6px"></i><i style="--x: 36%; --s: 6px; --d: 0.4s; --w: -4px"></i><i style="--x: 42%; --s: 16px; --d: 0.2s; --w: 12px"></i><i style="--x: 48%; --s: 9px; --d: 0.05s; --w: -10px"></i><i style="--x: 55%; --s: 12px; --d: 0.35s; --w: 8px"></i><i style="--x: 61%; --s: 7px; --d: 0.12s; --w: -6px"></i><i style="--x: 67%; --s: 15px; --d: 0.25s; --w: 10px"></i><i style="--x: 73%; --s: 8px; --d: 0.0s; --w: -8px"></i><i style="--x: 80%; --s: 11px; --d: 0.18s; --w: 6px"></i><i style="--x: 86%; --s: 6px; --d: 0.42s; --w: -6px"></i><i style="--x: 92%; --s: 13px; --d: 0.08s; --w: 8px"></i><i style="--x: 97%; --s: 8px; --d: 0.3s; --w: -4px"></i><i style="--x: 8%; --s: 7px; --d: 0.55s; --w: 5px"></i><i style="--x: 27%; --s: 9px; --d: 0.6s; --w: -5px"></i><i style="--x: 52%; --s: 7px; --d: 0.62s; --w: 6px"></i><i style="--x: 76%; --s: 10px; --d: 0.5s; --w: -6px"></i></div>
 <section class="surface {{surfDir}} scene-{{sceneCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
 <canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
-<canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" aria-label="A moonlit forest painted in gouache brush strokes, with a stream, an owl, glowing mushrooms and the car parked on a dirt track." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
+<canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
 <div style="position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none">
 <span style="color: var(--hi); font-weight: 700">{{surfLabel}}</span>
 </div>
+<sc-if value="{{forestUi}}"><button onClick="{{turnBack}}" style="position: absolute; top: 46px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">↻ Back to the meadow</button></sc-if>
 <button onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
 <button onClick="{{closeSurface}}" style="position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer">Dive back ↓</button>
 </section>
@@ -627,7 +628,7 @@ class Component extends DCLogic {
   closeSurface = () => {
     if (this.state.surface !== 'up') return;
     if (this.surf) this.surf.hold = false;
-    this.endBrush(); clearTimeout(this.sceneT);
+    this.endBrush(); this.stopRoadAudio(); clearTimeout(this.sceneT);
     this.setState({ surface: 'out' }); this.sfx('sink');
     clearTimeout(this.surfT); this.surfT = setTimeout(() => { this.car = null; this.setState({ surface: null, scene: 'meadow' }); }, 1500);
   };
@@ -1209,18 +1210,35 @@ class Component extends DCLogic {
   }
   carState() { return this.car || (this.car = { scene: 'meadow', mode: 'parked', dir: -1, x: -1, t: 0, v: 0, hop: -9, puffs: [] }); }
   carGo() {
-    const C = this.carState(); if (C.mode !== 'parked') return;
-    const want = C.scene === 'meadow' ? -1 : 1;
-    if (C.dir !== want) { C.dir = want; C.hop = this.time; }
+    const C = this.carState();
+    if (C.scene === 'forest') {
+      // on the forest road the car pulls over, or pulls away again, with a honk either way
+      if (C.mode === 'driving') { C.mode = 'stopped'; this.sfx('honk'); this.sfx('brake'); }
+      else if (C.mode === 'stopped') { C.mode = 'driving'; this.sfx('honk'); this.sfx('engine', 'go'); }
+      else return;
+      this.startleDeer(); return;
+    }
+    if (C.mode !== 'parked') return;
+    if (C.dir !== -1) { C.dir = -1; C.hop = this.time; }
     C.mode = 'leaving'; C.t = 0; C.v = 0; this.sfx('engine', 'out');
   }
+  turnBack = () => {
+    const C = this.carState(), F = this.forest; if (C.scene !== 'forest' || C.mode === 'leaving' || C.mode === 'arriving') return;
+    C.mode = 'leaving'; C.dir = 1; C.hop = this.time; C.t = 0; C.v = 0; if (F) F.vt = 0; this.sfx('engine', 'out');
+  };
   carCross(to) {
-    if (to === 'forest') this.prepForest(window.innerWidth || 1440, window.innerHeight || 900, 1e9);
-    this.car = { scene: to, mode: 'arriving', dir: to === 'forest' ? -1 : 1, x: -1, t: 0, v: 0, hop: -9, puffs: [] };
+    const vw = window.innerWidth || 1440, vh = window.innerHeight || 900;
+    if (to === 'forest') this.prepForest(vw, vh, 1e9, true);
+    this.car = { scene: to, mode: 'arriving', dir: -1, x: -1, sx: -999, t: 0, v: 0, hop: -9, puffs: [] };
+    if (to === 'meadow') { this.car.dir = 1; if (this.forest) this.endBrush(); this.stopRoadAudio(); }
+    else if (this.forest) { this.forest.v = 0; this.forest.vt = 0; }
     this.setState({ scene: to === 'forest' ? 'toForest' : 'toMeadow' }); this.sfx('engine', 'in');
-    if (to === 'meadow' && this.forest) this.endBrush();
-    clearTimeout(this.sceneT); this.sceneT = setTimeout(() => this.setState({ scene: to }), 1300);
+    clearTimeout(this.sceneT); this.sceneT = setTimeout(() => {
+      this.setState({ scene: to });
+      if (to === 'forest' && !this.roadHinted) { this.roadHinted = true; this.secret('Click the car to pull over. Click anything you pass.'); }
+    }, 1300);
   }
+
   carLights(C, hover) { if (C.mode !== 'parked' || hover) return 1; if (this.time < (C.lightsOff || 0)) return 1; const w = this.time % 7; return (w < 0.12 || (w > 0.26 && w < 0.38)) ? 1 : 0; }
 
   // the pixel car in the meadow, drawn in its place among the front flowers
@@ -1281,21 +1299,25 @@ class Component extends DCLogic {
   }
 
   // ---- the forest
+  // ---- the forest road
   FOREST_SEASON = {
-    spring: { leaf: ['#3f7a4a', '#4f9156', '#2f6340', '#6aa864'], bloom: ['#ffc6dd', '#ffe0ec', '#ffffff'], fern: ['#4f9156', '#3f7a4a', '#62a35e'], ground: ['#1e3524', '#264229', '#2c4a2e'], fall: 'blossom', fallN: 18 },
-    summer: { leaf: ['#2f6a3a', '#3d7d42', '#245a33', '#4f8f48'], fern: ['#3d7d42', '#4f8f48', '#2f6a3a'], ground: ['#1c3220', '#223b25', '#2a4529'], fall: 'leaf', fallN: 6 },
-    autumn: { leaf: ['#c8642a', '#e0a33a', '#a8452a', '#d9822b', '#8a6a2e'], fern: ['#a0773a', '#8a6a2e', '#b0603a'], ground: ['#2e2416', '#3a2c18', '#43321c'], fall: 'leaf', fallN: 34 },
-    winter: { leaf: ['#1f4a44', '#24564c', '#1a3f3a'], snow: true, fern: ['#3f5f58', '#4a6a62'], ground: ['#b9c8d2', '#cbd8e0', '#a6b8c6'], fall: 'snow', fallN: 120 }
+    spring: { leaf: ['#3f7a4a', '#4f9156', '#2f6340', '#6aa864'], bloom: ['#ffc6dd', '#ffe0ec', '#ffffff'], fern: ['#4f9156', '#3f7a4a', '#62a35e'], ground: ['#1e3524', '#264229', '#2c4a2e'], grass: ['#3f7a4a', '#4f9156', '#62a35e'], road: ['#5a4c3c', '#6b5a46', '#4a3f33'], fall: 'blossom', fallN: 18 },
+    summer: { leaf: ['#2f6a3a', '#3d7d42', '#245a33', '#4f8f48'], fern: ['#3d7d42', '#4f8f48', '#2f6a3a'], ground: ['#1c3220', '#223b25', '#2a4529'], grass: ['#3d7d42', '#4f8f48', '#5f9a4e'], road: ['#5a4c3c', '#6b5a46', '#4a3f33'], fall: 'leaf', fallN: 6 },
+    autumn: { leaf: ['#c8642a', '#e0a33a', '#a8452a', '#d9822b', '#8a6a2e'], fern: ['#a0773a', '#8a6a2e', '#b0603a'], ground: ['#2e2416', '#3a2c18', '#43321c'], grass: ['#8a7a3a', '#a0773a', '#6e6a34'], road: ['#5a4c3c', '#6b5a46', '#4a3f33'], fall: 'leaf', fallN: 34 },
+    winter: { leaf: ['#1f4a44', '#24564c', '#1a3f3a'], snow: true, fern: ['#3f5f58', '#4a6a62'], ground: ['#b9c8d2', '#cbd8e0', '#a6b8c6'], grass: ['#9fb3bf', '#c9d6df', '#8a9eaa'], road: ['#b9c6cf', '#a6b4bf', '#cfd9e0'], fall: 'snow', fallN: 120 }
   };
   GLOWS = ['#7ff5e0', '#b99cff', '#6fd3ff', '#ff9ed2', '#c6ff8a'];
   PAINTS = ['#f2c14e', '#f78154', '#e15554', '#4d9de0', '#7fd1b9', '#c9a7eb', '#f4f1de'];
-  TREE_NOTES = [57, 60, 62, 64, 67, 69, 72];
+  TREE_NOTES = [57, 60, 62, 64, 67, 69, 72, 74];
+  LANTERN_COLS = ['#e8604c', '#f2a03d', '#f2c94c', '#6fc3b2', '#e88aa8', '#9a8ee0'];
+  LETTERS = ['A letter: “Thanks for driving by.” — M', 'A postcard from the deep: “Wish you were here.”', 'A note: “The owl knows the way back.”', 'A letter: “Keep exploring. There is always one more secret.”'];
   setForCv = (el) => { this.forCv = el; };
 
   // One stroke of a bristle brush along pts. Every bristle carries its own load of paint,
-  // so a stroke streaks, runs dry and breaks up toward its end, and feathers where it lifts.
+  // so a stroke streaks, runs dry and breaks up toward its end, fans out a little where
+  // the brush lifts, and can catch light along one edge.
   gouache(g, pts, o) {
-    const rnd = o.rnd, w = o.w, step = Math.max(1.5, o.step || w * 0.35), P = [pts[0]];
+    const rnd = o.rnd, w = o.w, step = Math.max(1.2, o.step || w * 0.35), P = [pts[0]];
     for (let i = 1; i < pts.length; i++) {
       const a = P[P.length - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
       if (L < step) { if (i === pts.length - 1) P.push(b); continue; }
@@ -1304,20 +1326,24 @@ class Component extends DCLogic {
     if (P.length < 2) P.push([P[0][0] + 0.5, P[0][1]]);
     const N = P.length, nx = [], ny = [];
     for (let i = 0; i < N; i++) { const a = P[Math.max(0, i - 1)], b = P[Math.min(N - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; nx.push(-dy / L); ny.push(dx / L); }
-    const nb = Math.max(3, Math.min(o.nb || 26, Math.round(w / 1.4))), cols = o.cols, ch = o.chunk || 3;
+    const nb = Math.max(3, Math.min(o.nb || 26, Math.round(w / 1.2))), cols = o.cols, ch = o.chunk || 3, splay = o.splay == null ? 0.35 : o.splay;
     g.lineCap = 'round'; g.lineJoin = 'round';
     for (let b = 0; b < nb; b++) {
-      const off = (b + 0.5) / nb - 0.5 + (rnd() - 0.5) * (0.9 / nb), th = Math.max(0.6, (w / nb) * (0.9 + rnd() * 1.1));
-      const load = (o.load || 1) * (0.55 + rnd() * 0.65), base = cols[Math.floor(rnd() * cols.length)], jit = (rnd() - 0.5) * (o.jit != null ? o.jit : 0.22);
+      const off = (b + 0.5) / nb - 0.5 + (rnd() - 0.5) * (0.9 / nb), th = Math.max(0.5, (w / nb) * (0.8 + rnd() * 1.1));
+      const load = (o.load || 1) * (0.55 + rnd() * 0.65), edge = o.edge && off < -0.32;
+      const base = edge ? o.edge : cols[Math.floor(rnd() * cols.length)], jit = (rnd() - 0.5) * (o.jit != null ? o.jit : 0.2);
       g.strokeStyle = jit > 0 ? this.hmix(base, '#ffffff', jit) : this.hmix(base, '#000000', -jit); g.lineWidth = th;
-      const al = (o.a || 1) * (0.5 + rnd() * 0.5), lift = 0.1 + rnd() * 0.1, land = 0.05 + rnd() * 0.08;
+      const al = (o.a || 1) * (0.55 + rnd() * 0.45) * (edge ? 0.8 : 1), lift = 0.1 + rnd() * 0.1, land = 0.04 + rnd() * 0.08;
       for (let i = 0; i < N - 1; ) {
         const j = Math.min(N - 1, i + ch), u = (i + j) / 2 / (N - 1);
-        let a = al * Math.min(1, u / land + 0.2) * Math.max(0, Math.min(1, (load - u) * 5 + 1));
+        let a = al * Math.min(1, u / land + 0.25) * Math.max(0, Math.min(1, (load - u) * 5 + 1));
         if (u > load - 0.25 && rnd() < (u - load + 0.25) * 2) a = 0;
         if (a > 0.02) {
           g.globalAlpha = a; g.beginPath();
-          for (let k = i; k <= j; k++) { const uk = k / (N - 1), tp = 0.55 + 0.45 * Math.min(1, uk / lift, (1 - uk) / lift), s = off * w * tp, x = P[k][0] + nx[k] * s, y = P[k][1] + ny[k] * s; if (k === i) g.moveTo(x, y); else g.lineTo(x, y); }
+          for (let k = i; k <= j; k++) {
+            const uk = k / (N - 1), tp = (0.55 + 0.45 * Math.min(1, uk / lift, (1 - uk) / lift)) * (1 + splay * Math.pow(Math.max(0, uk - 0.75) / 0.25, 2));
+            const s = off * w * tp, x = P[k][0] + nx[k] * s, y = P[k][1] + ny[k] * s; if (k === i) g.moveTo(x, y); else g.lineTo(x, y);
+          }
           g.stroke();
         }
         i = j;
@@ -1325,200 +1351,137 @@ class Component extends DCLogic {
     }
     g.globalAlpha = 1;
   }
-  prepForest(vw, vh, budget) {
+
+  prepForest(vw, vh, budget, needReady) {
     const pal = this.PALS[this.palKey()] || this.PALS.abyss, key = vw + 'x' + vh + this.palKey() + this.seasonKey();
     if (!this.forest || this.forest.key !== key) {
-      const s = Math.max(0.5, Math.min(1.15, vw / 1300)), d = Math.max(1, Math.min(1.5, window.devicePixelRatio || 1));
-      const F = { key, W: vw, H: vh, d, s, m: 50, gy: Math.round(vh * 0.62), pal, FS: this.FOREST_SEASON[this.seasonKey()] || this.FOREST_SEASON.summer, done: false, par: 0, t0: this.time };
-      F.mouse = { x: -999, y: -999, vx: 0, t: -9 }; F.carW = 118 * s + 18; F.carY = Math.round(vh * 0.955); F.carX0 = vw * 0.86;
+      const old = this.forest, s = Math.max(0.5, Math.min(1.15, vw / 1300)), d = Math.max(1, Math.min(1.5, window.devicePixelRatio || 1));
+      const F = { key, W: vw, H: vh, d, s, pal, FS: this.FOREST_SEASON[this.seasonKey()] || this.FOREST_SEASON.summer, ready: false, done: false };
+      F.RY0 = Math.round(vh * 0.79); F.RY1 = Math.round(vh * 0.905); F.baseNear = Math.round(vh * 0.787); F.baseMid = Math.round(vh * 0.69);
+      F.carW = 118 * s + 18; F.carY = Math.round(vh * 0.888); F.carS = vw * 0.6; F.cruise = vw * 0.08 + 50;
+      F.TW = Math.ceil(Math.max(vw, 900) * 1.3);
+      F.mouse = { x: -999, y: -999, vx: 0, t: -9 }; F.d0 = 0; F.dist = old && old.W === vw ? old.dist : 0; F.v = old ? old.v : 0; F.vt = old ? old.vt : 0;
+      F.lib = { near: [], mid: [], ferns: [], tufts: [], sets: {} };
+      F.objs = []; F.parts = { leaves: [], shaken: [], sparks: [], spores: [], rips: [], smoke: [], puffs: [] };
       F.gen = this.paintForest(F); this.forest = F;
+      if (old && old.air) { F.air = old.air; F.airG = old.airG; }
     }
     const F = this.forest; if (F.done) return F;
     const t0 = performance.now();
-    while (performance.now() - t0 < budget) { if (F.gen.next().done) { F.done = true; break; } }
+    while ((needReady && !F.ready) || performance.now() - t0 < budget) { const r = F.gen.next(); if (r.done) { F.done = true; F.ready = true; break; } }
     return F;
   }
+
+  // Paints everything once into cached canvases: the sky, tiling hills and forest rows,
+  // the road, a library of trees, ferns and grass, and the set pieces you pass. The bare
+  // essentials come first so the drive can start while the rest is still being painted.
   *paintForest(F) {
-    const { W, H, gy, s, m, pal, FS } = F, rnd = this.seeded(41), R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k);
-    const mk = (w, h, ox, oy) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * F.d); cv.height = Math.ceil(h * F.d); const g = cv.getContext('2d'); g.scale(F.d, F.d); g.translate(ox || 0, oy || 0); return [cv, g]; };
+    const { W, H, s, pal, FS, TW } = F, rnd = this.seeded(41), R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k);
+    const mk = (F.mk = (w, h, ox, oy) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * F.d); cv.height = Math.ceil(h * F.d); const g = cv.getContext('2d'); g.scale(F.d, F.d); g.translate(ox || 0, oy || 0); return [cv, g]; });
     const night = (c, k) => hm(c, pal.bg, k == null ? 0.3 : k);
     const stroke = (g, pts, o) => this.gouache(g, pts, Object.assign({ rnd }, o));
-    const dab = (g, x, y, len, w, ang, cols, a, nb) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], { w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.5, len / 5), chunk: 2 }); };
-    const LW = W + 2 * m, n = Math.max(4, Math.min(7, Math.round(W / 230)));
-    const treeX = Array.from({ length: n }, (_, i) => ((i + 0.5) / n) * W + (R(-0.25, 0.25) * W) / n);
-    let gap = [0, W * 0.3]; for (let i = 0; i < n - 1; i++) { const a = treeX[i], b = treeX[i + 1]; if ((a + b) / 2 < W * 0.62 && b - a > gap[1] - gap[0]) gap = [a, b]; }
+    // a stroke that wraps around the edges of a tile, so tiles join without a seam
+    const wrap = (g, pts, o) => { const sd = Math.floor(rnd() * 1e9) + 1, xs = pts.map((p) => p[0]), lo = Math.min(...xs), hi = Math.max(...xs), pad = (o.w || 10) * 2;
+      for (const sh of [-TW, 0, TW]) { if (lo + sh > TW + pad || hi + sh < -pad) continue; this.gouache(g, pts.map((p) => [p[0] + sh, p[1]]), Object.assign({}, o, { rnd: this.seeded(sd) })); } };
+    const dab = (g, x, y, len, w, ang, cols, a, nb, extra) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], Object.assign({ w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 5), chunk: 2 }, extra || {})); };
+    const wdab = (g, x, y, len, w, ang, cols, a, nb) => { const c = Math.cos(ang), sn = Math.sin(ang); wrap(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x + (c * len) / 2, y + (sn * len) / 2]], { w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 4), chunk: 2 }); };
+    F.tools = { R, rnd, hm, night, stroke, dab, mk };
 
-    // ---- sky: long horizontal strokes, a painted moon, a few clouds and stars
-    const [sky, gs] = mk(LW, H, m); F.sky = sky;
-    const top = hm(pal.bg, '#000000', 0.4), midC = hm(pal.deep, pal.bg, 0.3), low = hm(pal.mid, pal.deep, 0.45);
+    // ---- sky: long horizontal strokes, a painted moon with a few clouds, and stars
+    const [sky, gs] = mk(W, H); F.sky = sky;
+    const top = hm(pal.bg, '#000000', 0.4), midC = hm(pal.deep, pal.bg, 0.3), low = hm(pal.mid, pal.deep, 0.45), hz = H * 0.62;
     const skyAt = (v) => (v < 0.6 ? hm(top, midC, v / 0.6) : hm(midC, low, (v - 0.6) / 0.4));
-    const grd = gs.createLinearGradient(0, 0, 0, gy); grd.addColorStop(0, top); grd.addColorStop(0.6, midC); grd.addColorStop(1, low);
-    gs.fillStyle = grd; gs.fillRect(-m, 0, LW, H);
-    for (let y = -6; y < gy + 30; y += 9 + 9 * s) {
+    const grd = gs.createLinearGradient(0, 0, 0, hz); grd.addColorStop(0, top); grd.addColorStop(0.6, midC); grd.addColorStop(1, low);
+    gs.fillStyle = grd; gs.fillRect(0, 0, W, H);
+    for (let y = -6; y < hz + 30; y += 8 + 8 * s) {
       for (let k = 0; k < 3; k++) {
-        const x0 = R(-m - 80, W + m), len = R(0.3, 0.7) * W, c = skyAt(Math.max(0, Math.min(1, (y + R(-10, 10)) / gy))), pts = [];
+        const x0 = R(-120, W), len = R(0.3, 0.7) * W, c = skyAt(Math.max(0, Math.min(1, (y + R(-10, 10)) / hz))), pts = [];
         for (let q = 0; q <= 6; q++) pts.push([x0 + (len * q) / 6, y + Math.sin(q * 0.9 + x0) * 4 * s]);
-        stroke(gs, pts, { w: R(16, 30) * s + 8, cols: [c, hm(c, pal.mid, 0.15), hm(c, '#000000', 0.12)], a: 0.5, step: 10, chunk: 3, nb: 16 });
+        stroke(gs, pts, { w: R(16, 30) * s + 8, cols: [c, hm(c, pal.mid, 0.15), hm(c, '#000000', 0.12)], a: 0.5, step: 10, chunk: 3, nb: 18 });
       }
       yield;
     }
-    const mo = (F.moon = { x: (gap[0] + gap[1]) / 2, y: H * 0.2, r: 22 * s + 12 }), mc = hm(pal.ink, '#fff4dc', 0.5);
-    const halo = gs.createRadialGradient(mo.x, mo.y, mo.r * 0.8, mo.x, mo.y, mo.r * 6); halo.addColorStop(0, this.rgba(pal.hi, 0.22)); halo.addColorStop(1, this.rgba(pal.hi, 0));
-    gs.fillStyle = halo; gs.fillRect(mo.x - mo.r * 6, mo.y - mo.r * 6, mo.r * 12, mo.r * 12);
+    const mo = (F.moon = { x: W * 0.3, y: H * 0.17, r: 22 * s + 12 }), mc = hm(pal.ink, '#fff4dc', 0.5);
+    const halo = gs.createRadialGradient(mo.x, mo.y, mo.r * 0.8, mo.x, mo.y, mo.r * 7); halo.addColorStop(0, this.rgba(pal.hi, 0.24)); halo.addColorStop(1, this.rgba(pal.hi, 0));
+    gs.fillStyle = halo; gs.fillRect(mo.x - mo.r * 7, mo.y - mo.r * 7, mo.r * 14, mo.r * 14);
     gs.save(); gs.beginPath(); gs.arc(mo.x, mo.y, mo.r, 0, Math.PI * 2); gs.clip(); gs.fillStyle = hm(mc, pal.mid, 0.25); gs.fill();
-    for (let k = 0; k < 34; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * mo.r, x = mo.x + Math.cos(a) * rr, y = mo.y + Math.sin(a) * rr, lit = x - mo.x + (y - mo.y) < mo.r * 0.35; dab(gs, x, y, mo.r * 0.75, mo.r * 0.4, R(-0.7, 0.7), lit ? [mc, hm(mc, '#ffffff', 0.3)] : [hm(mc, pal.mid, 0.4)], 0.9, 8); }
-    for (let k = 0; k < 5; k++) dab(gs, mo.x + R(-0.6, 0.6) * mo.r, mo.y + R(-0.6, 0.6) * mo.r, mo.r * 0.28, mo.r * 0.22, R(0, 3), [hm(mc, pal.mid, 0.55)], 0.45, 5);
+    for (let k = 0; k < 44; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * mo.r, x = mo.x + Math.cos(a) * rr, y = mo.y + Math.sin(a) * rr, lit = x - mo.x + (y - mo.y) < mo.r * 0.35; dab(gs, x, y, mo.r * 0.6, mo.r * 0.32, R(-0.7, 0.7), lit ? [mc, hm(mc, '#ffffff', 0.3)] : [hm(mc, pal.mid, 0.4)], 0.9, 9); }
+    for (let k = 0; k < 7; k++) dab(gs, mo.x + R(-0.6, 0.6) * mo.r, mo.y + R(-0.6, 0.6) * mo.r, mo.r * R(0.15, 0.3), mo.r * 0.18, R(0, 3), [hm(mc, pal.mid, 0.55)], 0.45, 5);
     gs.restore();
-    for (let k = 0; k < 4; k++) { const y = mo.y + R(-0.6, 1.6) * mo.r, x0 = mo.x + R(-4, 1) * mo.r, len = R(3, 7) * mo.r; stroke(gs, [[x0, y], [x0 + len * 0.5, y - R(2, 6)], [x0 + len, y + R(-3, 3)]], { w: R(6, 12) * s + 3, cols: [hm(pal.mid, pal.hi, 0.35), hm(pal.mid, pal.ink, 0.2)], a: 0.32, step: 6, nb: 10 }); }
-    for (let k = 0; k < 50; k++) { const x = R(-m, W + m), y = R(0, gy * 0.75); dab(gs, x, y, 2.5 * s + 1.5, 1.6, R(0, 3), [pal.ink], R(0.3, 0.8), 3); }
-    F.stars = []; for (let k = 0; k < 40; k++) F.stars.push({ x: R(0, W), y: R(0, gy * 0.7), ph: R(0, 6), sp: R(0.8, 2.4), b: R(0.4, 1) });
+    for (let k = 0; k < 6; k++) { const y = mo.y + R(-0.6, 2) * mo.r, x0 = mo.x + R(-5, 2) * mo.r, len = R(3, 8) * mo.r; stroke(gs, [[x0, y], [x0 + len * 0.5, y - R(2, 6)], [x0 + len, y + R(-3, 3)]], { w: R(6, 14) * s + 3, cols: [hm(pal.mid, pal.hi, 0.35), hm(pal.mid, pal.ink, 0.2)], a: 0.3, step: 6, nb: 12, edge: hm(pal.hi, '#ffffff', 0.3) }); }
+    for (let k = 0; k < 60; k++) dab(gs, R(0, W), R(0, hz * 0.8), 2.5 * s + 1.5, 1.6, R(0, 3), [pal.ink], R(0.3, 0.8), 3);
+    F.stars = []; for (let k = 0; k < 40; k++) F.stars.push({ x: R(0, W), y: R(0, hz * 0.7), ph: R(0, 6), sp: R(0.8, 2.4), b: R(0.4, 1) });
+    F.beams = []; for (let q = 0; q < 4; q++) F.beams.push({ x: W * (0.15 + q * 0.22) + R(-30, 30), dx: W * R(0.15, 0.25), w0: R(10, 26) * s, w1: R(50, 110) * s, a: R(0.035, 0.07), ph: R(0, 6), sp: R(0.2, 0.5) });
     yield;
 
-    // ---- distant forest: two rows of firs and round crowns, with mist between them
-    const [far, gf] = mk(LW, H, m); F.far = far;
+    // ---- tiling layers that scroll at their own speeds: far hills, two rows of firs, the forest floor
+    const tile = (y0, y1) => { const r = mk(TW, y1 - y0, 0, -y0); r.push(y0, y1 - y0); return r; };
+    const [hillsCv, gh, hy0, hh0] = tile(Math.round(H * 0.38), Math.round(H * 0.66)); F.hills = { cv: hillsCv, k: 0.05, y0: hy0, h: hh0 };
+    const hillC = hm(pal.mid, pal.deep, 0.35), hillTop = (x) => H * 0.5 + Math.sin((x / TW) * Math.PI * 2 * 2 + 0.4) * H * 0.04 + Math.sin((x / TW) * Math.PI * 2 * 5) * H * 0.015;
+    gh.fillStyle = hillC; gh.beginPath(); gh.moveTo(0, H * 0.64); for (let x = 0; x <= TW; x += 8) gh.lineTo(x, hillTop(x) + 4); gh.lineTo(TW, H * 0.64); gh.fill();
+    for (let y = H * 0.44; y < H * 0.64; y += 5 * s + 3) for (let k = 0; k < 4; k++) { const x0 = R(0, TW), len = R(0.1, 0.3) * TW, pts = []; for (let q = 0; q <= 8; q++) { const x = x0 + (len * q) / 8; pts.push([x, Math.max(y, hillTop(x) + 5)]); } wrap(gh, pts, { w: 7 * s + 4, cols: [hillC, hm(hillC, pal.bg, 0.2), hm(hillC, pal.hi, 0.08)], a: 0.7, nb: 7, step: 8, chunk: 3 }); }
+    for (let x = 0; x < TW; x += 18 * s + 6) wrap(gh, [[x, hillTop(x) + 2], [x + 22 * s, hillTop(x + 22 * s) + 3]], { w: 3 * s + 2, cols: [hm(hillC, pal.hi, 0.35)], a: 0.5, nb: 3, step: 4 });
+    for (let k = 0; k < 12; k++) { const y = H * R(0.54, 0.6), x0 = R(0, TW); wrap(gh, [[x0, y], [x0 + TW * R(0.15, 0.3), y + R(-4, 4)]], { w: R(14, 26) * s + 6, cols: [pal.hi, hm(pal.hi, pal.mid, 0.4)], a: 0.08, nb: 14, step: 10 }); }
+    yield;
+    F.rows = [];
     for (const row of [0, 1]) {
-      const baseY = gy - (1 - row) * 0.04 * H, col = row === 0 ? hm(pal.mid, pal.deep, 0.6) : hm(pal.deep, pal.bg, 0.25);
-      for (let x = -m - 10; x < W + m + 10; x += R(14, 30) * s + 6) {
-        const h = R(0.11, 0.23) * H * (row ? 0.8 : 1);
-        if (rnd() < 0.75) {
-          stroke(gf, [[x, baseY + 4], [x, baseY - h]], { w: 2.5 * s + 1, cols: [col], a: 0.9, nb: 3, step: 4 });
-          for (let y = baseY - h; y < baseY; y += 4 * s + 2.5) { const u = (y - (baseY - h)) / h, hw = (2 + u * 13) * s + 1.5; for (const sd of [-1, 1]) stroke(gf, [[x, y], [x + sd * hw * 0.6, y + hw * 0.22], [x + sd * hw, y + hw * 0.42 + R(-1, 1)]], { w: 3.5 * s + 2, cols: [col, hm(col, pal.hi, 0.08)], a: 0.9, nb: 4, step: 2.5, chunk: 2 }); }
-        } else {
-          stroke(gf, [[x, baseY + 4], [x, baseY - h * 0.5]], { w: 3 * s + 1, cols: [col], a: 0.9, nb: 3 });
-          for (let k = 0; k < 12; k++) dab(gf, x + R(-15, 15) * s, baseY - h * 0.55 + R(-h * 0.3, h * 0.25), 14 * s + 4, 10 * s + 3, R(0, 3), [col, hm(col, pal.hi, 0.06)], 0.9, 5);
-        }
-        if (rnd() < 0.3) yield;
+      const [cv, gf, ty0, th0] = tile(Math.round(H * 0.38), Math.round(H * 0.75)), baseY = H * (row ? 0.66 : 0.62), col = row === 0 ? hm(pal.mid, pal.deep, 0.6) : hm(pal.deep, pal.bg, 0.25), lit = hm(col, pal.hi, row ? 0.08 : 0.12);
+      for (let x = -10; x < TW + 10; x += R(14, 28) * s + 6) {
+        const h = R(0.1, 0.2) * H * (row ? 1.1 : 0.85);
+        if (rnd() < 0.78) {
+          wrap(gf, [[x, baseY + 4], [x, baseY - h]], { w: 2.5 * s + 1, cols: [col], a: 0.9, nb: 3, step: 4 });
+          for (let y = baseY - h; y < baseY; y += 4 * s + 2.5) { const u = (y - (baseY - h)) / h, hw = (2 + u * 12) * s + 1.5; for (const sd of [-1, 1]) wrap(gf, [[x, y], [x + sd * hw * 0.6, y + hw * 0.22], [x + sd * hw, y + hw * 0.42]], { w: 3.5 * s + 2, cols: sd < 0 ? [col, lit] : [col], a: 0.9, nb: 4, step: 2.5, chunk: 2 }); }
+        } else for (let k = 0; k < 12; k++) wdab(gf, x + R(-15, 15) * s, baseY - h * 0.55 + R(-h * 0.3, h * 0.25), 14 * s + 4, 10 * s + 3, R(0, 3), [col, lit], 0.9, 5);
+        if (rnd() < 0.25) yield;
       }
-      for (let y = baseY; y < gy + 0.06 * H; y += 6 * s + 3) stroke(gf, [[-m - 20, y + R(-2, 2)], [W / 2, y + R(-3, 3)], [W + m + 20, y + R(-2, 2)]], { w: 10 * s + 5, cols: [col], a: 0.95, nb: 8, step: 12, chunk: 4, load: 3 });
-      if (row === 0) for (let k = 0; k < 10; k++) { const y = baseY - R(0, 0.06) * H, x0 = R(-m - 100, W), len = R(0.2, 0.5) * W; stroke(gf, [[x0, y], [x0 + len / 2, y + R(-4, 4)], [x0 + len, y]], { w: R(14, 26) * s + 6, cols: [pal.hi, hm(pal.hi, pal.mid, 0.4)], a: 0.09, nb: 14, step: 10 }); }
-      yield;
+      for (let y = baseY; y < baseY + H * 0.05; y += 6 * s + 3) wrap(gf, [[-30, y], [TW * 0.5, y + R(-3, 3)], [TW + 30, y]], { w: 10 * s + 5, cols: [col], a: 0.95, nb: 8, step: 12, chunk: 4, load: 3 });
+      if (row === 0) for (let k = 0; k < 12; k++) { const y = baseY - R(0, 0.05) * H, x0 = R(0, TW); wrap(gf, [[x0, y], [x0 + TW * R(0.15, 0.35), y + R(-4, 4)]], { w: R(14, 26) * s + 6, cols: [pal.hi, hm(pal.hi, pal.mid, 0.4)], a: 0.09, nb: 14, step: 10 }); }
+      F.rows.push({ cv, k: row ? 0.24 : 0.12, y0: ty0, h: th0 }); yield;
     }
-
-    // ---- forest floor, a stream that catches the moon, and a dirt track for the car
-    const [floor, gg] = mk(LW, H, m); F.floor = floor;
+    // forest floor between the far trees and the road
     const gc = FS.ground.map((c) => (FS.snow ? hm(c, pal.deep, 0.45) : night(c, 0.35)));
-    gg.fillStyle = gc[0]; gg.fillRect(-m, gy, LW, H - gy);
-    for (let y = gy - 4; y < H + 10; y += 6 + 6 * s) {
-      for (let k = 0; k < 4; k++) { const x0 = R(-m - 80, W + m), len = R(0.2, 0.5) * W; stroke(gg, [[x0, y + R(-2, 2)], [x0 + len * 0.5, y + R(-3, 3)], [x0 + len, y + R(-2, 2)]], { w: R(10, 20) * s + 5, cols: gc, a: 0.75, step: 8, chunk: 3, nb: 12 }); }
+    const [flCv, gfl, fy0, fh0] = tile(Math.round(H * 0.64), F.RY0 + 14); F.floor = { cv: flCv, k: 0.7, y0: fy0, h: fh0 };
+    gfl.fillStyle = gc[0]; gfl.fillRect(0, H * 0.67, TW, F.RY0 - H * 0.67 + 6);
+    for (let y = H * 0.665; y < F.RY0 + 4; y += 5 + 5 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.15, 0.4) * TW; wrap(gfl, [[x0, y + R(-2, 2)], [x0 + len, y + R(-2, 2)]], { w: R(9, 16) * s + 4, cols: gc, a: 0.75, step: 8, chunk: 3, nb: 12 }); } yield; }
+    for (let k = 0; k < 10; k++) wdab(gfl, R(0, TW), R(H * 0.7, F.RY0), R(60, 140) * s, R(14, 24) * s, R(-0.1, 0.1), [hm(gc[1], pal.hi, 0.25)], 0.22, 12);
+    if (!FS.snow) for (let k = 0; k < 160; k++) wdab(gfl, R(0, TW), R(H * 0.68, F.RY0), R(4, 8) * s + 2, R(3, 5) * s + 1, R(0, 3), (FS.bloom || FS.leaf).map((c) => night(c, 0.45)), 0.7, 4);
+    yield;
+
+    // ---- the road: a dirt track with ruts, pebbles and puddles, a grassy verge on both sides
+    const [rdCv, gr, ry0, rh0] = tile(F.RY0 - 16, H); F.road = { cv: rdCv, k: 1, y0: ry0, h: rh0 };
+    const rc = FS.road.map((c) => (FS.snow ? hm(c, pal.deep, 0.4) : night(c, 0.35))), rDark = hm(rc[0], '#000000', 0.35), rLit = hm(rc[1], pal.hi, 0.18);
+    const vc = FS.grass.map((c) => (FS.snow ? hm(c, pal.deep, 0.35) : night(c, 0.35))), vDark = hm(vc[0], '#000000', 0.4);
+    gr.fillStyle = vDark; gr.fillRect(0, F.RY0 - 10, TW, H - F.RY0 + 10);
+    gr.fillStyle = rc[0]; gr.fillRect(0, F.RY0 + 3, TW, F.RY1 - F.RY0 - 4);
+    for (let y = F.RY0 + 2; y < F.RY1; y += 4 + 3 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.1, 0.35) * TW; wrap(gr, [[x0, y + R(-1, 1)], [x0 + len, y + R(-1.5, 1.5)]], { w: R(6, 12) * s + 4, cols: rc, a: 0.8, step: 8, chunk: 3, nb: 10 }); } yield; }
+    const rut = (yy) => { for (let k = 0; k < 6; k++) { const x0 = R(0, TW); wrap(gr, [[x0, yy + R(-1, 1)], [x0 + TW * R(0.2, 0.45), yy + R(-1, 1)]], { w: 5 * s + 2, cols: [rDark, hm(rDark, rc[0], 0.4)], a: 0.55, nb: 5, step: 8 }); } };
+    const lane = F.RY1 - F.RY0; rut(F.RY0 + lane * 0.38); rut(F.RY0 + lane * 0.78);
+    for (let k = 0; k < 10; k++) { const x0 = R(0, TW); wrap(gr, [[x0, F.RY0 + lane * 0.58], [x0 + TW * R(0.1, 0.3), F.RY0 + lane * 0.6]], { w: 4 * s + 2, cols: [rLit], a: 0.35, nb: 4, step: 8 }); }
+    for (let k = 0; k < 4; k++) {
+      const x = R(0, TW), y = F.RY0 + lane * R(0.35, 0.8), w = R(40, 90) * s, h = R(5, 9) * s;
+      wdab(gr, x, y, w, h, 0, [hm(pal.deep, pal.mid, 0.4), hm(pal.mid, pal.deep, 0.3)], 0.9, 10); wdab(gr, x - w * 0.15, y - h * 0.15, w * 0.4, 2 * s + 1, 0, [hm(pal.hi, '#ffffff', 0.3)], 0.5, 3);
+    }
+    for (let k = 0; k < 140; k++) wdab(gr, R(0, TW), R(F.RY0 + 4, F.RY1 - 3), R(2, 5) * s + 1, R(2, 4) * s + 1, R(0, 3), [hm('#8a8a80', pal.bg, 0.45), hm('#5a5a52', pal.bg, 0.4)], 0.85, 3);
+    yield;
+    // verges: grass blades along both edges of the road, and the near bank down to the bottom
+    for (let y = F.RY1 - 2; y < H + 8; y += 5 + 5 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.1, 0.3) * TW; wrap(gr, [[x0, y], [x0 + len, y + R(-2, 2)]], { w: R(8, 14) * s + 4, cols: vc.concat(vDark), a: 0.8, step: 8, chunk: 3, nb: 10 }); } yield; }
+    for (const [ey, dir, n] of [[F.RY0 + 2, -1, 520], [F.RY1, -1, 620]]) {
+      for (let k = 0; k < n; k++) { const x = R(0, TW), h = R(5, 15) * s + 2; wrap(gr, [[x, ey + R(0, 4)], [x + R(-3, 3) * s, ey + R(0, 4) + dir * h]], { w: 2 * s + 1, cols: vc.concat(hm(vc[1], pal.hi, 0.25)), a: 0.85, nb: 3, step: 2, chunk: 2, splay: 0 }); }
       yield;
     }
-    for (let k = 0; k < 7; k++) { const x = R(0, W), y = R(gy + 10, H); dab(gg, x, y, R(60, 140) * s, R(20, 34) * s, R(-0.2, 0.2), [hm(gc[1], pal.hi, 0.25)], 0.26, 12); }
-    for (let k = 0; k < 120; k++) { const x = R(-m, W + m), y = gy + R(0, 0.12) * H; dab(gg, x, y, R(5, 11) * s + 2, 2 * s + 1, -Math.PI / 2 + R(-0.4, 0.4), [hm(gc[2], pal.hi, 0.1), gc[1]], 0.7, 3); }
-    const yc = (F.yc = (x) => gy + (H - gy) * 0.4 + Math.sin((x / W) * 3.3 + 0.6) * (H - gy) * 0.1);
-    const ws = (F.ws = (x) => (12 + 14 * Math.max(0, Math.min(1, x / W))) * s + 8);
-    const along = (off) => { const p = []; for (let x = -m - 20; x <= W + m + 20; x += 18) p.push([x, yc(x) + off * ws(x)]); return p; };
-    const mud = hm(gc[0], '#000000', 0.35), water = hm(pal.deep, pal.mid, 0.35), wLit = hm(pal.mid, pal.hi, 0.25);
-    for (const off of [-0.55, 0.55]) stroke(gg, along(off), { w: 8 * s + 4, cols: [mud, hm(mud, gc[1], 0.4)], a: 0.9, nb: 8, step: 6, chunk: 4, load: 9 });
+    if (FS.snow) for (let k = 0; k < 90; k++) wdab(gr, R(0, TW), R(F.RY1, H), R(20, 60) * s, R(6, 12) * s, 0, ['#dfe9ee', hm('#dfe9ee', pal.deep, 0.3)], 0.6, 8);
+    else for (let k = 0; k < 90; k++) wdab(gr, R(0, TW), R(F.RY1 + 8, H), R(3, 6) * s + 1, R(3, 5) * s + 1, R(0, 3), (FS.bloom || ['#ffffff', '#f2c94c', '#b99cff']).map((c) => night(c, 0.35)), 0.8, 4);
     yield;
-    for (const off of [-0.32, 0, 0.32]) { stroke(gg, along(off), { w: 0.42 * (20 * s + 8), cols: [water, hm(water, pal.bg, 0.3)], a: 0.95, nb: 10, step: 6, chunk: 4, load: 9 }); yield; }
-    for (let k = 0; k < 14; k++) { const x0 = R(-m, W), len = R(40, 140) * s, off = R(-0.3, 0.3); const p = []; for (let x = x0; x <= x0 + len; x += 8) p.push([x, yc(x) + off * ws(x)]); stroke(gg, p, { w: 3 * s + 1.5, cols: [wLit], a: 0.4, nb: 3, step: 4 }); }
-    for (let k = 0; k < 26; k++) { const x = R(-m, W + m), sd = rnd() < 0.5 ? -1 : 1, y = yc(x) + sd * ws(x) * 0.6; dab(gg, x, y, R(6, 13) * s + 2, R(5, 8) * s + 2, R(-0.4, 0.4), [hm('#6a7378', pal.bg, 0.45), hm('#8a9498', pal.hi, 0.3)], 0.9, 5); }
-    const litter = (FS.bloom || FS.leaf).map((c) => night(c, 0.45));
-    if (!FS.snow) for (let k = 0; k < 160; k++) { const y = gy + Math.pow(rnd(), 0.7) * (H - gy), x = R(-m, W + m); if (Math.abs(y - yc(x)) < ws(x) * 0.7) continue; dab(gg, x, y, R(5, 9) * s + 2, R(3, 6) * s + 2, R(0, 3), litter, 0.7, 4); }
-    yield;
-    const track = hm('#5a4632', pal.bg, 0.4), trackLit = hm('#7a6448', pal.hi, 0.15);
-    for (let y = F.carY - 14 * s - 4; y < Math.min(H + 6, F.carY + 12 * s + 4); y += 4 * s + 2) stroke(gg, [[W * 0.62 + R(-30, 30), y + R(-2, 2)], [W * 0.82, y + R(-2, 2)], [W + m + 10, y]], { w: 8 * s + 3, cols: [track, trackLit], a: 0.85, nb: 7, step: 8, chunk: 3 });
-    for (const off of [-6, 4]) stroke(gg, [[W * 0.66, F.carY + off * s], [W + m + 10, F.carY + off * s + 1]], { w: 3 * s + 1, cols: [hm(track, '#000000', 0.4)], a: 0.6, nb: 3, step: 8 });
-    yield;
-
-    // ---- trees: each one its own sprite so it can shake, sway and ring a note
-    const nearMoon = (wx, wy, r) => Math.hypot(wx - mo.x, wy - mo.y) < mo.r * 1.2 + r * 1.1;
-    const bark = [night('#3a2f28', 0.35), night('#2b231e', 0.35), night('#4a3c30', 0.4)], barkLit = hm(pal.hi, '#4a3c30', 0.55);
-    const leaf = FS.leaf.map((c) => night(c, 0.32)), leafLit = FS.leaf.map((c) => hm(night(c, 0.15), pal.hi, 0.22));
-    F.trees = [];
-    for (let i = 0; i < n; i++) {
-      const x = treeX[i], base = gy + R(0, 0.05) * H, tw = R(20, 40) * s + 8, top = -40;
-      const cw = Math.round(tw * 2 + 260 * s), ch = base - top + 24;
-      const [cv, g] = mk(cw, ch, cw / 2, -top);
-      const hwAt = (y) => (tw / 2) * (0.72 + 0.28 * Math.max(0, Math.min(1, y / base)));
-      for (let k = 0; k < 7; k++) { const off = -1 + ((k + 0.5) / 7) * 2, pts = []; for (let y = base + 4; y >= top; y -= 40) pts.push([off * hwAt(y) * 0.8 + R(-1.5, 1.5), y]); stroke(g, pts, { w: tw / 3.2, cols: bark, a: 0.95, step: 6, chunk: 4, nb: 10, load: 3 }); }
-      for (let k = 0; k < 3; k++) { const off = -0.88 + k * 0.1, pts = []; for (let y = base; y >= top; y -= 40) pts.push([off * hwAt(y), y]); stroke(g, pts, { w: tw / 7 + 1, cols: [barkLit], a: 0.3, step: 6, chunk: 4, nb: 4, load: R(0.6, 1.5) }); }
-      for (let k = 0; k < base / 28; k++) dab(g, R(-0.6, 0.6) * hwAt(base / 2), R(top, base), R(8, 18) * s, 3 * s + 1, Math.PI / 2 + R(-0.2, 0.2), [bark[1], hm(bark[1], '#000000', 0.35)], 0.6, 3);
-      for (let k = 0; k < 4; k++) { const sd = k < 2 ? -1 : 1; stroke(g, [[sd * tw * 0.3, base - tw * 0.8], [sd * tw * (0.55 + rnd() * 0.2), base - tw * 0.2], [sd * tw * (0.9 + rnd() * 0.4), base + 3]], { w: tw * 0.3, cols: bark, a: 0.9, nb: 7, step: 4 }); }
-      yield;
-      const cluster = (cx, cy, r, nd) => {
-        for (let pass = 0; pass < 2; pass++) for (let k = 0; k < nd * (pass ? 0.35 : 0.6); k++) {
-          const a = R(0, 6.3), rr = Math.sqrt(rnd()) * r * (pass ? 0.75 : 1), x2 = cx + Math.cos(a) * rr * 1.3 - (pass ? r * 0.25 : 0), y2 = cy + Math.sin(a) * rr * 0.8 - (pass ? r * 0.2 : 0);
-          dab(g, x2, y2, R(14, 24) * s + 5, R(9, 14) * s + 4, R(-0.6, 0.6), pass ? leafLit : leaf, 0.88, 9);
-        }
-        if (FS.bloom) for (let k = 0; k < nd / 5; k++) dab(g, cx + R(-1.2, 1.2) * r, cy + R(-0.7, 0.7) * r, 5 * s + 2, 4 * s + 2, R(0, 3), FS.bloom.map((c) => night(c, 0.2)), 0.9, 4);
-        if (FS.snow) for (let k = 0; k < nd / 3; k++) dab(g, cx + R(-1.1, 1.1) * r, cy - R(0.1, 0.8) * r, R(10, 16) * s + 3, 4 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, 0.3), '#dfe9ee'], 0.85, 5);
-      };
-      const nbr = 2 + Math.floor(rnd() * 2);
-      for (let b = 0; b < nbr; b++) {
-        const sd = b % 2 ? 1 : -1, by = R(0.16, 0.36) * H, len = R(60, 110) * s, ex = sd * len, ey = by - len * R(0.3, 0.6);
-        if (nearMoon(x + ex, ey, 40 * s + 8)) continue;
-        stroke(g, [[sd * tw * 0.3, by], [ex * 0.5, by - len * 0.15], [ex, ey]], { w: tw * 0.28, cols: bark, a: 0.95, nb: 7, step: 4 });
-        cluster(ex, ey, R(26, 40) * s + 8, 45); yield;
-      }
-      for (let c = 0; c < 3; c++) { const cx = R(-cw * 0.3, cw * 0.3), cy = R(-10, 0.13 * H), cr = R(45, 75) * s + 10; if (nearMoon(x + cx, cy, cr)) continue; cluster(cx, cy, cr, 80); yield; }
-      F.trees.push({ x, base, tw, cv, cw, ch, ay: base - top, ang: 0, av: 0, ph: R(0, 6), g });
-    }
-    F.trees.sort((a, b) => a.x - b.x); F.trees.forEach((tr, i) => { tr.i = i; tr.note = this.TREE_NOTES[i % this.TREE_NOTES.length]; });
-
-    // ---- the owl, on a stub branch of the second tree
-    const ot = F.trees[1], ow = 26 * s + 10, oh = 36 * s + 12, oy = ot.base - Math.min(0.36 * H, ot.base * 0.55), ox = ot.tw * 0.5 + 20 * s;
-    stroke(ot.g, [[ot.tw * 0.3, oy + 6], [ox, oy + 2], [ox + 34 * s + 8, oy - 4]], { w: ot.tw * 0.22 + 2, cols: bark, a: 0.95, nb: 6, step: 4 });
-    const [ocv, og] = mk(ow * 1.8, oh * 1.5, ow * 0.9, oh * 1.4);
-    const feather = night('#6b5a4a', 0.3), featherD = night('#4a3c32', 0.3), belly = night('#b8a48a', 0.35), face = night('#c8b89c', 0.3);
-    og.save(); og.beginPath(); og.ellipse(0, -oh * 0.5, ow * 0.5, oh * 0.5, 0, 0, Math.PI * 2); og.clip(); og.fillStyle = feather; og.fill();
-    for (let k = 0; k < 26; k++) dab(og, R(-0.5, 0.5) * ow, -R(0, 1) * oh, R(7, 12) * s + 3, R(5, 8) * s + 2, Math.PI / 2 + R(-0.5, 0.5), [feather, featherD, hm(feather, pal.hi, 0.2)], 0.9, 5);
-    for (let k = 0; k < 10; k++) dab(og, R(-0.22, 0.22) * ow, -R(0.1, 0.45) * oh, R(5, 8) * s + 2, R(4, 6) * s + 2, R(-0.3, 0.3), [belly, hm(belly, featherD, 0.3)], 0.9, 4);
-    og.restore();
-    for (const sd of [-1, 1]) { stroke(og, [[sd * ow * 0.28, -oh * 0.88], [sd * ow * 0.42, -oh * 1.08]], { w: 5 * s + 2, cols: [featherD, feather], a: 0.95, nb: 5, step: 2 }); og.globalAlpha = 0.9; og.fillStyle = face; og.beginPath(); og.arc(sd * ow * 0.2, -oh * 0.68, ow * 0.2, 0, Math.PI * 2); og.fill(); }
-    og.globalAlpha = 1; og.fillStyle = night('#d9a54a', 0.3); og.beginPath(); og.moveTo(-2 * s - 1, -oh * 0.6); og.lineTo(2 * s + 1, -oh * 0.6); og.lineTo(0, -oh * 0.5); og.fill();
-    for (const sd of [-1, 1]) stroke(og, [[sd * 5 * s, 0], [sd * 7 * s, 3]], { w: 2 * s + 1, cols: [night('#d9a54a', 0.4)], a: 1, nb: 3, step: 1 });
-    ot.owl = { cv: ocv, x: ox, y: oy, w: ow, h: oh, cw: ow * 1.8, ch: oh * 1.5 };
-    F.owl = { open: 0, want: 0, until: 0, hoots: 0, blink: 0 };
-    yield;
-
-    // ---- glowing mushrooms at the feet of some trees and out on the floor
-    F.shrooms = []; const spots = [];
-    for (const tr of F.trees) if (rnd() < 0.55) spots.push([tr.x + R(-1, 1) * tr.tw * 0.8, tr.base + 3]);
-    for (let k = 0; k < 3; k++) { const x = R(0.06, 0.66) * W, y0 = yc(x) + ws(x) * 0.7 + 14 * s, y = R(y0, Math.max(y0 + 2, H * 0.9)); spots.push([x, y]); }
-    spots.slice(0, 5).forEach(([x, y], i) => {
-      const col = this.GLOWS[i % this.GLOWS.length], cw = 70 * s + 24, chh = 50 * s + 18, [cv, g] = mk(cw, chh, cw / 2, chh - 2), caps = [], nm = 3 + Math.floor(rnd() * 3);
-      const stem = night('#e8e0cc', 0.35), capC = hm(col, pal.bg, 0.4);
-      for (let k = 0; k < nm; k++) {
-        const sx = R(-0.32, 0.32) * cw, sh = R(8, 26) * s + 4, r = R(5, 11) * s + 3, lean = R(-0.25, 0.25) * sh;
-        stroke(g, [[sx, 2], [sx + lean * 0.5, -sh * 0.5], [sx + lean, -sh]], { w: Math.max(2.5, r * 0.45), cols: [stem, hm(stem, pal.bg, 0.3)], a: 0.95, nb: 4, step: 2 });
-        g.save(); g.beginPath(); g.ellipse(sx + lean, -sh, r, r * 0.7, 0, Math.PI, 0); g.closePath(); g.clip(); g.fillStyle = capC; g.fill();
-        for (let q = 0; q < 6; q++) dab(g, sx + lean + R(-0.8, 0.8) * r, -sh - R(0, 0.6) * r, r * 0.9, r * 0.5, R(-0.4, 0.4), [col, hm(col, '#ffffff', 0.3), capC], 0.8, 5);
-        g.restore(); caps.push({ x: sx + lean, y: -sh - r * 0.3, r });
-      }
-      F.shrooms.push({ x, y, cv, cw, ch: chh, caps, col, note: [74, 78, 81, 83, 86][i % 5], lit: -99, ph: R(0, 6) });
-    });
-    yield;
-
-    // ---- ferns along the bottom edge, in front of everything
-    F.ferns = []; const fcol = FS.fern.map((c) => night(c, 0.3)), fLit = FS.fern.map((c) => hm(night(c, 0.15), pal.hi, 0.2));
-    for (let x = -0.02 * W; x < 1.02 * W; x += R(110, 190) * s + 30) {
-      if (x > W * 0.7 && x < W * 0.99) continue;
-      const L = R(70, 130) * s + 20, cw = L * 2.6, chh = L * 1.3, [cv, g] = mk(cw, chh, cw / 2, chh - 4), nf = 6 + Math.floor(rnd() * 4);
-      for (let k = 0; k < nf; k++) {
-        const a0 = -1.25 + (2.5 * (k + 0.5)) / nf + R(-0.12, 0.12), len = L * R(0.7, 1.05), steps = 14, dl = len / steps, rib = [[0, 0]];
-        let px0 = 0, py0 = 0;
-        for (let q = 1; q <= steps; q++) { const u = q / steps, th = a0 * (1 + 0.7 * u); px0 += Math.sin(th) * dl; py0 -= Math.cos(th) * dl; rib.push([px0, py0]); }
-        stroke(g, rib, { w: 2 * s + 1, cols: [hm(fcol[0], '#000000', 0.2)], a: 0.9, nb: 3, step: 3 });
-        for (let q = 1; q < steps; q++) {
-          const u = q / steps, th = a0 * (1 + 0.7 * u), phi = Math.atan2(-Math.cos(th), Math.sin(th)), ll = (1 - u) * len * 0.2 + 3, [rx, ry] = rib[q];
-          for (const sd of [-1, 1]) { const ang = phi + sd * 1.15, lit = sd * Math.sign(a0 || 1) < 0; dab(g, rx + (Math.cos(ang) * ll) / 2, ry + (Math.sin(ang) * ll) / 2, ll, 4 * s + 2, ang, lit ? fLit : fcol, 0.92, 4); }
-        }
-        if (FS.snow && rnd() < 0.5) dab(g, rib[8][0], rib[8][1] - 2, 10 * s + 3, 4 * s + 2, 0, ['#dfe9ee'], 0.8, 4);
-      }
-      F.ferns.push({ x, base: H + R(4, 16), cv, cw, ch: chh, L, bend: 0, bv: 0, ph: R(0, 6), lastR: -9 });
-      yield;
-    }
 
     // ---- the car, painted: body, windows, stripe, surfboard; wheels are drawn live
     const k = F.carW / 130, [ccv, cg] = mk(F.carW + 4, 78 * k + 4, 2, 2); cg.scale(k, k);
     const body = night('#c9564a', 0.2), bodyL = night('#e0705e', 0.15), bodyD = night('#7a2f2a', 0.2), cream = night('#f1e3c4', 0.25);
     const bodyPath = () => { cg.beginPath(); cg.moveTo(4, 60); cg.lineTo(4, 44); cg.quadraticCurveTo(5, 35, 16, 34); cg.lineTo(36, 32); cg.lineTo(48, 14); cg.quadraticCurveTo(50, 12, 54, 12); cg.lineTo(114, 12); cg.quadraticCurveTo(124, 13, 125, 24); cg.lineTo(127, 58); cg.quadraticCurveTo(127, 62, 122, 62); cg.lineTo(8, 62); cg.quadraticCurveTo(4, 62, 4, 60); cg.closePath(); };
     for (const sd of [-1, 1]) stroke(cg, [[sd < 0 ? 36 : 84, 8], [sd < 0 ? 40 : 88, 13]], { w: 3, cols: ['#2a2f33'], a: 1, nb: 3, step: 1 });
-    stroke(cg, [[30, 7], [76, 4], [124, 7]], { w: 7, cols: [night('#4aa3b8', 0.2), night('#9fe0ea', 0.2)], a: 1, nb: 8, step: 4, load: 3 });
+    stroke(cg, [[30, 7], [76, 4], [124, 7]], { w: 7, cols: [night('#4aa3b8', 0.2), night('#9fe0ea', 0.2)], a: 1, nb: 9, step: 4, load: 3, edge: night('#d8f4f8', 0.2) });
     cg.save(); bodyPath(); cg.clip(); cg.fillStyle = body; cg.fill();
-    for (let y = 12; y < 64; y += 5) stroke(cg, [[0, y + R(-1, 1)], [65, y + R(-1.5, 1.5)], [130, y + R(-1, 1)]], { w: 7, cols: y < 32 ? [bodyL, body] : [body, hm(body, bodyD, 0.3)], a: 0.85, nb: 8, step: 6, chunk: 3, load: 2 });
-    stroke(cg, [[0, 46], [130, 46]], { w: 6, cols: [cream], a: 0.95, nb: 7, step: 5, load: 3 });
+    for (let y = 12; y < 64; y += 4) stroke(cg, [[0, y + R(-1, 1)], [65, y + R(-1.5, 1.5)], [130, y + R(-1, 1)]], { w: 6, cols: y < 32 ? [bodyL, body] : [body, hm(body, bodyD, 0.3)], a: 0.85, nb: 9, step: 6, chunk: 3, load: 2 });
+    stroke(cg, [[0, 46], [130, 46]], { w: 6, cols: [cream], a: 0.95, nb: 8, step: 5, load: 3 });
     stroke(cg, [[0, 59], [130, 59]], { w: 6, cols: [bodyD], a: 0.9, nb: 6, step: 5, load: 3 });
     cg.fillStyle = night('#1d2b3a', 0.2);
     cg.beginPath(); cg.moveTo(41, 31); cg.lineTo(51, 17); cg.lineTo(74, 17); cg.lineTo(74, 31); cg.closePath(); cg.fill();
@@ -1531,76 +1494,729 @@ class Component extends DCLogic {
     cg.fillStyle = '#ffe9a8'; cg.beginPath(); cg.arc(8, 41, 3.5, 0, Math.PI * 2); cg.fill(); cg.fillStyle = '#ff5a4a'; cg.fillRect(124, 28, 3, 6);
     F.car = { cv: ccv, k, w: F.carW + 4, h: 78 * k + 4, wheels: [32, 100] };
 
-    // ---- leaf sprites for falling leaves and shaken trees
+    // ---- a paper texture laid over the whole frame
+    const gcv = document.createElement('canvas'); gcv.width = gcv.height = 160; const gg2 = gcv.getContext('2d'), img = gg2.createImageData(160, 160);
+    for (let i = 0; i < img.data.length; i += 4) { const v = (Math.random() - 0.5) * 2 + Math.sin(i * 0.0007) * 0.15; img.data[i] = img.data[i + 1] = img.data[i + 2] = v > 0 ? 255 : 0; img.data[i + 3] = Math.min(255, Math.abs(v) * 60); }
+    gg2.putImageData(img, 0, 0); F.grain = gcv;
     F.leafSpr = [];
-    for (let q = 0; q < 6; q++) { const sz = 14 * s + 6, [cv, g] = mk(sz, sz, sz / 2, sz / 2), cols = FS.bloom ? FS.bloom : FS.leaf.map((c) => night(c, 0.15)); dab(g, 0, 0, sz * (FS.bloom ? 0.45 : 0.8), sz * (FS.bloom ? 0.35 : 0.45), R(0, 3), cols, 1, 5); F.leafSpr.push({ cv, sz }); }
-    F.fall = []; for (let q = 0; q < (FS.fallN || 0); q++) F.fall.push(this.newLeaf(F, R(0, W), R(-H, H), FS.fall === 'snow'));
-    F.flies = []; for (let q = 0; q < 24; q++) F.flies.push({ x: R(0, W), y: R(gy * 0.6, H * 0.95), ph: R(0, 6), sp: R(0.3, 0.8), vx: 0, vy: 0 });
+    for (let q = 0; q < 6; q++) { const sz = 14 * s + 6, [cv, g] = mk(sz, sz, sz / 2, sz / 2), cols = FS.bloom ? FS.bloom : FS.leaf.map((c) => night(c, 0.15)); dab(g, 0, 0, sz * (FS.bloom ? 0.45 : 0.8), sz * (FS.bloom ? 0.35 : 0.45), R(0, 3), cols, 1, 6); F.leafSpr.push({ cv, sz }); }
+    F.parts.leaves = []; for (let q = 0; q < (FS.fallN || 0); q++) F.parts.leaves.push(this.newLeaf(F, R(0, W), R(-H, H), FS.fall === 'snow'));
+    F.flies = []; for (let q = 0; q < 26; q++) F.flies.push({ x: R(0, W), y: R(H * 0.45, H * 0.95), ph: R(0, 6), sp: R(0.3, 0.8), vx: 0, vy: 0 });
     F.motes = []; for (let q = 0; q < 50; q++) F.motes.push({ x: R(0, W), y: R(0, H), ph: R(0, 6) });
-    F.beams = []; for (let q = 0; q < 4; q++) F.beams.push({ x: W * (0.12 + q * 0.2) + R(-30, 30), dx: W * R(0.18, 0.3), w0: R(10, 30) * s, w1: R(60, 130) * s, a: R(0.04, 0.08), ph: R(0, 6), sp: R(0.2, 0.5) });
-    F.spores = []; F.rips = []; F.skips = []; F.shaken = []; F.played = [];
+
+    // ---- the first few trees, ferns and tufts; then the drive can begin
+    for (let i = 0; i < 3; i++) F.lib.near.push(yield* this.paintTree(F, rnd, { h: H * R(0.92, 1.02), tw: R(26, 44) * s + 8, near: true }));
+    for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.5, 0.62), tw: R(12, 20) * s + 5, near: false }));
+    for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 110) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
+    F.ready = true; yield;
+    // ---- everything else, painted while you drive
+    F.lib.sets.owl = yield* this.paintTree(F, rnd, { h: H * 0.98, tw: 40 * s + 8, near: true, owl: true });
+    F.lib.sets.deer = this.paintDeer(F, rnd); yield;
+    F.lib.sets.campfire = this.paintCampfire(F, rnd); yield;
+    F.lib.sets.bridge = yield* this.paintBridge(F, rnd);
+    F.lib.sets.cabin = yield* this.paintCabin(F, rnd);
+    F.lib.sets.lanterns = this.paintLanterns(F, rnd); yield;
+    F.lib.sets.mailbox = this.paintMailbox(F, rnd); yield;
+    F.lib.sets.ring = this.paintRing(F, rnd); yield;
+    F.lib.sets.fox = this.paintFox(F, rnd); yield;
+    for (let i = 0; i < 4; i++) F.lib.near.push(yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }));
+    for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.45, 0.62), tw: R(10, 20) * s + 5, near: false }));
+    for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 120) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
+  }
+
+  // A tree, painted bottom to top: roots that spread into the verge, a tapered trunk built
+  // from vertical bark strokes with a moonlit edge, moss and knots, branches that fork,
+  // and leaf masses in three values (shadow, body, moonlit top) with a few loose flicks.
+  *paintTree(F, rnd, o) {
+    const { s, pal, FS, H } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), mid = !o.near;
+    const fog = (c) => (mid ? hm(hm(c, pal.bg, 0.3), pal.deep, 0.45) : hm(c, pal.bg, 0.3));
+    const stroke = (g, pts, oo) => this.gouache(g, pts, Object.assign({ rnd }, oo));
+    const dab = (g, x, y, len, w, ang, cols, a, nb, extra) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], Object.assign({ w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 5), chunk: 2 }, extra || {})); };
+    const h = o.h, tw = o.tw, reach = (mid ? 0.6 : 1) * 270 * s, cw = Math.round(2 * (tw + reach + 24)), above = Math.round(110 * s + 40), below = 14 * s + 6, ch = h + above + below;
+    const [cv, g] = F.mk(cw, ch, cw / 2, h + above);   // origin at the foot of the trunk
+    const bark = [fog('#3a2f28'), fog('#2b231e'), fog('#4a3c30')], barkLit = hm(pal.hi, bark[2], mid ? 0.7 : 0.5), moss = fog(FS.snow ? '#dfe9ee' : '#4a6a3a');
+    const lean = R(-0.04, 0.04) * h, hw = (y) => (tw / 2) * (0.62 + 0.38 * Math.max(0, Math.min(1, 1 + y / h)));   // y is negative going up
+    const cx = (y) => lean * Math.pow(-y / h, 1.5) + Math.sin(-y / h * 3 + tw) * tw * 0.08;
+    // roots first, so the trunk sits on them, and verge colour brushed over their tips
+    const vc = FS.grass.map((c) => (FS.snow ? hm(c, pal.deep, 0.35) : this.hmix(c, pal.bg, 0.35)));
+    for (let k = 0; k < (mid ? 4 : 7); k++) { const sd = k % 2 ? 1 : -1, sp = R(0.5, 1.5) * tw; stroke(g, [[sd * tw * R(0.1, 0.35), -tw * R(0.6, 1.1)], [sd * (tw * 0.45 + sp * 0.4), -tw * 0.18], [sd * (tw * 0.5 + sp), below * 0.35 + R(-2, 2)]], { w: tw * R(0.2, 0.32), cols: bark, a: 0.95, nb: 8, step: 3, edge: sd < 0 ? barkLit : null }); }
+    g.fillStyle = bark[1]; g.beginPath(); g.moveTo(-hw(0), 2); for (let y = 0; y >= -h - above; y -= 20) g.lineTo(cx(y) - hw(y) * 0.95, y); for (let y = -h - above; y <= 0; y += 20) g.lineTo(cx(y) + hw(y) * 0.95, y); g.closePath(); g.fill();
+    for (let k = 0; k < (mid ? 6 : 11); k++) { const off = -1 + ((k + 0.5) / (mid ? 6 : 11)) * 2, pts = []; for (let y = 4; y >= -h - above; y -= 30) pts.push([cx(y) + off * hw(y) * 0.85 + R(-1, 1), y]); stroke(g, pts, { w: tw / (mid ? 3 : 4.5), cols: bark, a: 0.95, step: 5, chunk: 4, nb: 10, load: 3, splay: 0 }); }
+    yield;
+    for (let k = 0; k < 4; k++) { const off = -0.95 + k * 0.08, pts = []; for (let y = 0; y >= -h; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 8 + 1, cols: [barkLit, hm(barkLit, bark[2], 0.4)], a: 0.35, step: 5, chunk: 3, nb: 5, load: R(0.4, 1.2) }); }
+    if (!mid) {
+      for (let k = 0; k < h / 22; k++) { const y = -R(0, h), x = cx(y) + R(-0.6, 0.6) * hw(y); dab(g, x, y, R(5, 12) * s + 2, 2.5 * s + 1, R(-0.3, 0.3) + (rnd() < 0.5 ? 0 : Math.PI / 2), [bark[1], hm(bark[1], '#000000', 0.4)], 0.65, 3); }
+      for (let k = 0; k < 2; k++) { const y = -R(0.2, 0.6) * h, x = cx(y) + R(-0.2, 0.3) * hw(y); g.fillStyle = hm(bark[1], '#000000', 0.5); g.beginPath(); g.ellipse(x, y, 3 * s + 1.5, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); stroke(g, [[x - 4 * s, y - 6 * s], [x - 5 * s, y + 6 * s]], { w: 2 * s + 1, cols: [barkLit], a: 0.5, nb: 3, step: 2 }); }
+      for (let k = 0; k < 14; k++) { const y = -R(0, 0.35) * h, x = cx(y) + R(-0.8, -0.1) * hw(y); dab(g, x, y, R(4, 9) * s + 2, R(3, 5) * s + 1, R(0, 3), [moss, hm(moss, pal.hi, 0.25)], 0.75, 4); }
+    }
+    for (let k = 0; k < (mid ? 10 : 22); k++) { const x = R(-1.6, 1.6) * tw, y = below * R(-0.1, 0.4); dab(g, x, y, R(6, 14) * s + 2, R(3, 6) * s + 2, R(-0.3, 0.3), vc, 0.85, 5); }
+    yield;
+    // branches that fork twice, ending in leaf masses
+    const leaf = FS.leaf.map((c) => fog(c)), leafLit = FS.leaf.map((c) => hm(fog(c), pal.hi, mid ? 0.12 : 0.25)), leafDark = FS.leaf.map((c) => hm(fog(c), '#000000', 0.35));
+    const masses = [];
+    const cluster = (x0, y0, r, nd) => {
+      masses.push([x0, y0, r]);
+      for (let k = 0; k < nd * 0.45; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * r, x2 = x0 + Math.cos(a) * rr * 1.25 + r * 0.12, y2 = y0 + Math.sin(a) * rr * 0.8 + r * 0.15; dab(g, x2, y2, R(14, 24) * s + 5, R(9, 14) * s + 4, R(-0.6, 0.6), leafDark, 0.9, 9); }
+      for (let k = 0; k < nd * 0.4; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * r * 0.9, x2 = x0 + Math.cos(a) * rr * 1.2, y2 = y0 + Math.sin(a) * rr * 0.75; dab(g, x2, y2, R(11, 19) * s + 4, R(7, 11) * s + 3, R(-0.7, 0.7), leaf, 0.9, 8); }
+      for (let k = 0; k < nd * 0.3; k++) { const a = R(3.4, 6.0), rr = Math.sqrt(rnd()) * r * 0.75, x2 = x0 + Math.cos(a) * rr * 1.1 - r * 0.15, y2 = y0 + Math.sin(a) * rr * 0.7 - r * 0.1; dab(g, x2, y2, R(7, 13) * s + 3, R(5, 8) * s + 2, R(-0.8, 0.8), leafLit, 0.92, 6); }
+      for (let k = 0; k < nd * 0.2; k++) { const a = R(0, 6.3), x2 = x0 + Math.cos(a) * r * 1.3, y2 = y0 + Math.sin(a) * r * 0.85; dab(g, x2, y2, R(5, 9) * s + 2, R(2, 4) * s + 1, a + R(-0.4, 0.4), a > 3.4 && a < 6 ? leafLit : leaf, 0.85, 3); }
+      if (FS.bloom) for (let k = 0; k < nd / 5; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 + R(-0.7, 0.6) * r, 4 * s + 2, 3 * s + 2, R(0, 3), FS.bloom.map((c) => fog(c)), 0.95, 4);
+      if (FS.snow) for (let k = 0; k < nd / 3; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 - R(0.2, 0.85) * r, R(10, 16) * s + 3, 4 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, mid ? 0.45 : 0.3), '#dfe9ee'], 0.85, 5);
+    };
+    const branch = (x, y, ang, len, w, depth) => {
+      const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len, mx = (x + ex) / 2 + Math.cos(ang) * len * 0.12, my = (y + ey) / 2 + len * 0.08;
+      stroke(g, [[x, y], [mx, my], [ex, ey]], { w, cols: bark, a: 0.95, nb: Math.max(4, Math.round(w)), step: 3, edge: ang < 0 ? barkLit : null });
+      if (FS.snow && ang > -1.4 && ang < 1.4) stroke(g, [[x, y - w * 0.4], [mx, my - w * 0.5], [ex, ey - w * 0.4]], { w: w * 0.5, cols: ['#dfe9ee'], a: 0.7, nb: 4, step: 3, load: 0.8 });
+      if (depth < 2) { branch(ex, ey, ang - R(0.3, 0.6), len * 0.62, w * 0.6, depth + 1); if (rnd() < 0.7) branch(ex, ey, ang + R(0.3, 0.6), len * 0.55, w * 0.55, depth + 1); }
+      else cluster(ex, ey, R(26, 42) * s * (mid ? 0.6 : 1) + 8, mid ? 30 : 46);
+    };
+    const nbr = mid ? 2 : 3 + Math.floor(rnd() * 2);
+    for (let b = 0; b < nbr; b++) {
+      const sd = b % 2 ? 1 : -1, y = -h * R(0.42, 0.72), x = cx(y) + sd * hw(y) * 0.6;
+      if (o.owl && b === 1) continue;
+      branch(x, y, sd * R(0.7, 1.2), R(50, 90) * s * (mid ? 0.6 : 1), tw * 0.22, 0); yield;
+    }
+    for (let c = 0; c < (mid ? 3 : 4); c++) { cluster(cx(-h) + R(-150, 150) * s * (mid ? 0.6 : 1), -h + R(-10, h * 0.12), R(45, 75) * s * (mid ? 0.6 : 1) + 10, mid ? 50 : 80); yield; }
+    const T = { cv, cw, ch, ax: cw / 2, ay: h + above, h, tw, masses, near: !mid, lean };
+    if (o.owl) {
+      // a stub branch for the owl to sit on
+      const oy = -h * 0.5, ox = cx(oy) + hw(oy) + 18 * s;
+      stroke(g, [[cx(oy) + hw(oy) * 0.4, oy + 6], [ox, oy + 2], [ox + 34 * s + 8, oy - 4]], { w: tw * 0.2 + 2, cols: bark, a: 0.95, nb: 6, step: 3, edge: barkLit });
+      T.owl = this.paintOwl(F, rnd); T.owl.x = ox; T.owl.y = oy; T.isOwl = true;
+    }
+    return T;
+  }
+  paintOwl(F, rnd) {
+    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), night = (c, k) => hm(c, pal.bg, k);
+    const stroke = (g, pts, oo) => this.gouache(g, pts, Object.assign({ rnd }, oo));
+    const dab = (g, x, y, len, w, ang, cols, a, nb) => { const c = Math.cos(ang), sn = Math.sin(ang); stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x + (c * len) / 2, y + (sn * len) / 2]], { w, cols, a, nb, step: Math.max(1.2, len / 4), chunk: 2 }); };
+    const ow = 26 * s + 10, oh = 36 * s + 12, [cv, og] = F.mk(ow * 1.8, oh * 1.5, ow * 0.9, oh * 1.4);
+    const feather = night('#6b5a4a', 0.3), featherD = night('#4a3c32', 0.3), belly = night('#b8a48a', 0.35), face = night('#c8b89c', 0.3);
+    og.save(); og.beginPath(); og.ellipse(0, -oh * 0.5, ow * 0.5, oh * 0.5, 0, 0, Math.PI * 2); og.clip(); og.fillStyle = feather; og.fill();
+    for (let k = 0; k < 34; k++) dab(og, R(-0.5, 0.5) * ow, -R(0, 1) * oh, R(6, 11) * s + 3, R(4, 7) * s + 2, Math.PI / 2 + R(-0.5, 0.5), [feather, featherD, hm(feather, pal.hi, 0.2)], 0.9, 6);
+    for (let k = 0; k < 14; k++) dab(og, R(-0.22, 0.22) * ow, -R(0.1, 0.45) * oh, R(4, 7) * s + 2, R(3, 5) * s + 2, R(-0.3, 0.3), [belly, hm(belly, featherD, 0.3)], 0.9, 4);
+    og.restore();
+    for (const sd of [-1, 1]) { stroke(og, [[sd * ow * 0.28, -oh * 0.88], [sd * ow * 0.42, -oh * 1.08]], { w: 5 * s + 2, cols: [featherD, feather], a: 0.95, nb: 5, step: 2 }); og.globalAlpha = 0.9; og.fillStyle = face; og.beginPath(); og.arc(sd * ow * 0.2, -oh * 0.68, ow * 0.2, 0, Math.PI * 2); og.fill(); }
+    og.globalAlpha = 1; og.fillStyle = night('#d9a54a', 0.3); og.beginPath(); og.moveTo(-2 * s - 1, -oh * 0.6); og.lineTo(2 * s + 1, -oh * 0.6); og.lineTo(0, -oh * 0.5); og.fill();
+    for (const sd of [-1, 1]) stroke(og, [[sd * 5 * s, 0], [sd * 7 * s, 3]], { w: 2 * s + 1, cols: [night('#d9a54a', 0.4)], a: 1, nb: 3, step: 1 });
+    return { cv, w: ow, h: oh, cw: ow * 1.8, ch: oh * 1.5 };
+  }
+  paintFern(F, rnd, L) {
+    const { s, pal, FS } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k);
+    const fcol = FS.fern.map((c) => hm(c, pal.bg, 0.3)), fLit = FS.fern.map((c) => hm(hm(c, pal.bg, 0.15), pal.hi, 0.2));
+    const cw = L * 2.6, chh = L * 1.3, [cv, g] = F.mk(cw, chh, cw / 2, chh - 4), nf = 6 + Math.floor(rnd() * 4);
+    for (let k = 0; k < nf; k++) {
+      const a0 = -1.25 + (2.5 * (k + 0.5)) / nf + R(-0.12, 0.12), len = L * R(0.7, 1.05), steps = 16, dl = len / steps, rib = [[0, 0]];
+      let px0 = 0, py0 = 0;
+      for (let q = 1; q <= steps; q++) { const u = q / steps, th = a0 * (1 + 0.7 * u); px0 += Math.sin(th) * dl; py0 -= Math.cos(th) * dl; rib.push([px0, py0]); }
+      this.gouache(g, rib, { rnd, w: 2 * s + 1, cols: [hm(fcol[0], '#000000', 0.2)], a: 0.9, nb: 3, step: 3 });
+      for (let q = 1; q < steps; q++) {
+        const u = q / steps, th = a0 * (1 + 0.7 * u), phi = Math.atan2(-Math.cos(th), Math.sin(th)), ll = (1 - u) * len * 0.2 + 3, [rx, ry] = rib[q];
+        for (const sd of [-1, 1]) { const ang = phi + sd * 1.15, lit = sd * Math.sign(a0 || 1) < 0, c = Math.cos(ang), sn = Math.sin(ang); this.gouache(g, [[rx, ry], [rx + c * ll, ry + sn * ll]], { rnd, w: 4 * s + 2, cols: lit ? fLit : fcol, a: 0.92, nb: 4, step: Math.max(1.2, ll / 3), chunk: 2 }); }
+      }
+      if (FS.snow && rnd() < 0.5) this.gouache(g, [[rib[8][0] - 5, rib[8][1] - 2], [rib[8][0] + 5, rib[8][1] - 2]], { rnd, w: 4 * s + 2, cols: ['#dfe9ee'], a: 0.8, nb: 4, step: 2 });
+    }
+    return { cv, cw, ch: chh, L };
+  }
+  paintTuft(F, rnd) {
+    const { s, pal, FS } = F, R = (a, b) => a + rnd() * (b - a), cols = FS.grass.map((c) => (FS.snow ? this.hmix(c, pal.deep, 0.35) : this.hmix(c, pal.bg, 0.3)));
+    const w = 50 * s + 16, h = 26 * s + 10, [cv, g] = F.mk(w, h + 4, w / 2, h);
+    for (let k = 0; k < 26; k++) { const x = R(-0.45, 0.45) * w, hh = R(0.4, 1) * h; this.gouache(g, [[x, 2], [x + R(-0.25, 0.25) * hh, -hh]], { rnd, w: 2 * s + 1, cols: cols.concat(this.hmix(cols[1], pal.hi, 0.25)), a: 0.9, nb: 3, step: 2, splay: 0 }); }
+    return { cv, w, h: h + 4, ay: h };
+  }
+
+  // ---- set pieces: each is painted once, then placed along the road
+  paintDeer(F, rnd) {
+    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), sc = 1.15 * s + 0.2;
+    const fur = hm('#8a5a3a', pal.bg, 0.35), furD = hm('#5a3a26', pal.bg, 0.35), furL = hm(hm('#b07a4e', pal.bg, 0.25), pal.hi, 0.15), cream = hm('#e8dcc8', pal.bg, 0.35), dark = hm('#2a1c14', pal.bg, 0.2);
+    const pose = (kind) => {
+      const W0 = 150 * sc, H0 = 150 * sc, [cv, g] = F.mk(W0, H0, W0 * 0.42, H0 - 4); g.scale(sc, sc);
+      const st = (pts, w, cols, a, extra) => this.gouache(g, pts, Object.assign({ rnd, w, cols, a: a || 0.95, nb: Math.max(3, Math.round(w * 1.2)), step: 2 }, extra || {}));
+      const leap = kind === 'leap', head = kind === 'graze' ? [62, -24] : [60, -112], by = leap ? -72 : -64;
+      // legs
+      const legs = leap ? [[[-30, by + 8], [-48, by + 22], [-66, by + 30]], [[-24, by + 10], [-40, by + 26], [-58, by + 38]], [[28, by + 6], [44, by - 2], [58, by - 14]], [[22, by + 8], [40, by + 4], [56, by - 4]]]
+        : [[[-28, by + 8], [-30, by + 34], [-28, 0]], [[-20, by + 10], [-18, by + 36], [-20, 0]], [[24, by + 8], [26, by + 36], [26, 0]], [[30, by + 8], [34, by + 36], [34, 0]]];
+      legs.forEach((p, i) => st(p, 4, i % 2 ? [furD] : [fur, furD], 0.95));
+      if (!leap) for (const x of [-28, -20, 26, 34]) st([[x - 2, -1], [x + 2, -1]], 3, [dark]);
+      // body
+      g.save(); g.beginPath(); g.ellipse(0, by, 40, 18, leap ? -0.12 : 0, 0, Math.PI * 2); g.clip(); g.fillStyle = fur; g.fill();
+      for (let k = 0; k < 13; k++) for (let j = 0; j < 4; j++) { const yy = by - 17 + k * 2.9, x0 = -46 + j * 22 + R(-4, 4); st([[x0, yy + R(-1, 1)], [x0 + 14, yy - 1.5 + R(-1, 1)], [x0 + 30, yy + R(-1, 1)]], 4.5, k < 4 ? [furL, fur] : k > 9 ? [cream, hm(cream, fur, 0.4)] : [fur, hm(fur, furD, 0.4)], 0.75, { load: 1.5 }); }
+      st([[-38, by - 15], [0, by - 19], [36, by - 15]], 3, [hm(furL, pal.hi, 0.3)], 0.6);
+      g.restore();
+      st([[-38, by - 6], [-44, by + 4]], 7, [cream], 0.95); st([[-42, by - 8], [-48, by - 4]], 3, [furD]);
+      // neck and head
+      const nb0 = [30, by - 6];
+      st([nb0, [(nb0[0] + head[0]) / 2 + 4, (nb0[1] + head[1]) / 2], [head[0] - 4, head[1] + 8]], 13, [fur, furL], 0.95);
+      g.save(); g.translate(head[0], head[1]); g.rotate(kind === 'graze' ? 1.2 : 0.35);
+      g.fillStyle = fur; g.beginPath(); g.ellipse(4, 0, 12, 7, 0, 0, Math.PI * 2); g.fill();
+      st([[-6, -2], [16, 2]], 8, [fur, furL], 0.9); g.fillStyle = dark; g.beginPath(); g.arc(16, 2, 2.2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(2, -2, 1.5, 0, Math.PI * 2); g.fill();
+      st([[-4, -6], [-10, -16]], 5, [fur, furD]); st([[0, -6], [2, -16]], 4, [furD]);
+      // antlers
+      const ant = (sd) => { st([[-2, -7], [-6 + sd * 2, -22], [-2 + sd * 6, -34]], 2.6, [cream, hm(cream, furD, 0.4)], 0.95); st([[-5 + sd * 2, -18], [4 + sd * 3, -24]], 2, [cream]); st([[-4 + sd * 4, -28], [-14 + sd * 2, -38]], 2, [cream]); };
+      ant(-1); ant(1);
+      g.restore();
+      return { cv, w: W0, h: H0, ax: W0 * 0.42, ay: H0 - 4 };
+    };
+    return { graze: pose('graze'), alert: pose('alert'), leap: pose('leap'), w: 150 * sc, sc };
+  }
+  paintFox(F, rnd) {
+    const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), sc = 0.8 * s + 0.15;
+    const fur = hm('#d0642a', pal.bg, 0.3), furD = hm('#8a3a1a', pal.bg, 0.3), white = hm('#efe6d8', pal.bg, 0.3), dark = hm('#1e1410', pal.bg, 0.2);
+    const pose = (kind) => {
+      const W0 = 120 * sc, H0 = 100 * sc, [cv, g] = F.mk(W0, H0, W0 * 0.5, H0 - 3); g.scale(sc, sc);
+      const st = (pts, w, cols, a) => this.gouache(g, pts, { rnd, w, cols, a: a || 0.95, nb: Math.max(3, Math.round(w * 1.2)), step: 2 });
+      if (kind === 'sit') {
+        st([[-6, -6], [-34, -2], [-46, -14], [-40, -24]], 12, [fur, furD]); st([[-42, -18], [-44, -24]], 7, [white]);
+        g.fillStyle = fur; g.beginPath(); g.ellipse(0, -24, 16, 22, 0.15, 0, Math.PI * 2); g.fill();
+        st([[-8, -40], [-8, -4]], 10, [fur, furD], 0.85); st([[4, -40], [6, -14]], 9, [white], 0.95);
+        for (const x of [-4, 6]) st([[x, -10], [x, 0]], 4, [dark]);
+        g.fillStyle = fur; g.beginPath(); g.ellipse(6, -50, 11, 9, 0, 0, Math.PI * 2); g.fill();
+        st([[8, -48], [24, -44]], 8, [fur, white]); g.fillStyle = dark; g.beginPath(); g.arc(24, -44, 2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(10, -52, 1.4, 0, Math.PI * 2); g.fill();
+        for (const x of [0, 9]) { g.fillStyle = furD; g.beginPath(); g.moveTo(x - 4, -56); g.lineTo(x, -70); g.lineTo(x + 4, -56); g.fill(); }
+      } else {
+        st([[-22, -30], [-48, -34], [-58, -42]], 11, [fur, furD]); st([[-54, -40], [-60, -44]], 7, [white]);
+        g.fillStyle = fur; g.beginPath(); g.ellipse(0, -30, 26, 11, 0, 0, Math.PI * 2); g.fill(); st([[-20, -24], [20, -24]], 6, [white], 0.7);
+        for (const [x0, x1] of [[-16, -24], [-10, -2], [14, 6], [20, 28]]) st([[x0, -24], [x1, 0]], 4, [furD, dark]);
+        g.fillStyle = fur; g.beginPath(); g.ellipse(28, -40, 10, 8, 0, 0, Math.PI * 2); g.fill(); st([[30, -38], [44, -36]], 7, [fur, white]);
+        g.fillStyle = dark; g.beginPath(); g.arc(44, -36, 1.8, 0, Math.PI * 2); g.fill();
+        for (const x of [24, 32]) { g.fillStyle = furD; g.beginPath(); g.moveTo(x - 4, -46); g.lineTo(x, -58); g.lineTo(x + 4, -46); g.fill(); }
+      }
+      return { cv, w: W0, h: H0, ax: W0 * 0.5, ay: H0 - 3 };
+    };
+    return { sit: pose('sit'), trot: pose('trot'), w: 120 * sc };
+  }
+  paintCampfire(F, rnd) {
+    const { s, pal, FS } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), w = 210 * s + 40, h = 70 * s + 20;
+    const [cv, g] = F.mk(w, h, w / 2, h - 6), st = (pts, ww, cols, a, ex) => this.gouache(g, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 2 }, ex || {}));
+    const wood = hm('#5a4030', pal.bg, 0.3), woodD = hm('#33241a', pal.bg, 0.25), ash = hm('#3a3430', pal.bg, 0.2), stone = hm('#6a6e70', pal.bg, 0.35), stoneL = hm('#9aa0a2', pal.hi, 0.2);
+    g.fillStyle = ash; g.beginPath(); g.ellipse(0, 0, 34 * s + 8, 8 * s + 3, 0, 0, Math.PI * 2); g.fill();
+    for (let k = 0; k < 11; k++) { const a = (k / 11) * Math.PI * 2, x = Math.cos(a) * (34 * s + 9), y = Math.sin(a) * (8 * s + 3); st([[x - 6 * s, y], [x + 6 * s, y]], 8 * s + 3, [stone, stoneL], 0.95, { edge: stoneL }); }
+    st([[-26 * s, -2], [22 * s, -14 * s]], 7 * s + 3, [wood, woodD], 0.95, { edge: hm(wood, '#ffb070', 0.3) }); st([[24 * s, -1], [-20 * s, -15 * s]], 7 * s + 3, [wood, woodD], 0.95, { edge: hm(wood, '#ffb070', 0.3) });
+    // two stump seats
+    for (const x of [-w * 0.36, w * 0.34]) { g.fillStyle = woodD; g.fillRect(x - 11 * s, -26 * s, 22 * s, 26 * s); for (let k = 0; k < 5; k++) st([[x - 10 * s + k * 5 * s, 0], [x - 10 * s + k * 5 * s, -26 * s]], 5 * s + 1, [wood, woodD], 0.9); g.fillStyle = hm('#a07a52', pal.bg, 0.3); g.beginPath(); g.ellipse(x, -26 * s, 11 * s, 4 * s, 0, 0, Math.PI * 2); g.fill(); }
+    if (FS.snow) for (const x of [-w * 0.36, w * 0.34]) st([[x - 11 * s, -28 * s], [x + 11 * s, -28 * s]], 4 * s + 2, ['#dfe9ee'], 0.85);
+    return { cv, w, h, ax: w / 2, ay: h - 6, fireY: -10 * s };
+  }
+  *paintCabin(F, rnd) {
+    const { s, pal, FS } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), w = 250 * s + 50, h = 230 * s + 40;
+    const [cv, g] = F.mk(w + 40, h, w / 2 + 20, h - 4), st = (pts, ww, cols, a, ex) => this.gouache(g, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 3 }, ex || {}));
+    const log = hm('#6a4a32', pal.bg, 0.35), logD = hm('#3e2a1c', pal.bg, 0.3), logL = hm(hm('#8a6444', pal.bg, 0.3), pal.hi, 0.18), roof = hm('#3a2e2a', pal.bg, 0.25), roofL = hm(roof, pal.hi, 0.2);
+    const ww = w * 0.82, wh = h * 0.42, wx0 = -ww / 2, wy0 = -wh;
+    g.fillStyle = logD; g.fillRect(wx0, wy0, ww, wh);
+    for (let y = wy0 + 4; y < 0; y += 9 * s + 4) { st([[wx0 - 6, y], [wx0 + ww + 6, y + R(-1, 1)]], 8 * s + 3, [log, logD], 0.95, { edge: logL, load: 3 }); for (const x of [wx0 - 4, wx0 + ww + 4]) { g.fillStyle = logL; g.beginPath(); g.arc(x, y, 3.5 * s + 1.5, 0, Math.PI * 2); g.fill(); } }
+    yield;
+    // door and window frames; the window light is drawn live
+    const dw = 34 * s + 8, dh = wh * 0.72, dx0 = ww * 0.18; g.fillStyle = hm('#2a1c14', pal.bg, 0.2); g.fillRect(dx0, -dh, dw, dh); st([[dx0 + 3, -dh + 3], [dx0 + 3, -2]], 3, [log]); st([[dx0 + dw - 4, -dh * 0.5], [dx0 + dw - 7, -dh * 0.5]], 3, [hm('#d0b070', pal.bg, 0.3)]);
+    const win = { x: -ww * 0.3, y: -wh * 0.72, w: 46 * s + 10, h: 34 * s + 8 };
+    g.fillStyle = hm('#1a1410', pal.bg, 0.2); g.fillRect(win.x, win.y, win.w, win.h);
+    // roof, chimney
+    const rh = h * 0.42, ridge = wy0 - rh;
+    g.fillStyle = roof; g.beginPath(); g.moveTo(wx0 - 22, wy0 + 6); g.lineTo(0, ridge); g.lineTo(wx0 + ww + 22, wy0 + 6); g.closePath(); g.fill();
+    for (let k = 0; k < 16; k++) { const u = k / 15; st([[wx0 - 20 + u * (ww / 2 + 20), wy0 + 4 - u * (rh + 4)], [wx0 + ww + 20 - u * (ww / 2 + 20), wy0 + 4 - u * (rh + 4)]], 6 * s + 3, [roof, hm(roof, '#000000', 0.3)], 0.9, { load: 3 }); }
+    st([[wx0 - 22, wy0 + 6], [0, ridge]], 6 * s + 2, [FS.snow ? '#dfe9ee' : roofL], 0.8, { load: 3 });
+    if (FS.snow) for (let k = 0; k < 8; k++) { const u = k / 8; st([[wx0 - 20 + u * ww * 0.5, wy0 + 2 - u * rh], [wx0 + ww + 20 - u * ww * 0.5, wy0 + 2 - u * rh]], 5 * s + 2, ['#dfe9ee', hm('#dfe9ee', pal.deep, 0.3)], 0.6, { load: 0.8 }); }
+    const chx = ww * 0.22, chTop = ridge + rh * 0.25; g.fillStyle = hm('#5a5a58', pal.bg, 0.35); g.fillRect(chx, chTop, 18 * s + 6, rh * 0.5);
+    for (let y = chTop + 4; y < chTop + rh * 0.45; y += 7 * s + 2) st([[chx, y], [chx + 18 * s + 6, y]], 5 * s + 2, [hm('#6a6a68', pal.bg, 0.35), hm('#8a8a86', pal.hi, 0.15)], 0.9);
+    yield;
+    // porch lantern hook
+    st([[wx0 + ww * 0.12, wy0 + 8], [wx0 + ww * 0.12, wy0 + 20]], 2, [logD]);
+    return { cv, w: w + 40, h, ax: w / 2 + 20, ay: h - 4, win, chimney: { x: chx + 9 * s + 3, y: chTop }, lamp: { x: wx0 + ww * 0.12, y: wy0 + 26 } };
+  }
+  *paintBridge(F, rnd) {
+    const { s, pal, H, RY0, RY1 } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), span = 360 * s + 120, w = span + 160 * s;
+    // back: the stream running under the road and the deck with its far rail
+    const top = H * 0.67, [cv, g] = F.mk(w, H - top + 4, w / 2, -top);
+    const st = (gg, pts, ww, cols, a, ex) => this.gouache(gg, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 3 }, ex || {}));
+    const water = hm(pal.deep, pal.mid, 0.35), waterD = hm(water, pal.bg, 0.35), bank = hm('#3a3026', pal.bg, 0.35), wood = hm('#6a5038', pal.bg, 0.3), woodD = hm('#3a2a1e', pal.bg, 0.3), woodL = hm(hm('#8a6a4a', pal.bg, 0.3), pal.hi, 0.2);
+    const half = (y) => (y < RY0 ? Math.max(4, 14 * s + 4 + (y - top) * 0.55) : span * 0.32 + (y - RY1) * 0.9);   // narrow upstream, widening toward you
+    for (let y = top; y < H + 4; y += 4) { if (y > RY0 - 4 && y < RY1) continue; const hw = half(y); g.fillStyle = waterD; g.fillRect(-hw - 6, y, hw * 2 + 12, 4.5); }
+    for (let y = top; y < H + 4; y += 5 * s + 3) { if (y > RY0 - 4 && y < RY1) continue; const hw = half(y); st(g, [[-hw, y], [0, y + R(-1, 1)], [hw, y]], 5 * s + 3, [water, waterD, hm(water, pal.hi, 0.15)], 0.8, { load: 3 }); for (const sd of [-1, 1]) st(g, [[sd * hw - 4, y], [sd * hw + sd * R(6, 16) * s, y + R(-2, 2)]], 5 * s + 2, [bank, hm(bank, '#000000', 0.3)], 0.95); }
+    yield;
+    for (let k = 0; k < 18; k++) { const y = R(RY1 + 6, H), sd = rnd() < 0.5 ? -1 : 1; st(g, [[sd * half(y) - 5, y], [sd * half(y) + 5, y]], R(6, 12) * s + 2, [hm('#6a7378', pal.bg, 0.45), hm('#8a9498', pal.hi, 0.3)], 0.95); }
+    // deck: planks across the road
+    const plank = 9 * s + 4; g.fillStyle = hm(wood, woodD, 0.5); g.fillRect(-span / 2, RY0 - 2, span, RY1 - RY0 + 6);
+    for (let x = -span / 2; x < span / 2; x += plank) { st(g, [[x + plank / 2, RY0], [x + plank / 2 + R(-1, 1), RY1 + 2]], plank * 0.8, [wood, hm(wood, woodD, 0.3)], 0.5, { load: 3, jit: 0.08 }); g.globalAlpha = 0.35; g.fillStyle = woodD; g.fillRect(x, RY0, 1.2, RY1 - RY0 + 2); g.globalAlpha = 1; }
+    st(g, [[-span / 2, RY1 + 3], [span / 2, RY1 + 3]], 6 * s + 2, [woodD], 0.95, { load: 3 });
+    // the far rail
+    const railH = 40 * s + 12;
+    for (let x = -span / 2; x <= span / 2 + 1; x += span / 6) st(g, [[x, RY0 + 2], [x, RY0 - railH]], 6 * s + 2, [wood, woodD], 0.95, { edge: woodL });
+    for (const yy of [RY0 - railH + 4, RY0 - railH * 0.45]) st(g, [[-span / 2 - 6, yy], [span / 2 + 6, yy + 1]], 5 * s + 2, [wood, woodD], 0.95, { edge: woodL, load: 3 });
+    yield;
+    // front: the near rail, drawn in front of the car
+    const [fcv, fg] = F.mk(w, railH + 20, w / 2, railH + 10);
+    for (let x = -span / 2; x <= span / 2 + 1; x += span / 6) st(fg, [[x, 6], [x, -railH]], 7 * s + 2, [wood, woodD], 0.95, { edge: woodL });
+    for (const yy of [-railH + 4, -railH * 0.45]) st(fg, [[-span / 2 - 6, yy], [span / 2 + 6, yy + 1]], 6 * s + 2, [wood, woodD], 0.95, { edge: woodL, load: 3 });
+    return { cv, w, h: H - top + 4, ax: w / 2, top, front: { cv: fcv, w, h: railH + 20, ax: w / 2, ay: railH + 10 }, span, half, plank };
+  }
+  paintLanterns(F, rnd) {
+    const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), span = 380 * s + 80, ph = 150 * s + 40;
+    const [cv, g] = F.mk(span + 40, ph + 10, span / 2 + 20, ph);
+    const wood = hm('#5a4030', pal.bg, 0.3), woodD = hm('#33241a', pal.bg, 0.25);
+    for (const x of [-span / 2, span / 2]) { this.gouache(g, [[x, 4], [x, -ph]], { rnd, w: 7 * s + 3, cols: [wood, woodD], a: 0.95, nb: 7, step: 3, edge: hm(wood, pal.hi, 0.3) }); this.gouache(g, [[x - 8 * s, -ph + 6], [x + 8 * s, -ph + 6]], { rnd, w: 4 * s + 2, cols: [woodD], a: 0.95, nb: 4, step: 2 }); }
+    const sprites = this.LANTERN_COLS.map((c) => {
+      const lw = 20 * s + 8, lh = 26 * s + 10, [lc, lg] = F.mk(lw + 6, lh + 14, lw / 2 + 3, 6);
+      lg.fillStyle = hm(c, pal.bg, 0.15); lg.beginPath(); lg.ellipse(0, lh / 2 + 2, lw / 2, lh / 2, 0, 0, Math.PI * 2); lg.fill();
+      for (let k = 0; k < 5; k++) this.gouache(lg, [[-lw / 2 + 2 + k * (lw - 4) / 4, 4], [-lw / 2 + 2 + k * (lw - 4) / 4, lh]], { rnd, w: 2, cols: [hm(c, '#000000', 0.25)], a: 0.5, nb: 2, step: 2 });
+      lg.fillStyle = '#2a2018'; lg.fillRect(-lw * 0.28, 0, lw * 0.56, 4); lg.fillRect(-lw * 0.22, lh, lw * 0.44, 4);
+      return { cv: lc, w: lw + 6, h: lh + 14, ax: lw / 2 + 3, ay: 6, c, lh };
+    });
+    return { cv, w: span + 40, h: ph + 10, ax: span / 2 + 20, ay: ph, span, ph, sprites };
+  }
+  paintMailbox(F, rnd) {
+    const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), w = 70 * s + 20, h = 90 * s + 24;
+    const [cv, g] = F.mk(w, h, w / 2, h - 4), st = (pts, ww, cols, a, ex) => this.gouache(g, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 2 }, ex || {}));
+    const wood = hm('#5a4030', pal.bg, 0.3), box = hm('#3e6a8a', pal.bg, 0.3), boxL = hm(box, pal.hi, 0.3);
+    st([[0, 4], [0, -h * 0.55]], 7 * s + 3, [wood, hm(wood, '#000000', 0.3)], 0.95, { edge: hm(wood, pal.hi, 0.3) });
+    g.fillStyle = box; g.beginPath(); g.moveTo(-22 * s - 6, -h * 0.55); g.lineTo(-22 * s - 6, -h * 0.82); g.quadraticCurveTo(0, -h * 1.02, 22 * s + 6, -h * 0.82); g.lineTo(22 * s + 6, -h * 0.55); g.closePath(); g.fill();
+    for (let k = 0; k < 5; k++) st([[-22 * s - 6, -h * (0.58 + k * 0.06)], [22 * s + 6, -h * (0.58 + k * 0.06)]], 5 * s + 2, [box, boxL], 0.75);
+    return { cv, w, h, ax: w / 2, ay: h - 4, flag: { x: 22 * s + 6, y: -h * 0.72 }, slot: { x: -22 * s - 6, y: -h * 0.7 } };
+  }
+  paintRing(F, rnd) {
+    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), rx = 70 * s + 20, ry = 14 * s + 5, w = rx * 2 + 40, h = 60 * s + 30;
+    const [cv, g] = F.mk(w, h, w / 2, h - ry - 8), caps = [], n = 9;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + R(-0.15, 0.15), x = Math.cos(a) * rx, y = Math.sin(a) * ry, col = this.GLOWS[i % this.GLOWS.length], sh = R(8, 18) * s + 4, r = R(5, 9) * s + 3;
+      const stem = hm('#e8e0cc', pal.bg, 0.35), capC = hm(col, pal.bg, 0.4);
+      this.gouache(g, [[x, y + 2], [x + R(-2, 2), y - sh]], { rnd, w: Math.max(2.5, r * 0.45), cols: [stem], a: 0.95, nb: 4, step: 2 });
+      g.save(); g.beginPath(); g.ellipse(x, y - sh, r, r * 0.7, 0, Math.PI, 0); g.closePath(); g.clip(); g.fillStyle = capC; g.fill();
+      for (let q = 0; q < 5; q++) this.gouache(g, [[x - r, y - sh - R(0, 0.5) * r], [x + r, y - sh - R(0, 0.5) * r]], { rnd, w: r * 0.6, cols: [col, hm(col, '#ffffff', 0.3), capC], a: 0.75, nb: 5, step: 2 });
+      g.restore(); caps.push({ x, y: y - sh - r * 0.3, r, col, note: [74, 76, 78, 81, 83, 86, 88, 90, 93][i] });
+    }
+    return { cv, w, h, ax: w / 2, ay: h - ry - 8, caps };
   }
   newLeaf(F, x, y, snow, shake) {
     return { x, y, snow, shake, i: Math.floor(Math.random() * (F.leafSpr.length || 1)), rot: Math.random() * 6, vr: (Math.random() - 0.5) * 3, sp: 0.6 + Math.random() * 0.8, ph: Math.random() * 6, vx: shake ? (Math.random() - 0.5) * 60 : 0 };
   }
 
+  // ---- the road keeps coming: lanes of things, each scrolling at its own depth
+  roadSpawn(F) {
+    const W = F.W, s = F.s, rnd = Math.random, R = (a, b) => a + rnd() * (b - a);
+    if (!F.lanes) {
+      const start = (k) => F.carS - W - 120 + F.dist * k;
+      F.lanes = { mid: { k: 0.55, next: start(0.55) }, near: { k: 1, next: start(1), setAt: start(1) + W * 0.9 }, fern: { k: 1, next: start(1) }, fg: { k: 1.7, next: start(1.7) + W * 1.5 } };
+      F.setOrder = []; F.treeN = 0;
+    }
+    const L = F.lanes, edge = (lane) => F.carS + F.dist * lane.k - lane.next > -160 * s - 200;
+    const put = (lane, o, w, gap) => { o.p = lane.next + w / 2; o.k = lane.k; o.w = w; lane.next += w + gap; F.objs.push(o); return o; };
+    let guard = 0;
+    while (edge(L.mid) && guard++ < 40) { const lib = F.lib.mid; if (!lib.length) break; const sp = lib[Math.floor(rnd() * lib.length)]; put(L.mid, { kind: 'tree', z: 'mid', spr: sp, flip: rnd() < 0.5, ang: 0, av: 0, shiver: 0, ph: R(0, 6) }, sp.tw * 2, R(40, 200) * s); }
+    guard = 0;
+    while (edge(L.near) && guard++ < 40) {
+      const ready = ['deer', 'campfire', 'bridge', 'cabin', 'lanterns', 'owl', 'mailbox', 'ring', 'fox'].filter((k) => F.lib.sets[k]);
+      if (L.near.next >= L.near.setAt && ready.length) {
+        if (!F.setOrder.length) { F.setOrder = ready.slice().sort(() => rnd() - 0.5); if (F.lastSet && F.setOrder[0] === F.lastSet && F.setOrder.length > 1) F.setOrder.push(F.setOrder.shift()); }
+        const kind = F.setOrder.shift(); F.lastSet = kind; const sp = F.lib.sets[kind];
+        const o = { kind, set: true, spr: sp, ph: R(0, 6), t0: -99, state: 0, ang: 0, av: 0, shiver: 0 };
+        let w = sp.w;
+        if (kind === 'owl') { o.kind = 'tree'; o.z = 'back'; o.owl = { open: 0, want: 0, until: 0, hoots: 0 }; w = sp.tw * 3; }
+        else if (kind === 'bridge') { o.z = 'bridge'; w = sp.w; L.fern.next = Math.max(L.fern.next, L.near.next + w + 60 * s); }
+        else if (kind === 'mailbox' || kind === 'ring' || kind === 'fox') { o.z = 'front'; w = sp.w + 40 * s; L.near.next += 0; }
+        else o.z = 'back';
+        if (kind === 'lanterns') o.lit = sp.sprites.map(() => 0);
+        if (kind === 'cabin') o.light = 1;
+        if (kind === 'campfire') o.flare = 0;
+        if (kind === 'deer') o.state = 'graze';
+        if (kind === 'fox') o.state = 'sit';
+        if (o.z === 'front') { o.p = L.near.next + w / 2; o.k = 1; o.w = w; F.objs.push(o); L.fern.next = Math.max(L.fern.next, o.p + w / 2 + 20); L.near.setAt = L.near.next + W * R(0.7, 1.2); continue; }
+        put(L.near, o, w, R(80, 160) * s); L.near.setAt = L.near.next + W * R(0.7, 1.2); continue;
+      }
+      const lib = F.lib.near; if (!lib.length) break; const sp = lib[F.treeN++ % lib.length];
+      put(L.near, { kind: 'tree', z: 'back', spr: sp, flip: rnd() < 0.5, ang: 0, av: 0, shiver: 0, ph: R(0, 6), note: this.TREE_NOTES[Math.floor(rnd() * this.TREE_NOTES.length)] }, sp.tw * 2.4, R(170, 460) * s);
+    }
+    guard = 0;
+    while (edge(L.fern) && guard++ < 40) { const lib = F.lib.ferns; if (!lib.length) break; const sp = lib[Math.floor(rnd() * lib.length)]; put(L.fern, { kind: 'fern', z: 'front', spr: sp, bend: 0, bv: 0, ph: R(0, 6), lastR: -9, dy: R(0, 18) * s, flip: rnd() < 0.5 }, sp.L * 1.4, R(30, 160) * s); }
+    guard = 0;
+    while (edge(L.fg) && guard++ < 10) { const lib = F.lib.ferns; if (!lib.length) break; const sp = lib[Math.floor(rnd() * lib.length)]; put(L.fg, { kind: 'fgfern', z: 'fg', spr: sp, ph: R(0, 6), bend: 0, bv: 0 }, sp.L * 2.2, W * R(0.6, 1.4)); }
+    // tufts at the foot of every near tree, so it sits in the grass
+    for (const o of F.objs) if (o.kind === 'tree' && o.z === 'back' && !o.tufts && F.lib.tufts.length) o.tufts = [0, 1].map((i) => ({ spr: F.lib.tufts[Math.floor(rnd() * F.lib.tufts.length)], dx: (i ? 1 : -1) * o.spr.tw * R(0.3, 0.9) }));
+  }
+  objX(F, o) { return F.carS + F.dist * o.k - o.p; }
+  tinted(spr, key, flt) {
+    spr.tint = spr.tint || {}; if (spr.tint[key]) return spr.tint[key];
+    const c = document.createElement('canvas'); c.width = spr.cv.width; c.height = spr.cv.height; const g = c.getContext('2d'); g.filter = flt; g.drawImage(spr.cv, 0, 0); return (spr.tint[key] = c);
+  }
+
+  // the tree is drawn in thin horizontal strips; each strip shifts by an amount that grows
+  // with height, so the trunk bends from the roots instead of swinging like a stiff pole
+  bendX(o, u, t) { return (o.ang + o.wind) * o.spr.h * u * u + o.shiver * Math.sin(t * 17 + u * 9 + o.ph) * u * u * u * 6; }
+  drawTree(g, F, o, x, base, t) {
+    const sp = o.spr, d = F.d, still = Math.abs(o.ang + o.wind) * sp.h < 0.35 && o.shiver < 0.02, strip = (sp.near ? 6 : 10) * (o.shiver > 0.05 || Math.abs(o.ang) * sp.h > 4 ? 1 : 3);
+    g.save(); g.translate(x, base); if (o.flip) g.scale(-1, 1);
+    if (still) g.drawImage(sp.cv, -sp.ax, -sp.ay, sp.cw, sp.ch);
+    else for (let y0 = 0; y0 < sp.ch; y0 += strip) {
+      const hgt = sp.ay - (y0 + strip / 2), u = Math.max(0, hgt / sp.h), dx = this.bendX(o, u, t) * (o.flip ? -1 : 1), hh = Math.min(strip, sp.ch - y0);
+      g.drawImage(sp.cv, 0, Math.round(y0 * d), Math.round(sp.cw * d), Math.max(1, Math.round(hh * d)), -sp.ax + dx, -sp.ay + y0, sp.cw, hh + 0.6);
+    }
+    if (sp.isOwl) {
+      const ow = sp.owl, u = -ow.y / sp.h, dx = this.bendX(o, u, t) * (o.flip ? -1 : 1);
+      g.translate(dx, 0); this.drawOwl(g, F, o, ow, t, x + (o.flip ? -ow.x : ow.x) + dx);
+    }
+    g.restore();
+  }
+  drawOwl(g, F, o, w, t, sx) {
+    const O = o.owl, hop = O.hop && t - O.hop < 0.35 ? Math.sin(((t - O.hop) / 0.35) * Math.PI) * 5 : 0, lx = w.x, ly = w.y - hop;
+    g.drawImage(w.cv, lx - w.w * 0.9, ly - w.h * 1.4, w.cw, w.ch);
+    const M = F.mouse, look = M.x > -900 ? Math.max(-1, Math.min(1, (M.x - sx) / 200)) * (o.flip ? -1 : 1) : (F.carS - sx) / 400;
+    const blink = (t % 5.3) < 0.12 ? 0.15 : 1, open = O.open * blink;
+    for (const sd of [-1, 1]) {
+      const ex = lx + sd * w.w * 0.2, ey = ly - w.h * 0.68, r = w.w * 0.13;
+      if (open < 0.08) { g.strokeStyle = '#2a2018'; g.lineWidth = 1.5; g.globalAlpha = 0.9; g.beginPath(); g.arc(ex, ey - r * 0.3, r * 0.8, 0.3, Math.PI - 0.3); g.stroke(); g.globalAlpha = 1; continue; }
+      g.save(); g.beginPath(); g.ellipse(ex, ey, r, r * open, 0, 0, Math.PI * 2); g.clip();
+      g.fillStyle = '#f2c14e'; g.fillRect(ex - r, ey - r, r * 2, r * 2); g.fillStyle = '#120c08'; g.beginPath(); g.arc(ex + Math.max(-1, Math.min(1, look)) * r * 0.35, ey, r * 0.5, 0, Math.PI * 2); g.fill(); g.restore();
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * open; g.drawImage(this.softGlow('#f2c14e'), ex - r * 3, ey - r * 3, r * 6, r * 6); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    }
+  }
+  drawTile(g, F, L) { const TW = F.TW; let ox = ((F.dist * L.k) % TW + TW) % TW; for (let x = ox - TW; x < F.W; x += TW) g.drawImage(L.cv, x, L.y0, TW, L.h); }
+
+  drawForest(dt) {
+    const cv = this.forCv; if (!cv) return;
+    const vw = window.innerWidth || 1440, vh = window.innerHeight || 900, F = this.prepForest(vw, vh, 3, true);
+    const { W, H, d, s, pal } = F, t = this.time, M = F.mouse, C = this.carState();
+    dt = Math.min(0.05, dt || 0.016);
+    const pw = Math.round(W * d), ph = Math.round(H * d);
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+    if (!F.air || F.air.width !== pw) { F.air = document.createElement('canvas'); F.air.width = pw; F.air.height = ph; F.airG = F.air.getContext('2d'); }
+    const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true;
+    const live = t - M.t < 3 && M.x > -900;
+
+    // ---- the car decides how fast the world goes by
+    this.updateRoadCar(F, C, dt);
+    F.v += (F.vt - F.v) * Math.min(1, dt * (F.vt > F.v ? 0.7 : 1.8)); F.dist += F.v * dt;
+    this.roadSpawn(F);
+    F.objs = F.objs.filter((o) => { const x = this.objX(F, o); return x - o.w / 2 < W + 260 * s + 200 && !(o.kind === 'deer' && o.state === 'gone') && !(o.kind === 'fox' && o.state === 'gone'); });
+    const gust = Math.sin(t * 0.31) * Math.sin(t * 0.13 + 1);
+    for (const o of F.objs) if (o.kind === 'tree') {
+      o.av += (-o.ang * 10 - o.av * 0.8) * dt; o.ang += o.av * dt; o.shiver *= Math.pow(0.2, dt);
+      const x = this.objX(F, o); o.wind = 0.004 * Math.sin(t * 0.7 + x * 0.004 + o.ph) + 0.006 * gust * Math.sin(t * 1.1 - x * 0.002);
+    }
+
+    g.drawImage(F.sky, 0, 0, W, H);
+    g.fillStyle = pal.ink; for (const st of F.stars) { g.globalAlpha = st.b * (0.25 + 0.75 * Math.max(0, Math.sin(t * st.sp + st.ph))); g.fillRect(st.x, st.y, 1.6, 1.6); }
+    g.globalAlpha = 1;
+    this.drawTile(g, F, F.hills); for (const r of F.rows) this.drawTile(g, F, r); this.drawTile(g, F, F.floor);
+    for (const o of F.objs) if (o.z === 'mid') this.drawTree(g, F, o, this.objX(F, o), F.baseMid, t);
+    // moonbeams through the canopy
+    g.globalCompositeOperation = 'lighter';
+    for (const b of F.beams) {
+      const a = b.a * (0.6 + 0.4 * Math.sin(t * b.sp + b.ph)), x0 = b.x, gr = g.createLinearGradient(x0, 0, x0 + b.dx, H * 0.85);
+      gr.addColorStop(0, this.rgba(pal.hi, a)); gr.addColorStop(1, this.rgba(pal.hi, 0)); g.fillStyle = gr;
+      g.beginPath(); g.moveTo(x0 - b.w0, -10); g.lineTo(x0 + b.w0, -10); g.lineTo(x0 + b.dx + b.w1, H * 0.85); g.lineTo(x0 + b.dx - b.w1, H * 0.85); g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+    this.drawTile(g, F, F.road);
+    // behind the road: bridges' streams, trees, and the set pieces on the far verge
+    for (const o of F.objs) if (o.z === 'bridge') { const x = this.objX(F, o), sp = o.spr; g.drawImage(sp.cv, x - sp.ax, sp.top, sp.w, sp.h); this.drawCreek(g, F, o, x, t); }
+    for (const o of F.objs) if (o.z === 'back') {
+      const x = this.objX(F, o); if (x < -o.w || x > W + o.w) continue;
+      if (o.kind === 'tree') {
+        g.globalAlpha = 0.35; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x, F.baseNear + 3, o.spr.tw * 1.6, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+        this.drawTree(g, F, o, x, F.baseNear, t);
+        if (o.tufts) for (const tf of o.tufts) g.drawImage(tf.spr.cv, x + tf.dx - tf.spr.w / 2, F.baseNear + 4 - tf.spr.ay, tf.spr.w, tf.spr.h);
+      } else this.drawSet(g, F, o, x, t, dt);
+    }
+    // the car, then whatever stands in front of the road
+    this.drawRoadCar(g, F, C, t, dt);
+    for (const o of F.objs) if (o.z === 'bridge') { const x = this.objX(F, o), f = o.spr.front; g.drawImage(f.cv, x - f.ax, F.RY1 + 6 - f.ay, f.w, f.h); }
+    for (const o of F.objs) if (o.z === 'front') {
+      const x = this.objX(F, o); if (x < -o.w || x > W + o.w) continue;
+      if (o.kind === 'fern') {
+        const sp = o.spr;
+        if (live && !F.brush && Math.abs(M.x - x) < sp.L * 0.9 && M.y > H - sp.L * 1.2) { o.bv += (x >= M.x ? 1 : -1) * (1 - Math.abs(M.x - x) / (sp.L * 0.9)) * 0.6 + (M.vx || 0) * 0.004; if (Math.abs(M.vx || 0) > 2 && t - o.lastR > 0.35) { o.lastR = t; this.sfx('rustle', (x / W) * 1.6 - 0.8); } }
+        o.bv += (-o.bend * 22 - o.bv * 4) * dt - F.v * 0.00004; o.bend = Math.max(-0.5, Math.min(0.5, o.bend + o.bv * dt));
+        const a = o.bend + Math.sin(t * 0.8 + o.ph) * 0.04;
+        g.save(); g.translate(x, H + 6 + o.dy); g.transform(1, 0, -Math.tan(a), 1, 0, 0); if (o.flip) g.scale(-1, 1); g.drawImage(sp.cv, -sp.cw / 2, -sp.ch + 4, sp.cw, sp.ch); g.restore();
+      } else this.drawSet(g, F, o, x, t, dt);
+    }
+    this.drawParticles(g, F, t, dt, live);
+    for (const o of F.objs) if (o.z === 'fg') {
+      const x = this.objX(F, o), sp = o.spr; if (x < -sp.cw || x > W + sp.cw) continue;
+      g.save(); g.translate(x, H + 30 * s); g.scale(1.9, 1.9); g.transform(1, 0, -Math.tan(Math.sin(t * 0.7 + o.ph) * 0.05), 1, 0, 0); g.globalAlpha = 0.95; g.drawImage(this.tinted(sp, 'fg', 'brightness(0.45)'), -sp.cw / 2, -sp.ch + 4, sp.cw, sp.ch); g.restore(); g.globalAlpha = 1;
+    }
+
+    // ---- paper grain, a soft vignette, then the paint in the air on top of it all
+    if (!window.__noGrain) { g.globalAlpha = 0.32; g.fillStyle = F.grainPat || (F.grainPat = g.createPattern(F.grain, 'repeat')); g.fillRect(0, 0, W, H); }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    if (!F.vig) { const [vc, vgc] = F.mk(W, H), vg = vgc.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); vgc.fillStyle = vg; vgc.fillRect(0, 0, W, H); F.vig = vc; }
+    g.drawImage(F.vig, 0, 0, W, H);
+    if (F.airDirty) {
+      F.airFade = (F.airFade || 0) + dt;
+      if (F.airFade > 0.2) {
+        F.airFade = 0; const ag = F.airG; ag.setTransform(1, 0, 0, 1, 0, 0);
+        if (t - F.lastPaint > 9) { ag.clearRect(0, 0, F.air.width, F.air.height); F.airDirty = false; }
+        else if (t - F.lastPaint > 1.2) { ag.globalCompositeOperation = 'destination-out'; ag.globalAlpha = 0.07; ag.fillStyle = '#000'; ag.fillRect(0, 0, F.air.width, F.air.height); ag.globalCompositeOperation = 'source-over'; ag.globalAlpha = 1; }
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(F.air, 0, 0); g.setTransform(d, 0, 0, d, 0, 0);
+    }
+    g.globalAlpha = 1;
+    this.roadAudio(F, C, t);
+  }
+
+  updateRoadCar(F, C, dt) {
+    if (C.scene !== 'forest') return;
+    const W = F.W, s = F.s;
+    if (C.sx < -900) C.sx = W + F.carW;
+    if (C.mode === 'arriving') { C.t += dt; const u = Math.min(1, C.t / 2.4), e = 1 - Math.pow(1 - u, 3); C.sx = W + F.carW + (F.carS - W - F.carW) * e; F.vt = F.cruise * Math.min(1, u * 1.5); if (u >= 1) { C.mode = 'driving'; C.sx = F.carS; } }
+    else if (C.mode === 'driving') { C.sx = F.carS; F.vt = F.cruise; }
+    else if (C.mode === 'stopped') { C.sx = F.carS; F.vt = 0; }
+    else if (C.mode === 'leaving') { F.vt = 0; C.t += dt; if (C.t > 0.8) { C.v = Math.min(700 * s, C.v + 420 * s * dt); C.sx += C.v * dt; } if (C.sx > W + F.carW) this.carCross('meadow'); }
+  }
+  drawRoadCar(g, F, C, t, dt) {
+    if (C.scene !== 'forest') return;
+    const s = F.s, Ck = F.car, k = Ck.k, hover = F.hover && F.hover.car, running = true, fl = C.dir === 1;
+    const moving = F.v > 2 || C.mode === 'arriving' || (C.mode === 'leaving' && C.t > 0.8);
+    let bob = 0;
+    if (moving) bob = Math.sin(F.dist * 0.05) * 1.1 + (Math.sin(F.dist * 0.013) > 0.97 ? -2 : 0);
+    else bob = Math.sin(t * 40) * 0.5;
+    if (hover && !moving) bob += Math.sin(t * 8) * 1.2;
+    if (t - C.hop < 0.35) bob -= Math.sin(((t - C.hop) / 0.35) * Math.PI) * 10 * s;
+    const x = C.sx, y = F.carY;
+    // headlights light the road ahead
+    g.save(); g.translate(x, y); if (fl) g.scale(-1, 1);
+    const bx = -F.carW / 2 - 2, by = -Ck.h + 2 + bob, hx = bx + 2 + 8 * k, hy = by + 2 + 41 * k;
+    g.globalCompositeOperation = 'lighter';
+    const gr = g.createLinearGradient(hx, hy, hx - 380 * s, hy); gr.addColorStop(0, 'rgba(255,233,168,0.3)'); gr.addColorStop(1, 'rgba(255,233,168,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(hx, hy - 3); g.lineTo(hx - 380 * s, hy - 40 * s); g.lineTo(hx - 380 * s, hy + 34 * s); g.lineTo(hx, hy + 3); g.fill();
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 0.4; g.fillStyle = '#000000'; g.beginPath(); g.ellipse(0, 0, F.carW * 0.5, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+    g.drawImage(Ck.cv, bx, by, Ck.w, Ck.h);
+    const rot = -(F.dist + (C.sx - F.carS) * (fl ? -1 : 1)) / (12 * k);
+    for (const wx of Ck.wheels) {
+      const cx = bx + 2 + wx * k, cy = -16 * k, r = 12 * k;
+      g.fillStyle = '#121518'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#2b3035'; g.lineWidth = 2.5 * k; g.beginPath(); g.arc(cx, cy, r * 0.75, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = '#8a949a'; g.lineWidth = 2 * k; for (const a0 of [0, Math.PI / 2]) { g.beginPath(); g.moveTo(cx - Math.cos(rot + a0) * r * 0.6, cy - Math.sin(rot + a0) * r * 0.6); g.lineTo(cx + Math.cos(rot + a0) * r * 0.6, cy + Math.sin(rot + a0) * r * 0.6); g.stroke(); }
+      g.fillStyle = '#b8c0c4'; g.beginPath(); g.arc(cx, cy, r * 0.22, 0, Math.PI * 2); g.fill();
+    }
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(this.softGlow('#ffe9a8'), hx - 22 * k, hy - 22 * k, 44 * k, 44 * k);
+    g.drawImage(this.softGlow('#ff5a4a'), bx + 2 + 125 * k - 16 * k, by + 2 + 31 * k - 16 * k, 32 * k, 32 * k);
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
+    // dust from the wheels and exhaust from the back
+    const P = F.parts.puffs;
+    if (running && Math.random() < dt * (moving ? 22 : 8)) P.push({ x: x + (fl ? -1 : 1) * F.carW * 0.5, y: y - 10 * k, age: 0, r: 3 * s + 2, c: '#b8c0c4' });
+    if (moving && F.v > 20 && Math.random() < dt * 18) P.push({ x: x + (fl ? -1 : 1) * F.carW * (0.1 + Math.random() * 0.3), y: y - 2, age: 0, r: 2 * s + 1, c: F.FS.snow ? '#e6eef2' : '#8a7a62', dust: true });
+    F.parts.puffs = P.filter((p) => (p.age += dt) < 1.3);
+    for (const p of F.parts.puffs) { p.x += (F.v * 0.9 + (fl ? -20 : 20)) * dt; p.y -= dt * (p.dust ? 6 : 18); p.r += dt * (p.dust ? 6 : 10); g.fillStyle = p.c; g.globalAlpha = (p.dust ? 0.18 : 0.26) * (1 - p.age / 1.3); g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  drawCreek(g, F, o, x, t) {
+    const sp = o.spr, s = F.s;
+    g.strokeStyle = F.pal.hi; g.lineWidth = 1.3; g.lineCap = 'round';
+    for (let k = 0; k < 26; k++) {
+      const yy = F.RY1 + 8 + ((k * 37.7 + t * (16 + (k % 5) * 6)) % (F.H - F.RY1)), hw = sp.half(yy), xx = x + Math.sin(k * 2.3) * hw * 0.7, a = 0.15 + 0.3 * Math.max(0, Math.sin(t * 1.4 + k));
+      g.globalAlpha = a; g.beginPath(); g.moveTo(xx - 5 * s, yy); g.lineTo(xx + 5 * s, yy); g.stroke();
+    }
+    for (let k = 0; k < 6; k++) { const yy = sp.top + 6 + ((k * 13 + t * 8) % (F.RY0 - sp.top - 8)), xx = x + Math.sin(k * 1.7 + t) * sp.half(yy) * 0.5; g.globalAlpha = 0.25; g.beginPath(); g.moveTo(xx - 3 * s, yy); g.lineTo(xx + 3 * s, yy); g.stroke(); }
+    g.globalAlpha = 1;
+    // planks thunk under the wheels
+    const C = this.carState(), inside = Math.abs(C.sx - x) < sp.span / 2 && F.v > 5;
+    if (inside) { const n = Math.floor(F.dist / sp.plank); if (o.lastPlank !== n) { if (o.lastPlank != null && n % 2 === 0) this.sfx('plank', (C.sx / F.W) * 1.6 - 0.8); o.lastPlank = n; } }
+  }
+  drawSet(g, F, o, x, t, dt) {
+    const sp = o.spr, s = F.s, by = o.z === 'front' ? F.RY1 + 30 * s + 8 : F.baseNear + 2, C = this.carState(), near = Math.abs(x - C.sx);
+    if (o.kind === 'deer') {
+      if (o.state === 'graze' && near < 320 * s + 80 && F.v > 5) { o.state = 'alert'; o.t0 = t; }
+      if (o.state === 'alert' && t - o.t0 > 6) o.state = 'graze';
+      if (o.state === 'flee') {
+        const u = (t - o.t0) / 1.8; if (u >= 1) { o.state = 'gone'; return; }
+        const hop = Math.abs(Math.sin(u * Math.PI * 3)), dx = -u * 340 * s, dy = -u * 70 * s - hop * 26 * s, sc = 1 - u * 0.45, pose = hop > 0.35 ? sp.leap : sp.alert;
+        if (o.lastHop !== Math.floor(u * 3)) { o.lastHop = Math.floor(u * 3); this.sfx('hoof', (x / F.W) * 1.6 - 0.8); }
+        g.globalAlpha = Math.min(1, (1 - u) * 2.5); g.drawImage(pose.cv, x + dx - pose.ax * sc, by + dy - pose.ay * sc, pose.w * sc, pose.h * sc); g.globalAlpha = 1; return;
+      }
+      const pose = o.state === 'alert' ? sp.alert : sp.graze, chew = o.state === 'graze' ? Math.sin(t * 3 + o.ph) * 1.2 : 0;
+      g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x, by, 42 * sp.sc, 4 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+      g.drawImage(pose.cv, x - pose.ax, by - pose.ay + chew * 0.3, pose.w, pose.h);
+      o.hit = [x - 50 * sp.sc, by - 130 * sp.sc, x + 80 * sp.sc, by];
+    } else if (o.kind === 'fox') {
+      if (o.state === 'trot') {
+        const u = (t - o.t0) / 2.2; if (u >= 1) { o.state = 'gone'; return; }
+        const dx = -u * 380 * s, b = Math.abs(Math.sin(u * 30)) * 3; g.globalAlpha = Math.min(1, (1 - u) * 3); g.save(); g.translate(x + dx, by - b); g.drawImage(sp.trot.cv, -sp.trot.ax, -sp.trot.ay, sp.trot.w, sp.trot.h); g.restore(); g.globalAlpha = 1; return;
+      }
+      const tilt = o.state === 'tilt' ? Math.sin(Math.min(1, (t - o.t0) / 0.3) * Math.PI / 2) * 0.18 : 0;
+      if (o.state === 'tilt' && t - o.t0 > 1.4) { o.state = 'trot'; o.t0 = t; }
+      g.save(); g.translate(x, by); g.rotate(tilt); g.drawImage(sp.sit.cv, -sp.sit.ax, -sp.sit.ay, sp.sit.w, sp.sit.h); g.restore();
+      o.hit = [x - sp.sit.w * 0.5, by - sp.sit.h, x + sp.sit.w * 0.5, by + 4];
+    } else if (o.kind === 'campfire') {
+      g.drawImage(sp.cv, x - sp.ax, by - sp.ay, sp.w, sp.h);
+      o.flare *= Math.pow(0.35, dt); const fy = by + sp.fireY, fl = 1 + o.flare * 1.4, fh = (34 * s + 12) * fl;
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.5 + 0.1 * Math.sin(t * 9); g.drawImage(this.softGlow('#ff9a4a'), x - 220 * s * fl, fy - 160 * s * fl, 440 * s * fl, 320 * s * fl);
+      for (let k = 0; k < 7; k++) {
+        const ph = t * (6 + k) + k * 1.3, w = (10 + (k % 3) * 5) * s * fl, hh = fh * (0.55 + 0.45 * Math.abs(Math.sin(ph * 0.7))), ox = Math.sin(ph) * 6 * s + (k - 3) * 3 * s;
+        g.globalAlpha = 0.55; g.fillStyle = k % 3 === 0 ? '#ffd36b' : k % 3 === 1 ? '#ff8a3a' : '#ff5a2a';
+        g.beginPath(); g.moveTo(x + ox - w, fy); g.quadraticCurveTo(x + ox - w * 0.6, fy - hh * 0.6, x + ox + Math.sin(ph * 1.3) * 4, fy - hh); g.quadraticCurveTo(x + ox + w * 0.6, fy - hh * 0.6, x + ox + w, fy); g.fill();
+      }
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      if (Math.random() < dt * (6 + o.flare * 60)) F.parts.sparks.push({ x: x + (Math.random() - 0.5) * 20 * s, y: fy - 10, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 60 * (1 + o.flare), life: 1, c: Math.random() < 0.5 ? '#ffd36b' : '#ff8a3a', world: true });
+      o.hit = [x - sp.w * 0.45, fy - fh - 10, x + sp.w * 0.45, by + 4]; o.fx = x;
+    } else if (o.kind === 'cabin') {
+      g.drawImage(sp.cv, x - sp.ax, by - sp.ay, sp.w, sp.h);
+      const wn = sp.win, lit = o.light, fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 2.3);
+      if (lit) {
+        g.fillStyle = this.mix('#ffc96b', '#ff9a4a', 0.3); g.globalAlpha = fl; g.fillRect(x + wn.x, by + wn.y, wn.w, wn.h); g.globalAlpha = 1;
+        g.fillStyle = '#2a1c14'; g.fillRect(x + wn.x + wn.w / 2 - 1.5, by + wn.y, 3, wn.h); g.fillRect(x + wn.x, by + wn.y + wn.h / 2 - 1.5, wn.w, 3);
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.7 * fl; g.drawImage(this.softGlow('#ffc96b'), x + wn.x + wn.w / 2 - 110 * s, by + wn.y + wn.h / 2 - 90 * s, 220 * s, 180 * s);
+        g.globalAlpha = 0.6; g.drawImage(this.softGlow('#ffc96b'), x + sp.lamp.x - 30 * s, by + sp.lamp.y - 30 * s, 60 * s, 60 * s); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      }
+      g.fillStyle = lit ? '#ffd98a' : '#4a4438'; g.fillRect(x + sp.lamp.x - 3, by + sp.lamp.y - 4, 6, 8);
+      if (Math.random() < dt * 3) F.parts.smoke.push({ x: x + sp.chimney.x, y: by + sp.chimney.y, age: 0, r: 6 * s + 3 });
+      o.hit = [x + wn.x - 10, by + wn.y - 10, x + wn.x + wn.w + 10, by + wn.y + wn.h + 10];
+      o.hit2 = [x - sp.ax, by - sp.ay, x + sp.ax, by];
+    } else if (o.kind === 'lanterns') {
+      const L = sp, x0 = x - L.span / 2, x1 = x + L.span / 2, y0 = by - L.ph + 6, sag = 40 * s + 10;
+      g.drawImage(L.cv, x - L.ax, by - L.ay, L.w, L.h);
+      g.strokeStyle = '#2a2018'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(x, y0 + sag * 2, x1, y0); g.stroke();
+      o.lpos = [];
+      L.sprites.forEach((ls, i) => {
+        const u = (i + 1) / (L.sprites.length + 1), rx = x0 + (x1 - x0) * u, ry = y0 + 4 * sag * u * (1 - u), sw = Math.sin(t * 1.3 + i * 0.9 + o.ph) * 0.12 + (o.swing || 0) * Math.sin(t * 6 + i) * Math.exp(-(t - (o.swingT || 0)) * 1.2);
+        o.lit[i] = Math.max(o.lit[i], 0);
+        g.save(); g.translate(rx, ry); g.rotate(sw);
+        g.strokeStyle = '#2a2018'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, ls.ay); g.stroke();
+        const on = o.lit[i] > 0;
+        if (on) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.8; g.drawImage(this.softGlow(ls.c), -60 * s, ls.ay + ls.lh / 2 - 60 * s, 120 * s, 120 * s); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+        g.drawImage(on ? this.tinted(ls, 'on', 'brightness(1.5)') : this.tinted(ls, 'off', 'brightness(0.55) saturate(0.6)'), -ls.ax, 0, ls.w, ls.h);
+        g.restore(); o.lpos.push([rx, ry + ls.ay + ls.lh / 2, ls.lh]);
+      });
+      o.hit = [x0 - 10, by - L.ph - 10, x1 + 10, by];
+    } else if (o.kind === 'mailbox') {
+      g.drawImage(sp.cv, x - sp.ax, by - sp.ay, sp.w, sp.h);
+      const up = o.flag ? Math.min(1, (t - o.flagT) / 0.3) : 0, fx = x + sp.flag.x, fy = by + sp.flag.y;
+      g.save(); g.translate(fx, fy); g.rotate(-up * Math.PI / 2); g.fillStyle = '#2a2018'; g.fillRect(0, -1.5, 3, 18 * s + 4); g.fillStyle = '#e15554'; g.fillRect(0, 12 * s + 2, 12 * s + 4, 7 * s + 3); g.restore();
+      if (o.letter) {
+        const u = (t - o.letterT) / 2.4;
+        if (u < 1) { const lx = x + sp.slot.x - u * 160 * s + Math.sin(u * 12) * 10 * s, ly = by + sp.slot.y - u * 220 * s; g.save(); g.translate(lx, ly); g.rotate(Math.sin(u * 9) * 0.6); g.globalAlpha = 1 - u * 0.8; g.fillStyle = '#efe6d2'; g.fillRect(-9 * s - 3, -6 * s - 2, 18 * s + 6, 12 * s + 4); g.strokeStyle = '#b0a080'; g.lineWidth = 1; g.beginPath(); g.moveTo(-9 * s - 3, -6 * s - 2); g.lineTo(0, 0); g.lineTo(9 * s + 3, -6 * s - 2); g.stroke(); g.restore(); g.globalAlpha = 1; }
+      }
+      o.hit = [x - sp.w * 0.5, by - sp.h, x + sp.w * 0.5, by + 4];
+    } else if (o.kind === 'ring') {
+      g.drawImage(sp.cv, x - sp.ax, by - sp.ay, sp.w, sp.h);
+      g.globalCompositeOperation = 'lighter';
+      sp.caps.forEach((c, i) => { const lit = Math.max(0, 1 - (t - ((o.litAt || [])[i] || -99)) / 8), a = 0.2 + 0.08 * Math.sin(t * 1.3 + i) + lit * 0.8, rr = c.r * (4 + lit * 3); g.globalAlpha = Math.min(1, a); g.drawImage(this.softGlow(c.col), x + c.x - rr, by + c.y - rr, rr * 2, rr * 2); });
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      o.hit = [x - sp.w * 0.5, by - sp.h, x + sp.w * 0.5, by + 10];
+    }
+  }
+  drawParticles(g, F, t, dt, live) {
+    const { W, H, s, pal } = F, M = F.mouse, P = F.parts, drift = F.v * dt;
+    P.smoke = P.smoke.filter((p) => (p.age += dt) < 4);
+    for (const p of P.smoke) { p.x += drift + Math.sin(t + p.age) * 6 * dt + 4 * dt; p.y -= 14 * dt; p.r += 5 * dt; g.globalAlpha = 0.16 * (1 - p.age / 4); g.fillStyle = '#c8ccd0'; g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2); g.fill(); }
+    P.sparks = P.sparks.filter((p) => (p.life -= dt * 0.5) > 0);
+    g.globalCompositeOperation = 'lighter';
+    for (const p of P.sparks) { p.x += p.vx * dt + (p.world ? drift : 0); p.y += p.vy * dt; p.vx += Math.sin(t * 3 + p.y * 0.05) * 20 * dt; p.vy *= Math.pow(0.7, dt); g.globalAlpha = p.life; g.fillStyle = p.c; g.fillRect(p.x - 1, p.y - 1, 2, 2); }
+    P.spores = P.spores.filter((p) => (p.life -= dt * 0.35) > 0);
+    for (const p of P.spores) { p.vx += Math.sin(t * 2 + p.y * 0.05) * 8 * dt; p.x += p.vx * dt + drift; p.y += p.vy * dt; p.vy *= Math.pow(0.6, dt); g.globalAlpha = p.life; g.fillStyle = p.c; g.fillRect(p.x - 1, p.y - 1, 2.2, 2.2); g.globalAlpha = p.life * 0.4; g.drawImage(this.softGlow(p.c), p.x - 6, p.y - 6, 12, 12); }
+    g.fillStyle = pal.ink;
+    for (const p of F.motes) { p.x += Math.sin(t * 0.3 + p.ph) * 4 * dt + drift * 0.6; p.y += (2 + Math.sin(t * 0.5 + p.ph)) * dt; if (p.y > H) { p.y = -4; p.x = Math.random() * W; } if (p.x > W) p.x -= W; g.globalAlpha = 0.15 + 0.12 * Math.sin(t * 2 + p.ph); g.fillRect(p.x, p.y, 1.3, 1.3); }
+    // fireflies drift, gather around the cursor, and dance for the fairy ring
+    const ring = F.ring && t - F.ring.t < 8 ? F.ring : null;
+    for (const f of F.flies) {
+      let tx = null, ty = null;
+      if (ring) { const an = t * 1.5 + f.ph * 4; tx = this.objX(F, ring.o) + Math.cos(an) * 80 * s; ty = F.RY1 + 10 * s + Math.sin(an) * 20 * s; }
+      else if (live && Math.hypot(M.x - f.x, M.y - f.y) < 220 * s + 60) { const an = t * f.sp * 2 + f.ph * 5, r = 18 + (f.ph % 1) * 30; tx = M.x + Math.cos(an) * r; ty = M.y + Math.sin(an) * r * 0.7; }
+      if (tx != null) { f.vx += (tx - f.x) * dt * 1.4; f.vy += (ty - f.y) * dt * 1.4; }
+      f.vx += Math.sin(t * f.sp + f.ph) * 10 * dt + F.v * 0.3 * dt; f.vy += Math.cos(t * f.sp * 1.3 + f.ph) * 8 * dt; f.vx *= Math.pow(0.3, dt); f.vy *= Math.pow(0.3, dt);
+      f.x += f.vx * dt; f.y += f.vy * dt; if (f.x < -20) f.x = W + 20; if (f.x > W + 20) f.x = -20; f.y = Math.max(H * 0.35, Math.min(H, f.y));
+      const b = tx != null ? 0.7 + 0.3 * Math.sin(t * 6 + f.ph * 3) : Math.max(0, Math.sin(t * 1.7 + f.ph * 3)); if (b < 0.05) continue;
+      g.globalAlpha = b; g.drawImage(this.softGlow('#e8ff9a'), f.x - 9, f.y - 9, 18, 18); g.fillStyle = '#f4ffc8'; g.fillRect(f.x - 1, f.y - 1, 2, 2);
+    }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    const drawLeaf = (p) => {
+      if (p.snow) { g.globalAlpha = 0.8; g.fillStyle = '#eef4f7'; g.beginPath(); g.arc(p.x, p.y, 1.6 * s + 0.6, 0, Math.PI * 2); g.fill(); return; }
+      const L = F.leafSpr[p.i]; if (!L) return; g.globalAlpha = 0.95; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + p.ph))); g.drawImage(L.cv, -L.sz / 2, -L.sz / 2, L.sz, L.sz); g.restore();
+    };
+    for (const p of P.leaves) {
+      p.y += (p.snow ? 18 : 26) * p.sp * dt; p.x += (Math.sin(t * 0.9 + p.ph) * (p.snow ? 8 : 22) + 6) * dt + drift * 0.9; p.rot += p.vr * dt;
+      if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; } if (p.x > W + 10) p.x = -10; drawLeaf(p);
+    }
+    P.shaken = P.shaken.filter((p) => p.y < H + 10 && p.x < W + 20);
+    for (const p of P.shaken) { p.vx *= Math.pow(0.5, dt); p.x += (p.vx + Math.sin(t * 2 + p.ph) * 30) * dt + drift; p.y += (p.snow ? 30 : 45) * p.sp * dt; p.rot += p.vr * 2 * dt; drawLeaf(p); }
+    P.rips = P.rips.filter((r) => (r.age += dt) < 1.4); g.strokeStyle = pal.hi; g.lineWidth = 1.2;
+    for (const r of P.rips) { r.x += drift; const rad = (3 + r.age * 20) * s; g.globalAlpha = (1 - r.age / 1.4) * 0.7; g.beginPath(); g.ellipse(r.x, r.y, rad, rad * 0.3, 0, 0, Math.PI * 2); g.stroke(); }
+    g.globalAlpha = 1;
+  }
+
+  // ---- pointer handling on the road
   forXY(e) { const r = this.forCv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  inBox(b, x, y) { return b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]; }
   forestHit(x, y) {
-    const F = this.forest, o = F.o2 || 0, C = this.carState();
-    if (C.scene === 'forest' && Math.abs(x - (C.x + o)) < F.carW / 2 && y > F.carY - F.car.h && y < F.carY + 4) return { car: true };
-    for (const tr of F.trees) if (tr.owl) { const w = tr.owl; if (Math.hypot(x - (tr.x + o + w.x), y - (w.y - w.h * 0.5)) < w.w * 0.75) return { owl: tr }; }
-    for (const sh of F.shrooms) if (Math.abs(x - (sh.x + o)) < sh.cw * 0.4 && y > sh.y - sh.ch && y < sh.y + 6) return { shroom: sh };
-    for (const tr of F.trees) if (Math.abs(x - (tr.x + o)) < tr.tw * 0.6 + 4 && y < tr.base + 4) return { tree: tr };
-    const wx = x - o; if (y > F.gy && Math.abs(y - F.yc(wx)) < F.ws(wx) * 0.6) return { stream: true };
+    const F = this.forest, C = this.carState(), s = F.s;
+    if (C.scene === 'forest' && Math.abs(x - C.sx) < F.carW / 2 && y > F.carY - F.car.h && y < F.carY + 4) return { car: true };
+    const objs = F.objs.slice().reverse();
+    for (const o of objs) if (o.z === 'front' && o.kind !== 'fern' && this.inBox(o.hit, x, y)) return { set: o };
+    for (const o of objs) {
+      if (o.z !== 'back') continue;
+      const ox = this.objX(F, o);
+      if (o.kind === 'tree') {
+        const sp = o.spr;
+        if (sp.isOwl) { const u = -sp.owl.y / sp.h, wx = ox + (o.flip ? -sp.owl.x : sp.owl.x) + this.bendX(o, u, this.time) * (o.flip ? -1 : 1), wy = F.baseNear + sp.owl.y - sp.owl.h * 0.5; if (Math.hypot(x - wx, y - wy) < sp.owl.w * 0.8) return { owl: o }; }
+        if (y > F.baseNear + 6) continue;
+        const u = Math.max(0, (F.baseNear - y) / sp.h), cx = ox + this.bendX(o, u, this.time) * (o.flip ? -1 : 1);
+        if (Math.abs(x - cx) < sp.tw * 0.6 + 4) return { tree: o };
+        for (const [mx, my, r] of sp.masses) { const px = cx + (o.flip ? -mx : mx), py = F.baseNear + my; if (Math.hypot((x - px) / 1.3, y - py) < r * 0.85) return { tree: o }; }
+      } else if (this.inBox(o.hit, x, y) || this.inBox(o.hit2, x, y)) return { set: o };
+    }
+    for (const o of F.objs) if (o.z === 'bridge') { const ox = this.objX(F, o), sp = o.spr; if (y > F.RY1 + 8 && Math.abs(x - ox) < sp.half(y) * 0.95) return { water: o }; }
     return {};
   }
   forestDown = (e) => {
-    const F = this.forest; if (!F || !F.done || this.state.scene !== 'forest') return;
+    const F = this.forest; if (!F || !F.ready || this.state.scene !== 'forest') return;
     const [x, y] = this.forXY(e), M = F.mouse, t = this.time; M.x = x; M.y = y; M.t = t; M.vx = 0;
     const h = this.forestHit(x, y), pan = Math.max(-0.8, Math.min(0.8, (x / F.W) * 1.6 - 0.8));
     if (h.car) { this.carGo(); return; }
     if (h.owl) {
-      const O = F.owl; O.want = 1; O.until = t + 2.6; O.hop = t; O.hoots++; this.sfx('hoot', pan);
-      if (O.hoots === 1) this.secret('You woke the owl.'); else if (O.hoots === 5) this.secret('Who? Who? The owl knows you now.');
+      const O = h.owl.owl; O.want = 1; O.until = t + 2.6; O.hop = t; O.hoots++; this.sfx('hoot', pan);
+      if (!F.owlSeen) { F.owlSeen = true; this.secret('You woke the owl.'); }
       return;
     }
-    if (h.shroom) {
-      const sh = h.shroom; sh.lit = t; this.sfx('bloop', [sh.note, pan]);
-      for (const c of sh.caps) for (let k = 0; k < 7; k++) F.spores.push({ x: sh.x + c.x + (Math.random() - 0.5) * c.r, y: sh.y + c.y, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 30, life: 1, c: sh.col });
-      if (F.shrooms.every((q) => t - q.lit < 10) && t - (F.ring || -99) > 20) {
-        F.ring = t; this.secret('You woke the fairy ring.');
-        this.seasonTune().slice(0, 6).forEach((n, i) => setTimeout(() => this.sfx('bloop', [n + 12, (i / 5) * 1.2 - 0.6]), 300 + i * 140));
-      }
-      return;
-    }
-    if (h.tree) { this.shakeTree(h.tree, x < h.tree.x + (F.o2 || 0) ? 1 : -1, pan); return; }
-    if (h.stream) { F.skips.push({ x: x - (F.o2 || 0), n: 0, next: t, gap: 50 * F.s + 20, pan }); }
-    // anywhere else: load a fresh brush and paint the air
+    if (h.tree) { this.shakeTree(h.tree, x < this.objX(F, h.tree) ? 1 : -1, pan, y); return; }
+    if (h.set) { this.useSet(h.set, x, y, pan); return; }
+    if (h.water) { F.parts.rips.push({ x, y, age: 0 }); this.sfx('skip', pan); return; }
     this.startBrush(x, y);
     try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
   };
-  shakeTree(tr, dir, pan) {
-    const F = this.forest, t = this.time; tr.av += dir * 0.32; this.sfx('knock', [tr.note, pan]);
-    for (let k = 0; k < 12; k++) F.shaken.push(this.newLeaf(F, tr.x + (F.o2 || 0) + (Math.random() - 0.5) * tr.cw * 0.6, Math.random() * F.H * 0.4, F.FS.fall === 'snow' && Math.random() < 0.6, true));
-    F.played = F.played.filter((p) => t - p.t < 6).concat({ i: tr.i, t });
-    const P = F.played, n = F.trees.length;
-    if (P.length >= n && P.slice(-n).every((p, i) => p.i === i)) {
-      F.played = []; this.secret('You played the forest’s scale.');
-      setTimeout(() => { for (const q of F.trees) { q.av += (Math.random() < 0.5 ? -1 : 1) * 0.2; for (let k = 0; k < 10; k++) F.shaken.push(this.newLeaf(F, q.x + (F.o2 || 0) + (Math.random() - 0.5) * q.cw * 0.6, Math.random() * F.H * 0.3, false, true)); } this.sfx('gust'); }, 500);
+  shakeTree(o, dir, pan, y) {
+    const F = this.forest, t = this.time, sp = o.spr, x = this.objX(F, o), up = Math.min(1, Math.max(0.3, (F.baseNear - y) / sp.h));
+    o.av += dir * (sp.near ? 0.12 : 0.16) * (0.6 + up * 0.6); o.shiver = 1; this.sfx('knock', [o.note || 64, pan]); this.sfx('creak', pan);
+    for (let k = 0; k < (sp.near ? 16 : 8); k++) { const m = sp.masses[Math.floor(Math.random() * sp.masses.length)] || [0, -sp.h * 0.8, 40]; F.parts.shaken.push(this.newLeaf(F, x + (o.flip ? -m[0] : m[0]) + (Math.random() - 0.5) * m[2] * 2, Math.max(-10, F.baseNear + m[1] + (Math.random() - 0.5) * m[2]), F.FS.fall === 'snow' && Math.random() < 0.6, true)); }
+    F.played = (F.played || []).filter((p) => t - p.t < 5).concat({ n: o.note || 64, t });
+    const last = F.played.slice(-5).map((p) => p.n);
+    if (last.length === 5 && last.every((n, i) => !i || n > last[i - 1])) { F.played = []; this.secret('You played a rising scale on the trees.'); this.sfx('gust'); }
+  }
+  startleDeer() { const F = this.forest; if (!F) return; for (const o of F.objs) if (o.kind === 'deer' && o.state !== 'flee' && o.state !== 'gone' && Math.abs(this.objX(F, o) - F.carS) < F.W * 0.6) { o.state = 'flee'; o.t0 = this.time; } }
+  useSet(o, x, y, pan) {
+    const F = this.forest, t = this.time, s = F.s;
+    if (o.kind === 'deer') { if (o.state === 'flee') return; o.state = 'flee'; o.t0 = t; this.sfx('snort', pan); if (!F.deerSeen) { F.deerSeen = true; this.secret('The stag bounds off into the trees.'); } }
+    else if (o.kind === 'fox') { if (o.state !== 'sit') return; o.state = 'tilt'; o.t0 = t; this.sfx('yip', pan); }
+    else if (o.kind === 'campfire') { o.flare = 1; this.sfx('whoosh', pan); for (let k = 0; k < 40; k++) F.parts.sparks.push({ x: o.fx + (Math.random() - 0.5) * 30 * s, y: F.baseNear - 10, vx: (Math.random() - 0.5) * 90, vy: -80 - Math.random() * 140, life: 1, c: Math.random() < 0.5 ? '#ffd36b' : '#ff8a3a', world: true }); }
+    else if (o.kind === 'cabin') {
+      if (this.inBox(o.hit, x, y)) { o.light = o.light ? 0 : 1; this.sfx(o.light ? 'lamp' : 'blip'); if (o.light) this.sfx('musicbox', pan); }
+      else { this.sfx('knockdoor', pan); setTimeout(() => { if (!o.light) return; this.sfx('musicbox', pan); }, 600); }
+    }
+    else if (o.kind === 'lanterns') {
+      let best = -1, bd = 1e9; (o.lpos || []).forEach(([lx, ly, lh], i) => { const dd = Math.hypot(x - lx, y - ly); if (dd < bd) { bd = dd; best = i; } });
+      o.swing = 1; o.swingT = t;
+      if (best >= 0 && bd < 40 * s + 10) { o.lit[best] = o.lit[best] ? 0 : 1; this.sfx('chimeNote', [this.seasonTune()[best % this.seasonTune().length], pan]); }
+      else o.lit.forEach((_, i) => setTimeout(() => { o.lit[i] = 1; this.sfx('chimeNote', [this.seasonTune()[i % this.seasonTune().length], pan]); }, i * 160));
+      if (o.lit.every(Boolean) && !o.done) { o.done = true; this.secret('The lanterns are all lit.'); }
+    }
+    else if (o.kind === 'mailbox') { if (o.flag) return; o.flag = true; o.flagT = t; o.letter = true; o.letterT = t + 0.3; this.sfx('blip'); setTimeout(() => { this.sfx('paper', pan); this.secret(this.LETTERS[(F.letters = (F.letters || 0) + 1) % this.LETTERS.length]); }, 400); }
+    else if (o.kind === 'ring') {
+      const sp = o.spr, ox = this.objX(F, o), by = F.RY1 + 30 * s + 8; o.litAt = o.litAt || [];
+      sp.caps.forEach((c, i) => setTimeout(() => { o.litAt[i] = this.time; this.sfx('bloop', [c.note, pan]); for (let k = 0; k < 5; k++) F.parts.spores.push({ x: this.objX(F, o) + c.x, y: by + c.y, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 30, life: 1, c: c.col }); }, i * 110));
+      setTimeout(() => { F.ring = { t: this.time, o }; this.secret('You woke the fairy ring.'); }, sp.caps.length * 110 + 100);
     }
   }
   forestMove = (e) => {
-    const F = this.forest; if (!F || !F.done || !this.forCv) return;
+    const F = this.forest; if (!F || !F.ready || !this.forCv) return;
     const [x, y] = this.forXY(e), M = F.mouse; M.vx = M.x > -900 ? x - M.x : 0; M.x = x; M.y = y; M.t = this.time;
     if (F.brush) { this.paintTo(x, y); return; }
-    const h = this.forestHit(x, y), hov = h.car || h.owl || h.shroom || h.tree;
+    const h = this.forestHit(x, y), hov = h.car || h.owl || h.set || h.tree || h.water;
     this.forCv.style.cursor = hov ? 'pointer' : 'crosshair'; F.hover = h;
-    if (h.owl && F.owl.want < 0.5) F.owl.peek = this.time + 0.8;
+    if (h.owl && h.owl.owl.want < 0.5) h.owl.owl.peek = this.time + 0.8;
   };
   forestUp = () => { this.endBrush(); };
   forestLeave = () => { const F = this.forest; if (F) { F.mouse.x = -999; F.mouse.y = -999; F.hover = {}; } };
 
-  // ---- painting the air, after the bristle brushes this scene is drawn with
   startBrush(x, y) {
     const F = this.forest; F.paintN = (F.paintN || 0) + 1;
     const c = this.PAINTS[F.paintN % this.PAINTS.length], w = 16 * F.s + 12, n = Math.round(w / 1.5), br = { x, y, c, w, dist: 0, bris: [], note: -1, nx: 0, ny: 1, tp: 0.35 };
@@ -1641,132 +2257,6 @@ class Component extends DCLogic {
     F.swish = null;
   }
 
-  drawForest(dt) {
-    const cv = this.forCv; if (!cv) return;
-    const vw = window.innerWidth || 1440, vh = window.innerHeight || 900, F = this.prepForest(vw, vh, 1e9);
-    const { W, H, d, m, s, pal } = F, t = this.time, M = F.mouse, C = this.carState();
-    dt = Math.min(0.05, dt || 0.016);
-    const pw = Math.round(W * d), ph = Math.round(H * d);
-    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
-    if (!F.air || F.air.width !== pw) { F.air = document.createElement('canvas'); F.air.width = pw; F.air.height = ph; F.airG = F.air.getContext('2d'); }
-    const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.imageSmoothingEnabled = true;
-    const live = t - M.t < 3 && M.x > -900; F.par += ((live ? M.x / W - 0.5 : 0) - F.par) * Math.min(1, dt * 2);
-    const o0 = -F.par * 6, o1 = -F.par * 12, o2 = (F.o2 = -F.par * 22), o3 = -F.par * 40, LW = W + 2 * m;
-    g.drawImage(F.sky, -m + o0, 0, LW, H);
-    g.fillStyle = pal.ink; for (const st of F.stars) { g.globalAlpha = st.b * (0.25 + 0.75 * Math.max(0, Math.sin(t * st.sp + st.ph))); g.fillRect(st.x + o0, st.y, 1.6, 1.6); }
-    g.globalAlpha = 1; g.drawImage(F.far, -m + o1, 0, LW, H);
-    g.drawImage(F.floor, -m + o2, 0, LW, H);
-
-    // ---- the stream: drifting glints, a shimmering moon, ripples and skipping stones
-    g.strokeStyle = pal.hi; g.lineWidth = 1.4; g.lineCap = 'round';
-    for (let k = 0; k < 40; k++) {
-      const sp = 14 + (k % 5) * 6, x = ((k * 97.3 + t * sp) % (W + 40)) - 20, a = 0.12 + 0.3 * Math.max(0, Math.sin(t * 1.3 + k * 1.7)); if (a < 0.14) continue;
-      const y = F.yc(x) + Math.sin(k * 2.1) * F.ws(x) * 0.35; g.globalAlpha = a; g.beginPath(); g.moveTo(x + o2, y); g.lineTo(x + o2 + (5 + (k % 4) * 3) * s, y); g.stroke();
-    }
-    const rx = F.moon.x * 1.1, ry = F.yc(rx); g.strokeStyle = '#f4ead0'; g.lineWidth = 2;
-    for (let k = 0; k < 5; k++) { const ww = (6 + k * 3) * s, o = Math.sin(t * 1.6 + k * 2.1) * ww * 0.5, y = ry - F.ws(rx) * 0.3 + k * F.ws(rx) * 0.15; g.globalAlpha = 0.55 * (0.6 + 0.4 * Math.sin(t * 3 + k)); g.beginPath(); g.moveTo(rx + o2 + o - ww / 2, y); g.lineTo(rx + o2 + o + ww / 2, y); g.stroke(); }
-    for (const sk of F.skips) {
-      if (t < sk.next) continue;
-      const y = F.yc(sk.x); F.rips.push({ x: sk.x, y, age: 0, big: sk.n === 0 }); this.sfx('plip', [sk.n, sk.pan]);
-      sk.n++; sk.x += sk.gap; sk.gap *= 0.72; sk.next = t + 0.22 - sk.n * 0.02;
-      if (sk.n > 4 || sk.x > F.W + 40) sk.done = true;
-    }
-    F.skips = F.skips.filter((q) => !q.done);
-    F.rips = F.rips.filter((r) => (r.age += dt) < 1.6); g.strokeStyle = pal.hi; g.lineWidth = 1.2;
-    for (const r of F.rips) { const rad = (3 + r.age * (r.big ? 26 : 16)) * s; g.globalAlpha = (1 - r.age / 1.6) * 0.7; g.beginPath(); g.ellipse(r.x + o2, r.y, rad, rad * 0.3, 0, 0, Math.PI * 2); g.stroke(); }
-    g.globalAlpha = 1;
-
-    // ---- trees, each on its own spring; the owl rides along on its branch
-    const O = F.owl;
-    if (t > O.until) O.want = 0; O.open += ((O.want ? 1 : t < (O.peek || 0) ? 0.45 : 0) - O.open) * Math.min(1, dt * 10);
-    for (const tr of F.trees) {
-      tr.av += (-tr.ang * 38 - tr.av * 3.2) * dt; tr.ang += tr.av * dt;
-      const sway = Math.sin(t * 0.5 + tr.ph) * 0.004 + Math.sin(t * 0.23 + tr.x * 0.01) * 0.003;
-      g.save(); g.translate(tr.x + o2, tr.base); g.rotate(tr.ang + sway); g.drawImage(tr.cv, -tr.cw / 2, -tr.ay, tr.cw, tr.ch);
-      if (tr.owl) this.drawOwl(g, F, tr, t);
-      g.restore();
-    }
-
-    // ---- glowing mushrooms and their spores
-    g.globalCompositeOperation = 'lighter';
-    for (const sh of F.shrooms) {
-      const lit = Math.max(0, 1 - (t - sh.lit) / 10), hov = F.hover && F.hover.shroom === sh ? 0.25 : 0, ring = F.ring && t - F.ring < 8 ? 0.5 + 0.5 * Math.sin(t * 5 + sh.ph) : 0;
-      const a = 0.22 + 0.08 * Math.sin(t * 1.3 + sh.ph) + lit * 0.7 + hov + ring * 0.4;
-      for (const c of sh.caps) { const rr = c.r * (4 + lit * 3); g.globalAlpha = Math.min(1, a); g.drawImage(this.softGlow(sh.col), sh.x + o2 + c.x - rr, sh.y + c.y - rr, rr * 2, rr * 2); }
-    }
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-    for (const sh of F.shrooms) g.drawImage(sh.cv, sh.x + o2 - sh.cw / 2, sh.y - sh.ch + 2, sh.cw, sh.ch);
-    if (F.ring && t - F.ring < 8 && Math.random() < dt * 30) { const sh = F.shrooms[Math.floor(Math.random() * F.shrooms.length)]; F.spores.push({ x: sh.x, y: sh.y - 10, vx: (Math.random() - 0.5) * 30, vy: -30 - Math.random() * 30, life: 1, c: this.GLOWS[Math.floor(Math.random() * this.GLOWS.length)] }); }
-    F.spores = F.spores.filter((p) => (p.life -= dt * 0.35) > 0);
-    g.globalCompositeOperation = 'lighter';
-    for (const p of F.spores) { p.vx += Math.sin(t * 2 + p.y * 0.05) * 8 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy *= Math.pow(0.6, dt); g.globalAlpha = p.life; g.fillStyle = p.c; g.fillRect(p.x + o2 - 1, p.y - 1, 2.2, 2.2); g.globalAlpha = p.life * 0.4; g.drawImage(this.softGlow(p.c), p.x + o2 - 6, p.y - 6, 12, 12); }
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-
-    // ---- the car
-    this.drawForestCar(g, F, o2, t, dt);
-
-    // ---- moonbeams with dust drifting in them
-    g.globalCompositeOperation = 'lighter';
-    for (const b of F.beams) {
-      const a = b.a * (0.6 + 0.4 * Math.sin(t * b.sp + b.ph)), x0 = b.x + o1, gr = g.createLinearGradient(x0, 0, x0 + b.dx, H);
-      gr.addColorStop(0, this.rgba(pal.hi, a)); gr.addColorStop(1, this.rgba(pal.hi, 0)); g.fillStyle = gr;
-      g.beginPath(); g.moveTo(x0 - b.w0, -10); g.lineTo(x0 + b.w0, -10); g.lineTo(x0 + b.dx + b.w1, H); g.lineTo(x0 + b.dx - b.w1, H); g.fill();
-    }
-    g.fillStyle = pal.ink;
-    for (const p of F.motes) { p.x += Math.sin(t * 0.3 + p.ph) * 4 * dt; p.y += (2 + Math.sin(t * 0.5 + p.ph)) * dt; if (p.y > H) { p.y = -4; p.x = Math.random() * W; } g.globalAlpha = 0.18 + 0.15 * Math.sin(t * 2 + p.ph); g.fillRect(p.x + o1, p.y, 1.3, 1.3); }
-
-    // ---- fireflies: they drift, gather around the cursor, and dance for the fairy ring
-    for (const f of F.flies) {
-      let tx = null, ty = null;
-      if (F.ring && t - F.ring < 8) { const sh = F.shrooms[Math.floor(f.ph * 10) % F.shrooms.length], an = t * 1.5 + f.ph * 4; tx = sh.x + o2 + Math.cos(an) * 40 * s; ty = sh.y - 30 * s + Math.sin(an) * 18 * s; }
-      else if (live && Math.hypot(M.x - f.x, M.y - f.y) < 220 * s + 60) { const an = t * f.sp * 2 + f.ph * 5, r = 18 + (f.ph % 1) * 30; tx = M.x + Math.cos(an) * r; ty = M.y + Math.sin(an) * r * 0.7; }
-      if (tx != null) { f.vx += (tx - f.x) * dt * 1.4; f.vy += (ty - f.y) * dt * 1.4; }
-      f.vx += Math.sin(t * f.sp + f.ph) * 10 * dt; f.vy += Math.cos(t * f.sp * 1.3 + f.ph) * 8 * dt; f.vx *= Math.pow(0.3, dt); f.vy *= Math.pow(0.3, dt);
-      f.x += f.vx * dt; f.y += f.vy * dt; if (f.x < -20) f.x = W + 20; if (f.x > W + 20) f.x = -20; f.y = Math.max(F.gy * 0.5, Math.min(H, f.y));
-      const b = tx != null ? 0.7 + 0.3 * Math.sin(t * 6 + f.ph * 3) : Math.max(0, Math.sin(t * 1.7 + f.ph * 3)); if (b < 0.05) continue;
-      g.globalAlpha = b; g.drawImage(this.softGlow('#e8ff9a'), f.x - 9, f.y - 9, 18, 18); g.fillStyle = '#f4ffc8'; g.fillRect(f.x - 1, f.y - 1, 2, 2);
-    }
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-
-    // ---- falling leaves, blossom or snow; leaves shaken from the trees spin down faster
-    const drawLeaf = (p) => {
-      if (p.snow) { g.globalAlpha = 0.8; g.fillStyle = '#eef4f7'; g.beginPath(); g.arc(p.x, p.y, 1.6 * s + 0.6, 0, Math.PI * 2); g.fill(); return; }
-      const L = F.leafSpr[p.i]; if (!L) return; g.globalAlpha = 0.95; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + p.ph))); g.drawImage(L.cv, -L.sz / 2, -L.sz / 2, L.sz, L.sz); g.restore();
-    };
-    for (const p of F.fall) {
-      p.y += (p.snow ? 18 : 26) * p.sp * dt; p.x += (Math.sin(t * 0.9 + p.ph) * (p.snow ? 8 : 22) + 6) * dt; p.rot += p.vr * dt;
-      if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; } if (p.x > W + 10) p.x = -10; drawLeaf(p);
-    }
-    F.shaken = F.shaken.filter((p) => p.y < H + 10);
-    for (const p of F.shaken) { p.vx *= Math.pow(0.5, dt); p.x += (p.vx + Math.sin(t * 2 + p.ph) * 30) * dt; p.y += (p.snow ? 30 : 45) * p.sp * dt; p.rot += p.vr * 2 * dt; drawLeaf(p); }
-    g.globalAlpha = 1;
-
-    // ---- ferns in the foreground lean away from the cursor and rustle
-    for (const f of F.ferns) {
-      const fx = f.x + o3;
-      if (live && !F.brush && Math.abs(M.x - fx) < f.L * 0.9 && M.y > f.base - f.L * 1.1) {
-        f.bv += (fx >= M.x ? 1 : -1) * (1 - Math.abs(M.x - fx) / (f.L * 0.9)) * 0.6 + (M.vx || 0) * 0.004;
-        if (Math.abs(M.vx || 0) > 2 && t - f.lastR > 0.35) { f.lastR = t; this.sfx('rustle', (fx / W) * 1.6 - 0.8); }
-      }
-      f.bv += (-f.bend * 22 - f.bv * 4) * dt; f.bend = Math.max(-0.5, Math.min(0.5, f.bend + f.bv * dt));
-      const a = f.bend + Math.sin(t * 0.8 + f.ph) * 0.04;
-      g.save(); g.translate(fx, f.base); g.transform(1, 0, -Math.tan(a), 1, 0, 0); g.drawImage(f.cv, -f.cw / 2, -f.ch + 4, f.cw, f.ch); g.restore();
-    }
-
-    // ---- soft vignette, then the paint in the air on top of it all
-    const vg = g.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.8);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
-    if (F.airDirty) {
-      F.airFade = (F.airFade || 0) + dt;
-      if (F.airFade > 0.2) {
-        F.airFade = 0; const ag = F.airG; ag.setTransform(1, 0, 0, 1, 0, 0);
-        if (t - F.lastPaint > 9) { ag.clearRect(0, 0, F.air.width, F.air.height); F.airDirty = false; }
-        else if (t - F.lastPaint > 1.2) { ag.globalCompositeOperation = 'destination-out'; ag.globalAlpha = 0.07; ag.fillStyle = '#000'; ag.fillRect(0, 0, F.air.width, F.air.height); ag.globalCompositeOperation = 'source-over'; ag.globalAlpha = 1; }
-      }
-      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(F.air, 0, 0); g.setTransform(d, 0, 0, d, 0, 0);
-    }
-    g.globalAlpha = 1;
-  }
   softGlow(c) {
     const key = 'sg' + c; this.sprCache = this.sprCache || {};
     if (this.sprCache[key]) return this.sprCache[key];
@@ -1774,67 +2264,6 @@ class Component extends DCLogic {
     const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, this.rgba(c, 0.55)); gr.addColorStop(0.35, this.rgba(c, 0.18)); gr.addColorStop(1, this.rgba(c, 0));
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (this.sprCache[key] = cv);
   }
-  drawOwl(g, F, tr, t) {
-    const w = tr.owl, O = F.owl, hop = O.hop && t - O.hop < 0.35 ? Math.sin(((t - O.hop) / 0.35) * Math.PI) * 5 : 0;
-    const lx = w.x, ly = w.y - tr.base - hop;
-    g.drawImage(w.cv, lx - w.w * 0.9, ly - w.h * 1.4, w.cw, w.ch);
-    // eyes: shut while it dozes, half open when you hover, wide when you click
-    const M = F.mouse, look = M.x > -900 ? Math.max(-1, Math.min(1, (M.x - (tr.x + (F.o2 || 0) + lx)) / 200)) : 0;
-    const blink = (t % 5.3) < 0.12 ? 0.15 : 1, open = O.open * blink;
-    for (const sd of [-1, 1]) {
-      const ex = lx + sd * w.w * 0.2, ey = ly - w.h * 0.68, r = w.w * 0.13;
-      if (open < 0.08) { g.strokeStyle = '#2a2018'; g.lineWidth = 1.5; g.globalAlpha = 0.9; g.beginPath(); g.arc(ex, ey - r * 0.3, r * 0.8, 0.3, Math.PI - 0.3); g.stroke(); g.globalAlpha = 1; continue; }
-      g.save(); g.beginPath(); g.ellipse(ex, ey, r, r * open, 0, 0, Math.PI * 2); g.clip();
-      g.fillStyle = '#f2c14e'; g.fillRect(ex - r, ey - r, r * 2, r * 2); g.fillStyle = '#120c08'; g.beginPath(); g.arc(ex + look * r * 0.35, ey, r * 0.5, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#ffffff'; g.fillRect(ex + look * r * 0.35 - r * 0.3, ey - r * 0.35, Math.max(1, r * 0.22), Math.max(1, r * 0.22)); g.restore();
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * open; g.drawImage(this.softGlow('#f2c14e'), ex - r * 3, ey - r * 3, r * 6, r * 6); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-    }
-  }
-  drawForestCar(g, F, o2, t, dt) {
-    const C = this.carState(); if (C.scene !== 'forest') return;
-    const W = F.W, s = F.s, start = W + F.carW;
-    if (C.mode === 'parked' || C.x < -900) C.x = F.carX0;
-    if (C.mode === 'arriving') { C.t += dt; const u = Math.min(1, C.t / 2.2), e = 1 - Math.pow(1 - u, 3); C.x = start + (F.carX0 - start) * e; C.v = (1 - u) * 200; if (u >= 1) { C.mode = 'parked'; C.v = 0; C.lightsOff = this.time + 1.5; } }
-    else if (C.mode === 'leaving') { C.t += dt; if (C.t > 0.75) { C.v = Math.min(700 * s, C.v + 420 * s * dt); C.x += C.dir * C.v * dt; } if (C.x > W + F.carW - o2) { this.carCross('meadow'); return; } }
-    const Ck = F.car, k = Ck.k, hover = F.hover && F.hover.car && C.mode === 'parked', running = C.mode !== 'parked';
-    let bob = 0;
-    if (C.mode === 'leaving' && C.t < 0.75) bob = Math.sin(t * 50) * 1.2;
-    else if (running) bob = Math.sin(C.x * 0.12) * 1.2;
-    else if (hover) bob = Math.sin(t * 8) * 1.5;
-    if (t - C.hop < 0.35) bob -= Math.sin(((t - C.hop) / 0.35) * Math.PI) * 10 * s;
-    const x = C.x + o2, y = F.carY, fl = C.dir === 1;
-    g.save(); g.translate(x, y); if (fl) g.scale(-1, 1);
-    g.globalAlpha = 0.35; g.fillStyle = '#000000'; g.beginPath(); g.ellipse(0, 0, F.carW * 0.5, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-    const bx = -F.carW / 2 - 2, by = -Ck.h + 2 + bob;
-    g.drawImage(Ck.cv, bx, by, Ck.w, Ck.h);
-    const rot = (C.x / (12 * k)) * (fl ? -1 : 1);
-    for (const wx of Ck.wheels) {
-      const cx = bx + 2 + wx * k, cy = -16 * k, r = 12 * k;
-      g.fillStyle = '#121518'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#2b3035'; g.lineWidth = 2.5 * k; g.beginPath(); g.arc(cx, cy, r * 0.75, 0, Math.PI * 2); g.stroke();
-      g.strokeStyle = '#8a949a'; g.lineWidth = 2 * k; g.beginPath(); g.moveTo(cx - Math.cos(-rot) * r * 0.6, cy - Math.sin(-rot) * r * 0.6); g.lineTo(cx + Math.cos(-rot) * r * 0.6, cy + Math.sin(-rot) * r * 0.6); g.stroke();
-      g.fillStyle = '#b8c0c4'; g.beginPath(); g.arc(cx, cy, r * 0.22, 0, Math.PI * 2); g.fill();
-    }
-    const on = this.carLights(C, hover);
-    if (on) {
-      const hx = bx + 2 + 8 * k, hy = by + 2 + 41 * k;
-      g.globalCompositeOperation = 'lighter';
-      const gr = g.createLinearGradient(hx, hy, hx - 320 * s, hy); gr.addColorStop(0, 'rgba(255,233,168,0.32)'); gr.addColorStop(1, 'rgba(255,233,168,0)');
-      g.fillStyle = gr; g.beginPath(); g.moveTo(hx, hy - 3); g.lineTo(hx - 320 * s, hy - 50 * s); g.lineTo(hx - 320 * s, hy + 40 * s); g.lineTo(hx, hy + 3); g.fill();
-      g.drawImage(this.softGlow('#ffe9a8'), hx - 22 * k, hy - 22 * k, 44 * k, 44 * k);
-      if (running) g.drawImage(this.softGlow('#ff5a4a'), bx + 2 + 125 * k - 16 * k, by + 2 + 31 * k - 16 * k, 32 * k, 32 * k);
-      g.globalCompositeOperation = 'source-over';
-    }
-    g.restore();
-    // exhaust
-    if (running && Math.random() < dt * 16) C.puffs.push({ x: C.x + C.dir * -F.carW * 0.5, y: y - 10 * k, age: 0, r: 3 * s + 2 });
-    C.puffs = C.puffs.filter((p) => (p.age += dt) < 1.4);
-    g.fillStyle = '#b8c0c4';
-    for (const p of C.puffs) { p.x -= C.dir * dt * 20; p.y -= dt * 18; p.r += dt * 10; g.globalAlpha = 0.28 * (1 - p.age / 1.4); g.beginPath(); g.arc(p.x + o2, p.y, p.r, 0, Math.PI * 2); g.fill(); }
-    g.globalAlpha = 1;
-  }
-
-  // ---- a few extra sounds for the car and the forest
   noiseBuf() { const A = this.audio; if (A.nbuf) return A.nbuf; const len = A.ctx.sampleRate * 2, b = A.ctx.createBuffer(1, len, A.ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; return (A.nbuf = b); }
   noise(dur, vol, freq, q, pan, loop) {
     const A = this.audio; if (!A || !this.state.sound) return null;
@@ -1869,16 +2298,67 @@ class Component extends DCLogic {
       if (out) [[0.3, 71], [0.48, 71]].forEach(([at, n]) => setTimeout(() => { if (!this.state.sound) return; this.voice(this.hz(n), 0.16, 0.02, 'square', 0.25, null, 0.01, -0.5); this.voice(this.hz(n + 4), 0.16, 0.014, 'square', 0.25, null, 0.01, -0.5); }, at * 1000));
     } catch (e) {}
   }
+  // ---- sound on the road: an engine that follows the speed, gravel under the tyres,
+  // and the stream and the campfire getting louder as you pass them
+  roadAudio(F, C, t) {
+    const A = this.audio;
+    if (!A || !this.state.sound || C.scene !== 'forest' || this.state.surface !== 'up') { this.stopRoadAudio(); return; }
+    if (t - (this.roadAT || 0) < 0.08 && this.roadSnd) return; this.roadAT = t;
+    const ctx = A.ctx, now = ctx.currentTime;
+    try {
+      if (!this.roadSnd) {
+        const lp = ctx.createBiquadFilter(), am = ctx.createGain(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+        lp.type = 'lowpass'; lp.frequency.value = 340; lp.Q.value = 1.5; am.gain.value = 0.6; lg.gain.value = 0.4; lfo.frequency.value = 10; lfo.connect(lg); lg.connect(am.gain);
+        const oscs = [['sawtooth', 1, 1], ['square', 1.007, 0.3]].map(([type, mul, vol]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = 30 * mul; og.gain.value = vol; o.connect(og); og.connect(lp); o.start(); o.mul = mul; return o; });
+        lp.connect(am); am.connect(g); g.gain.value = 0; g.connect(A.master); lfo.start();
+        this.roadSnd = { oscs, lfo, g, lp, gravel: this.noise(0, 0, 900, 0.6, 0, true), creek: this.noise(0, 0, 2200, 0.5, 0, true), fire: this.noise(0, 0, 1400, 0.9, 0, true) };
+        if (ctx.createStereoPanner) for (const k of ['creek', 'fire']) { const n = this.roadSnd[k]; if (!n) continue; const p = ctx.createStereoPanner(); n.g.disconnect(); n.g.connect(p); p.connect(A.master); n.p = p; }
+      }
+      const R = this.roadSnd, u = Math.max(0, Math.min(1.2, F.v / F.cruise)), idle = C.mode === 'leaving' && C.t > 0.8 ? 1 : u;
+      for (const o of R.oscs) o.frequency.setTargetAtTime((30 + idle * 34) * o.mul, now, 0.25);
+      R.lfo.frequency.setTargetAtTime(10 + idle * 20, now, 0.25); R.lp.frequency.setTargetAtTime(300 + idle * 220, now, 0.3);
+      R.g.gain.setTargetAtTime(0.03 + idle * 0.025, now, 0.2);
+      if (R.gravel) R.gravel.g.gain.setTargetAtTime(u * 0.022, now, 0.2);
+      let creek = 0, cp = 0, fire = 0, fp = 0;
+      for (const o of F.objs) {
+        const x = this.objX(F, o), near = Math.max(0, 1 - Math.abs(x - F.W / 2) / (F.W * 0.75)), pan = Math.max(-0.9, Math.min(0.9, (x / F.W) * 1.8 - 0.9));
+        if (o.z === 'bridge' && near > creek) { creek = near; cp = pan; }
+        if (o.kind === 'campfire' && near > fire) { fire = near * (1 + o.flare); fp = pan; }
+      }
+      if (R.creek) { R.creek.g.gain.setTargetAtTime(creek * creek * 0.05, now, 0.15); R.creek.f.frequency.setTargetAtTime(1800 + Math.sin(t * 3) * 500, now, 0.1); if (R.creek.p) R.creek.p.pan.setTargetAtTime(cp, now, 0.1); }
+      if (R.fire) { R.fire.g.gain.setTargetAtTime(fire * 0.018, now, 0.15); if (R.fire.p) R.fire.p.pan.setTargetAtTime(fp, now, 0.1); }
+      if (fire > 0.05 && Math.random() < fire * 0.5) this.noise(0.04, 0.03 * fire, 2500 + Math.random() * 2500, 2, fp);
+      if (creek > 0.1 && Math.random() < creek * 0.25) { const f = 700 + Math.random() * 900; this.voice(f, 0.08, 0.008 * creek, 'sine', 0.5, f * 1.6, 0.004, cp); }
+    } catch (e) {}
+  }
+  stopRoadAudio() {
+    const R = this.roadSnd; if (!R) return; this.roadSnd = null;
+    try { const A = this.audio, now = A.ctx.currentTime; R.g.gain.setTargetAtTime(0, now, 0.2); for (const o of R.oscs.concat(R.lfo)) o.stop(now + 1); for (const k of ['gravel', 'creek', 'fire']) if (R[k]) { R[k].g.gain.setTargetAtTime(0, now, 0.2); R[k].src.stop(now + 1); } } catch (e) {}
+  }
+  honk(p) { for (const [at, n] of [[0, 71], [0.18, 71]]) setTimeout(() => { if (!this.state.sound) return; this.voice(this.hz(n), 0.15, 0.022, 'square', 0.25, null, 0.01, p); this.voice(this.hz(n + 4), 0.15, 0.016, 'square', 0.25, null, 0.01, p); }, at * 1000); }
   forestSfx(kind, arg) {
-    const v = (...a) => this.voice(...a);
-    if (kind === 'engine') this.engine(arg);
-    else if (kind === 'hoot') { const p = arg || 0; v(410, 0.32, 0.05, 'sine', 0.6, 372, 0.05, p); this.noise(0.3, 0.012, 420, 3, p); setTimeout(() => this.state.sound && v(398, 0.6, 0.05, 'sine', 0.6, 340, 0.06, p), 420); }
+    const v = (...a) => this.voice(...a), later = (ms, fn) => setTimeout(() => this.state.sound && fn(), ms), carPan = this.forest ? (this.carState().sx / this.forest.W) * 1.6 - 0.8 : 0;
+    if (kind === 'engine') { if (arg === 'go') { v(55, 0.7, 0.03, 'sawtooth', 0.1, 110, 0.05, carPan); this.noise(0.5, 0.02, 400, 1, carPan); } else this.engine(arg); }
+    else if (kind === 'honk') this.honk(carPan);
+    else if (kind === 'brake') { this.noise(0.6, 0.02, 1100, 2, carPan); v(80, 0.6, 0.02, 'sawtooth', 0.1, 40, 0.02, carPan); }
+    else if (kind === 'hoot') { const p = arg || 0; v(410, 0.32, 0.05, 'sine', 0.6, 372, 0.05, p); this.noise(0.3, 0.012, 420, 3, p); later(420, () => v(398, 0.6, 0.05, 'sine', 0.6, 340, 0.06, p)); }
     else if (kind === 'knock') { const [n, p] = arg, f = this.hz(n); v(f, 0.8, 0.055, 'sine', 0.45, null, 0.002, p); v(f * 3.93, 0.16, 0.012, 'sine', 0.3, null, 0.002, p); v(f * 0.5, 0.2, 0.035, 'triangle', 0.2, f * 0.4, 0.002, p); this.noise(0.7, 0.02, 3200, 0.7, p); }
-    else if (kind === 'bloop') { const [n, p] = arg, f = this.hz(n); v(f / 2, 0.45, 0.03, 'sine', 0.7, f, 0.01, p); setTimeout(() => this.state.sound && (v(f, 1.8, 0.02, 'sine', 0.85, null, 0.02, p), v(f * 2.76, 0.9, 0.005, 'sine', 0.85, null, 0.02, p)), 120); }
+    else if (kind === 'creak') { const p = arg || 0; later(120, () => { v(120, 0.7, 0.008, 'sawtooth', 0.4, 175, 0.15, p); v(240, 0.5, 0.003, 'sawtooth', 0.4, 330, 0.15, p); }); }
+    else if (kind === 'bloop') { const [n, p] = arg, f = this.hz(n); v(f / 2, 0.45, 0.03, 'sine', 0.7, f, 0.01, p); later(120, () => { v(f, 1.8, 0.02, 'sine', 0.85, null, 0.02, p); v(f * 2.76, 0.9, 0.005, 'sine', 0.85, null, 0.02, p); }); }
     else if (kind === 'plip') { const [i, p] = arg, f = 620 + i * 170; v(f, 0.16, 0.04, 'sine', 0.5, f * 2.2, 0.003, p); this.noise(0.12, 0.012, 1500, 1.5, p); }
-    else if (kind === 'rustle') { this.noise(0.4, 0.02, 2600 + Math.random() * 1400, 0.7, arg); }
+    else if (kind === 'skip') { const p = arg || 0; [0, 260, 430, 550, 630].forEach((ms, i) => later(ms, () => this.forestSfx('plip', [i, p + i * 0.05]))); }
+    else if (kind === 'rustle') this.noise(0.4, 0.02, 2600 + Math.random() * 1400, 0.7, arg);
     else if (kind === 'brush') { const [n, p] = arg; v(this.hz(n), 0.9, 0.016, 'triangle', 0.7, null, 0.01, p); v(this.hz(n) * 2, 0.4, 0.004, 'sine', 0.7, null, 0.01, p); }
     else if (kind === 'gust') { this.noise(2.2, 0.04, 700, 0.5, 0); this.noise(1.8, 0.02, 2400, 0.6, 0.4); }
+    else if (kind === 'plank') { v(95, 0.14, 0.05, 'triangle', 0.15, 70, 0.003, arg); this.noise(0.08, 0.02, 600, 1.5, arg); }
+    else if (kind === 'hoof') { v(170, 0.08, 0.03, 'triangle', 0.2, 120, 0.003, arg); this.noise(0.1, 0.015, 1200, 1, arg); }
+    else if (kind === 'snort') { this.noise(0.35, 0.035, 650, 0.8, arg); v(140, 0.3, 0.01, 'sawtooth', 0.2, 100, 0.03, arg); }
+    else if (kind === 'yip') { const p = arg || 0; v(820, 0.13, 0.025, 'triangle', 0.35, 1250, 0.01, p); later(170, () => v(900, 0.15, 0.022, 'triangle', 0.35, 1400, 0.01, p)); }
+    else if (kind === 'whoosh') { this.noise(0.9, 0.05, 500, 0.6, arg); this.noise(0.6, 0.02, 2800, 0.8, arg); v(70, 0.6, 0.03, 'sine', 0.3, 50, 0.02, arg); }
+    else if (kind === 'knockdoor') { const p = arg || 0; [0, 180].forEach((ms) => later(ms, () => { v(130, 0.12, 0.06, 'triangle', 0.2, 90, 0.002, p); this.noise(0.06, 0.03, 900, 1, p); })); }
+    else if (kind === 'musicbox') { const p = arg || 0, tn = this.seasonTune(), m = [0, 2, 4, 2, 5, 4, 2, 0, 4, 7]; m.forEach((i, k) => later(k * 210, () => { const f = this.hz(tn[i % tn.length]); v(f, 1.2, 0.022, 'sine', 0.75, null, 0.003, p); v(f * 4.02, 0.3, 0.004, 'sine', 0.75, null, 0.002, p); })); }
+    else if (kind === 'chimeNote') { const [n, p] = arg, f = this.hz(n); v(f, 1.6, 0.03, 'triangle', 0.75, null, 0.004, p); v(f * 2.01, 0.7, 0.008, 'sine', 0.75, null, 0.004, p); }
+    else if (kind === 'paper') this.noise(0.3, 0.02, 3800, 0.9, arg);
     else return false;
     return true;
   }
@@ -4012,7 +4492,8 @@ class Component extends DCLogic {
       lureOn: (this.state.zone || 0) === 0 && !this.state.surface && !this.state.intro, openSurface: this.openSurface, surfMove: this.surfaceMove, surfLeave: this.surfaceLeave,
       surfOn: !!this.state.surface, surfDir: this.state.surface || '', surfRef: this.setSurfCv, surfDown: this.surfaceDown, surfUp: this.surfaceUp, cycleSeason: this.cycleSeason, seasonLabel: (this.SEASONS[this.seasonKey()] || {}).label || '', closeSurface: this.closeSurface,
       sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave,
-      surfLabel: /orest/.test(this.state.scene || '') ? 'The painted forest · inland' : 'The surface · 0 m', surfAria: /orest/.test(this.state.scene || '') ? 'The painted forest: a moonlit wood in gouache brush strokes' : 'The surface: moonlit flower meadows',
+      forestUi: this.state.scene === 'forest', turnBack: this.turnBack,
+      surfLabel: /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
       dzOpen: Object.fromEntries(Object.keys(this.DOSSIERS).map((k) => [k, () => this.openDossier(k)])),
       dzOn: !!this.state.dz, dzLeave: this.state.dzLeaving ? 'leave' : '', closeDz: this.closeDossier,
       hdrRef: (el) => { this.hdrEl = el; }, hdrH: this.state.hdrH || 62, logTop: (this.state.hdrH || 62) + 10, logTopGap: (this.state.hdrH || 62) + 40, logPopTop: (this.state.hdrH || 62) + 230,
