@@ -945,11 +945,12 @@ class Component extends DCLogic {
     const S2 = 2, W2 = Math.ceil(vw / S2), H2 = Math.ceil(vh / S2), o = this.octx;
     if (this.off.width !== W2 || this.off.height !== H2) { this.off.width = W2; this.off.height = H2; }
     o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, W2, H2); o.setTransform(1 / S2, 0, 0, 1 / S2, 0, 0);
-    this.only = only; this.drawDepthLife(o, vw, vh, prog, pal, true, 'flora'); this.only = null; this.cat = null;
+    this.fadeHex = [pal.deep, pal.mid, pal.hi]; this.fadeRamps = this.floraRamps(pal); this.fadeGroups = [];
+    this.only = only; this.solidFade = true; this.drawDepthLife(o, vw, vh, prog, pal, true, 'flora'); this.solidFade = false; this.only = null; this.cat = null;
     const img = this.ditherImage(o.getImageData(0, 0, W2, H2), [pal.deep, pal.mid, pal.hi], this.floraRamps(pal));
     const L2 = (this.colLayers = this.colLayers || {})[only] || (this.colLayers[only] = document.createElement('canvas'));
     if (L2.width !== W2 || L2.height !== H2) { L2.width = W2; L2.height = H2; }
-    L2.getContext('2d').putImageData(img, 0, 0);
+    L2.getContext('2d').putImageData(img, 0, 0); this.flushFades(L2.getContext('2d'));
     const field = this.glyphField(key, '#ffffff', 1, set, dpr, vw, vh), fw = field.width, fh = field.height;
     if (!this.colCv) this.colCv = document.createElement('canvas');
     if (this.colCv.width !== fw || this.colCv.height !== fh) { this.colCv.width = fw; this.colCv.height = fh; }
@@ -962,15 +963,42 @@ class Component extends DCLogic {
     if (boost) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = boost; ctx.drawImage(this.colCv, 0, 0); }
     ctx.restore();
   }
+  // Fading coloured scenery with see-through alpha mixes the colour codes of
+  // overlapping parts (coral over rock turns into a random third colour). While
+  // the colour passes run, each fading part is drawn solid on its own, dithered
+  // into real colours, and only then faded in over the rest.
+  fadeBegin(ctx, A) {
+    if (!this.solidFade || A >= 0.99) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * A; return { c: ctx, a: A, a0 }; }
+    const cv = ctx.canvas, T = this.fadeCv || (this.fadeCv = document.createElement('canvas'));
+    if (T.width !== cv.width || T.height !== cv.height) { T.width = cv.width; T.height = cv.height; }
+    const tc = T.getContext('2d'); tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalCompositeOperation = 'source-over'; tc.globalAlpha = 1; tc.clearRect(0, 0, T.width, T.height);
+    tc.setTransform(ctx.getTransform());
+    return { c: tc, a: 1, A, solid: true };
+  }
+  fadeEnd(ctx, f) {
+    if (!f.solid) { ctx.globalAlpha = f.a0; return; }
+    const tc = f.c, T = tc.canvas, G = (this.fadeGroups = this.fadeGroups || []), pool = (this.fadePool = this.fadePool || []);
+    const img = this.ditherImage(tc.getImageData(0, 0, T.width, T.height), this.fadeHex, this.fadeRamps);
+    const cv = pool[G.length] || (pool[G.length] = document.createElement('canvas'));
+    if (cv.width !== T.width || cv.height !== T.height) { cv.width = T.width; cv.height = T.height; }
+    cv.getContext('2d').putImageData(img, 0, 0); G.push({ cv, A: f.A });
+  }
+  flushFades(lc) {
+    const G = this.fadeGroups; if (!G || !G.length) return;
+    lc.save(); lc.setTransform(1, 0, 0, 1, 0, 0);
+    for (const g of G) { lc.globalAlpha = g.A; lc.drawImage(g.cv, 0, 0); }
+    lc.restore(); this.fadeGroups = [];
+  }
   drawWall(ctx, vw, vh, prog, tone) {
     const A = this.band(prog, 0.14, 0.24, 0.66, 0.78); if (A <= 0.01) return;
+    if (this.solidFade && A < 0.99 && !this._inFade) { this._inFade = true; const fz = this.fadeBegin(ctx, A); this.drawWall(fz.c, vw, vh, prog, tone); this.fadeEnd(ctx, fz); this._inFade = false; return; }
     if (!this.wall || this.wallVW !== vw) this.initWall(vw, vh);
     const target = (prog - 0.14) * vh * 3.4, t = this.time, a0 = ctx.globalAlpha, step = Math.max(0, Math.min(0.1, t - (this.wallT ?? t))); this.wallT = t;
     if (this.wallOff == null || step === 0 && Math.abs(target - this.wallOff) > vh * 4) this.wallOff = target;
     else this.wallOff += Math.max(-vh * 0.9 * step, Math.min(vh * 0.9 * step, target - this.wallOff));
     const off = this.wallOff, doRock = !this.only || this.only === 'rock', doCoral = !this.only || this.only === 'coral';
     const lin = (v1, v2, x0, y0, x1, y1) => { const gr = ctx.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, this.g(v1)); gr.addColorStop(1, this.g(v2)); return gr; };
-    ctx.globalAlpha = a0 * A;
+    ctx.globalAlpha = a0 * (this._inFade ? 1 : A);
     this.wall.forEach((Wl, si) => {
       const side = si ? -1 : 1, x0 = si ? vw : 0, X = (w) => x0 + side * w;
       // how far a shelf sticks out at u (0 = its top, 1 = its bottom): a rounded lip,
@@ -1631,7 +1659,7 @@ class Component extends DCLogic {
     const tone = (v, a) => (lum ? this.g(v) : this.rgba(pal.accent, (a * 0.5).toFixed(3)));
     const coralA = this.band(prog, -1, -0.5, 0.14, 0.32);
     if (flora && coralA > 0.01 && (!this.only || this.only === 'coral')) {
-      ctx.globalAlpha = coralA; let ci = 0;
+      const fz = this.fadeBegin(ctx, coralA), c0 = ctx; { const ctx = fz.c; let ci = 0;
       for (const c of this.corals) {
         this.cat = 1 + (ci++ % 3);  // pink, orange or purple coral
         const sway = Math.sin(t * 0.6 + c.ph) * 0.03;
@@ -1659,7 +1687,7 @@ class Component extends DCLogic {
         }
         ctx.restore();
       }
-      ctx.globalAlpha = 1; this.cat = null;
+      this.cat = null; } this.fadeEnd(c0, fz);
     }
     if (flora && (!this.only || this.only === 'coral' || this.only === 'rock')) this.drawWall(ctx, vw, vh, prog, tone);
     // Lanternfish bodies (their glowing photophores are added on top later).
@@ -1684,6 +1712,7 @@ class Component extends DCLogic {
     }
     const ventA = this.band(prog, 0.92, 0.99, 2, 3);
     if (flora && ventA > 0.01 && (!this.only || this.only === 'vent')) {
+      const fz = this.fadeBegin(ctx, ventA), c0 = ctx; { const ctx = fz.c, ventA = fz.a;
       this.cat = 4;  // dark mineral rock
       const drift = Math.sin(t * 0.15) * 10;
       for (const v of this.vents) {
@@ -1737,6 +1766,7 @@ class Component extends DCLogic {
         for (const w of v.worms) { const wx = v.x + w.dx, fy = this.floorY(wx, vh); ctx.beginPath(); ctx.moveTo(wx, fy + 2); ctx.quadraticCurveTo(wx + 3, fy - w.h * 0.6, wx + Math.sin(t + w.ph) * 2, fy - w.h); ctx.stroke(); }
       }
       ctx.globalAlpha = 1; this.cat = null;
+      } this.fadeEnd(c0, fz);
     }
     const anglerA = this.band(prog, 0.72, 0.88, 2, 3);
     if (fauna && anglerA > 0.01) {
@@ -2438,7 +2468,8 @@ class Component extends DCLogic {
     // Plants, coral and vents are dithered in their own colour ramp first, so the
     // seafloor has some colour while the animals keep the palette's ocean tones.
     this.cat = 0; this.drawKelp(o, vw, vh, prog, this.g(0.42), 9);
-    this.drawDepthLife(o, vw, vh, prog, pal, true, 'flora'); this.cat = null;
+    this.fadeHex = [pal.deep, pal.mid, pal.hi]; this.fadeRamps = this.floraRamps(pal); this.fadeGroups = [];
+    this.solidFade = true; this.drawDepthLife(o, vw, vh, prog, pal, true, 'flora'); this.solidFade = false; this.cat = null;
     const floraImg = this.ditherImage(o.getImageData(0, 0, W, H), [pal.deep, pal.mid, pal.hi], this.floraRamps(pal));
     o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, W, H); o.setTransform(1 / S, 0, 0, 1 / S, 0, 0);
     this.drawDepthLife(o, vw, vh, prog, pal, true, 'fauna');
@@ -2453,7 +2484,7 @@ class Component extends DCLogic {
     }
     const img = this.ditherImage(o.getImageData(0, 0, W, H), [pal.deep, pal.mid, pal.hi]);
     if (this.layer.width !== W || this.layer.height !== H) { this.layer.width = W; this.layer.height = H; }
-    const lc = this.layer.getContext('2d'); lc.putImageData(floraImg, 0, 0);
+    const lc = this.layer.getContext('2d'); lc.putImageData(floraImg, 0, 0); this.flushFades(lc);
     if (!this.layer2) this.layer2 = document.createElement('canvas');
     if (this.layer2.width !== W || this.layer2.height !== H) { this.layer2.width = W; this.layer2.height = H; }
     this.layer2.getContext('2d').putImageData(img, 0, 0); lc.drawImage(this.layer2, 0, 0);
