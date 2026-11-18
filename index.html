@@ -1032,6 +1032,11 @@ class Component extends DCLogic {
     const dab = (g, x, y, len, w, ang, cols, a, nb, extra) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], Object.assign({ w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 5), chunk: 2 }, extra || {})); };
     const wdab = (g, x, y, len, w, ang, cols, a, nb) => { const c = Math.cos(ang), sn = Math.sin(ang); wrap(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x + (c * len) / 2, y + (sn * len) / 2]], { w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 4), chunk: 2 }); };
     F.tools = { R, rnd, hm, night, stroke, dab, mk };
+    // abstract brushwork: strokes follow a slow flow field instead of drawing outlines
+    const nz = (x, y) => Math.sin(x * 0.0061 + Math.sin(y * 0.013) * 1.7) + Math.sin(y * 0.0093 - x * 0.0031 + 1.3) * 0.8;
+    const trace = (x, y, len, ang) => { const n = Math.max(3, Math.round(len / 10)), pts = [[x, y]]; let px = x, py = y; for (let q = 0; q < n; q++) { const a = ang(px, py); px += (Math.cos(a) * len) / n; py += (Math.sin(a) * len) / n; pts.push([px, py]); } return pts; };
+    const ACC = [pal.hi, pal.accent || pal.hi, '#8a6fc4', '#e0a85a', '#5fb3a8', '#d0607a'].map((c) => hm(c, pal.bg, 0.3));
+    F.ACC = ACC;
 
     // ---- sky: long horizontal strokes, a painted moon with a few clouds, and stars
     const [sky, gs] = mk(W, H); F.sky = sky;
@@ -1039,22 +1044,22 @@ class Component extends DCLogic {
     const skyAt = (v) => (v < 0.6 ? hm(top, midC, v / 0.6) : hm(midC, low, (v - 0.6) / 0.4));
     const grd = gs.createLinearGradient(0, 0, 0, hz); grd.addColorStop(0, top); grd.addColorStop(0.6, midC); grd.addColorStop(1, low);
     gs.fillStyle = grd; gs.fillRect(0, 0, W, H);
-    for (let y = -6; y < hz + 30; y += 8 + 8 * s) {
-      for (let k = 0; k < 3; k++) {
-        const x0 = R(-120, W), len = R(0.3, 0.7) * W, c = skyAt(Math.max(0, Math.min(1, (y + R(-10, 10)) / hz))), pts = [];
-        for (let q = 0; q <= 6; q++) pts.push([x0 + (len * q) / 6, y + Math.sin(q * 0.9 + x0) * 4 * s]);
-        stroke(gs, pts, { w: R(16, 30) * s + 8, cols: [c, hm(c, pal.mid, 0.15), hm(c, '#000000', 0.12)], a: 0.5, step: 10, chunk: 3, nb: 18 });
-      }
-      yield;
-    }
     const mo = (F.moon = { x: W * 0.3, y: H * 0.17, r: 22 * s + 12 }), mc = hm(pal.ink, '#fff4dc', 0.5);
-    const halo = gs.createRadialGradient(mo.x, mo.y, mo.r * 0.8, mo.x, mo.y, mo.r * 7); halo.addColorStop(0, this.rgba(pal.hi, 0.24)); halo.addColorStop(1, this.rgba(pal.hi, 0));
-    gs.fillStyle = halo; gs.fillRect(mo.x - mo.r * 7, mo.y - mo.r * 7, mo.r * 14, mo.r * 14);
-    gs.save(); gs.beginPath(); gs.arc(mo.x, mo.y, mo.r, 0, Math.PI * 2); gs.clip(); gs.fillStyle = hm(mc, pal.mid, 0.25); gs.fill();
-    for (let k = 0; k < 44; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * mo.r, x = mo.x + Math.cos(a) * rr, y = mo.y + Math.sin(a) * rr, lit = x - mo.x + (y - mo.y) < mo.r * 0.35; dab(gs, x, y, mo.r * 0.6, mo.r * 0.32, R(-0.7, 0.7), lit ? [mc, hm(mc, '#ffffff', 0.3)] : [hm(mc, pal.mid, 0.4)], 0.9, 9); }
-    for (let k = 0; k < 7; k++) dab(gs, mo.x + R(-0.6, 0.6) * mo.r, mo.y + R(-0.6, 0.6) * mo.r, mo.r * R(0.15, 0.3), mo.r * 0.18, R(0, 3), [hm(mc, pal.mid, 0.55)], 0.45, 5);
-    gs.restore();
-    for (let k = 0; k < 6; k++) { const y = mo.y + R(-0.6, 2) * mo.r, x0 = mo.x + R(-5, 2) * mo.r, len = R(3, 8) * mo.r; stroke(gs, [[x0, y], [x0 + len * 0.5, y - R(2, 6)], [x0 + len, y + R(-3, 3)]], { w: R(6, 14) * s + 3, cols: [hm(pal.mid, pal.hi, 0.35), hm(pal.mid, pal.ink, 0.2)], a: 0.3, step: 6, nb: 12, edge: hm(pal.hi, '#ffffff', 0.3) }); }
+    const swirl = (x, y) => { const dx = x - mo.x, dy = y - mo.y, d = Math.hypot(dx, dy) / mo.r, k = Math.min(1, Math.max(0, 2.6 / d - 0.25)), b = 0.5 * nz(x, y), t = Math.atan2(dy, dx) + Math.PI / 2; return Math.atan2((1 - k) * Math.sin(b) + k * Math.sin(t), (1 - k) * Math.cos(b) + k * Math.cos(t)); };
+    const nSky = Math.round((W * hz) / (1500 * s * s));
+    for (let i = 0; i < nSky; i++) {
+      const x = R(-80, W + 40), y = R(-30, hz + 20), c = skyAt(Math.max(0, Math.min(1, y / hz))), acc = rnd() < 0.14;
+      const cols = acc ? [hm(c, ACC[Math.floor(rnd() * ACC.length)], 0.45), c] : [c, hm(c, pal.mid, 0.25), hm(c, '#000000', 0.18), hm(c, pal.hi, 0.1)];
+      stroke(gs, trace(x, y, R(70, 230) * s, swirl), { w: R(12, 30) * s + 6, cols, a: acc ? 0.5 : 0.6, step: 6, chunk: 3, nb: 14, jit: 0.3, splay: 0.6 });
+      if (i % 25 === 0) yield;
+    }
+    // the moon, laid in with round strokes, and rings of light swirling around it
+    const halo = gs.createRadialGradient(mo.x, mo.y, mo.r * 0.8, mo.x, mo.y, mo.r * 6); halo.addColorStop(0, this.rgba(pal.hi, 0.2)); halo.addColorStop(1, this.rgba(pal.hi, 0));
+    gs.fillStyle = halo; gs.fillRect(mo.x - mo.r * 6, mo.y - mo.r * 6, mo.r * 12, mo.r * 12);
+    for (let ring = 1.5; ring < 5; ring += 0.45) for (let k = 0; k < 3; k++) { const a0 = R(0, 6.3), sp = R(0.6, 1.6), rr = mo.r * (ring + R(-0.15, 0.15)), pts = []; for (let q = 0; q <= 10; q++) { const a = a0 + (sp * q) / 10; pts.push([mo.x + Math.cos(a) * rr, mo.y + Math.sin(a) * rr]); } stroke(gs, pts, { w: R(5, 11) * s + 3, cols: [hm(pal.hi, mc, 0.4), hm(pal.hi, pal.mid, 0.4), ACC[2]], a: 0.42 / (ring * 0.45), nb: 8, step: 4, jit: 0.3 }); }
+    gs.fillStyle = hm(mc, pal.mid, 0.2); gs.beginPath(); gs.arc(mo.x, mo.y, mo.r, 0, Math.PI * 2); gs.fill();
+    for (let rr = mo.r * 0.25; rr < mo.r * 1.05; rr += mo.r * 0.2) for (let k = 0; k < 2; k++) { const a0 = R(0, 6.3), pts = []; for (let q = 0; q <= 12; q++) { const a = a0 + (R(2.5, 4.5) * q) / 12; pts.push([mo.x + Math.cos(a) * rr, mo.y + Math.sin(a) * rr]); } stroke(gs, pts, { w: mo.r * 0.28, cols: [mc, hm(mc, '#ffffff', 0.3), hm(mc, pal.mid, 0.35)], a: 0.85, nb: 9, step: 3, jit: 0.25 }); }
+    yield;
     for (let k = 0; k < 60; k++) dab(gs, R(0, W), R(0, hz * 0.8), 2.5 * s + 1.5, 1.6, R(0, 3), [pal.ink], R(0.3, 0.8), 3);
     F.stars = []; for (let k = 0; k < 40; k++) F.stars.push({ x: R(0, W), y: R(0, hz * 0.7), ph: R(0, 6), sp: R(0.8, 2.4), b: R(0.4, 1) });
     F.beams = []; for (let q = 0; q < 4; q++) F.beams.push({ x: W * (0.15 + q * 0.22) + R(-30, 30), dx: W * R(0.15, 0.25), w0: R(10, 26) * s, w1: R(50, 110) * s, a: R(0.035, 0.07), ph: R(0, 6), sp: R(0.2, 0.5) });
@@ -1065,7 +1070,7 @@ class Component extends DCLogic {
     const [hillsCv, gh, hy0, hh0] = tile(Math.round(H * 0.38), Math.round(H * 0.66)); F.hills = { cv: hillsCv, k: 0.05, y0: hy0, h: hh0 };
     const hillC = hm(pal.mid, pal.deep, 0.35), hillTop = (x) => H * 0.5 + Math.sin((x / TW) * Math.PI * 2 * 2 + 0.4) * H * 0.04 + Math.sin((x / TW) * Math.PI * 2 * 5) * H * 0.015;
     gh.fillStyle = hillC; gh.beginPath(); gh.moveTo(0, H * 0.64); for (let x = 0; x <= TW; x += 8) gh.lineTo(x, hillTop(x) + 4); gh.lineTo(TW, H * 0.64); gh.fill();
-    for (let y = H * 0.44; y < H * 0.64; y += 5 * s + 3) for (let k = 0; k < 4; k++) { const x0 = R(0, TW), len = R(0.1, 0.3) * TW, pts = []; for (let q = 0; q <= 8; q++) { const x = x0 + (len * q) / 8; pts.push([x, Math.max(y, hillTop(x) + 5)]); } wrap(gh, pts, { w: 7 * s + 4, cols: [hillC, hm(hillC, pal.bg, 0.2), hm(hillC, pal.hi, 0.08)], a: 0.7, nb: 7, step: 8, chunk: 3 }); }
+    for (let y = H * 0.45; y < H * 0.64; y += 9 * s + 4) for (let k = 0; k < 4; k++) { const x0 = R(0, TW), len = R(0.06, 0.2) * TW, pts = []; for (let q = 0; q <= 10; q++) { const x = x0 + (len * q) / 10; pts.push([x, Math.max(y + Math.sin(x * 0.01 + y) * 6 * s, hillTop(x) + 8)]); } wrap(gh, pts, { w: R(12, 22) * s + 5, cols: [hillC, hm(hillC, pal.bg, 0.25), hm(hillC, pal.hi, 0.12), rnd() < 0.2 ? hm(hillC, ACC[Math.floor(rnd() * ACC.length)], 0.35) : hillC], a: 0.75, nb: 10, step: 8, chunk: 3, jit: 0.3, splay: 0.6 }); }
     for (let x = 0; x < TW; x += 18 * s + 6) wrap(gh, [[x, hillTop(x) + 2], [x + 22 * s, hillTop(x + 22 * s) + 3]], { w: 3 * s + 2, cols: [hm(hillC, pal.hi, 0.35)], a: 0.5, nb: 3, step: 4 });
     for (let k = 0; k < 12; k++) { const y = H * R(0.54, 0.6), x0 = R(0, TW); wrap(gh, [[x0, y], [x0 + TW * R(0.15, 0.3), y + R(-4, 4)]], { w: R(14, 26) * s + 6, cols: [pal.hi, hm(pal.hi, pal.mid, 0.4)], a: 0.08, nb: 14, step: 10 }); }
     yield;
@@ -1075,9 +1080,9 @@ class Component extends DCLogic {
       for (let x = -10; x < TW + 10; x += R(14, 28) * s + 6) {
         const h = R(0.1, 0.2) * H * (row ? 1.1 : 0.85);
         if (rnd() < 0.78) {
-          wrap(gf, [[x, baseY + 4], [x, baseY - h]], { w: 2.5 * s + 1, cols: [col], a: 0.9, nb: 3, step: 4 });
-          for (let y = baseY - h; y < baseY; y += 4 * s + 2.5) { const u = (y - (baseY - h)) / h, hw = (2 + u * 12) * s + 1.5; for (const sd of [-1, 1]) wrap(gf, [[x, y], [x + sd * hw * 0.6, y + hw * 0.22], [x + sd * hw, y + hw * 0.42]], { w: 3.5 * s + 2, cols: sd < 0 ? [col, lit] : [col], a: 0.9, nb: 4, step: 2.5, chunk: 2 }); }
-        } else for (let k = 0; k < 12; k++) wdab(gf, x + R(-15, 15) * s, baseY - h * 0.55 + R(-h * 0.3, h * 0.25), 14 * s + 4, 10 * s + 3, R(0, 3), [col, lit], 0.9, 5);
+          const cols2 = [col, col, lit, rnd() < 0.25 ? hm(col, ACC[Math.floor(rnd() * ACC.length)], 0.3) : col], bend = R(-0.08, 0.08) * h;
+          for (let q = 0; q < 2; q++) { const ww = (q ? 9 : 14) * s + 4, hh = h * (q ? 0.75 : 1); wrap(gf, [[x + R(-3, 3) * s, baseY + 4], [x + bend * 0.4, baseY - hh * 0.5], [x + bend, baseY - hh]], { w: ww, cols: cols2, a: 0.8, nb: 9, step: 4, chunk: 2, jit: 0.3, splay: -0.5, load: 2 }); }
+        } else for (let k = 0; k < 4; k++) wdab(gf, x + R(-12, 12) * s, baseY - h * 0.55 + R(-h * 0.3, h * 0.25), 30 * s + 8, 16 * s + 5, R(0, 3), [col, lit], 0.85, 9);
         if (rnd() < 0.25) yield;
       }
       for (let y = baseY; y < baseY + H * 0.05; y += 6 * s + 3) wrap(gf, [[-30, y], [TW * 0.5, y + R(-3, 3)], [TW + 30, y]], { w: 10 * s + 5, cols: [col], a: 0.95, nb: 8, step: 12, chunk: 4, load: 3 });
@@ -1088,9 +1093,10 @@ class Component extends DCLogic {
     const gc = FS.ground.map((c) => (FS.snow ? hm(c, pal.deep, 0.45) : night(c, 0.35)));
     const [flCv, gfl, fy0, fh0] = tile(Math.round(H * 0.64), F.RY0 + 14); F.floor = { cv: flCv, k: 0.7, y0: fy0, h: fh0 };
     gfl.fillStyle = gc[0]; gfl.fillRect(0, H * 0.67, TW, F.RY0 - H * 0.67 + 6);
-    for (let y = H * 0.665; y < F.RY0 + 4; y += 5 + 5 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.15, 0.4) * TW; wrap(gfl, [[x0, y + R(-2, 2)], [x0 + len, y + R(-2, 2)]], { w: R(9, 16) * s + 4, cols: gc, a: 0.75, step: 8, chunk: 3, nb: 12 }); } yield; }
+    const gentle = (x, y) => 0.18 * nz(x, y * 3);
+    for (let y = H * 0.665; y < F.RY0 + 4; y += 8 + 7 * s) { for (let k = 0; k < 6; k++) { const x0 = R(0, TW), acc = rnd() < 0.12; wrap(gfl, trace(x0, y + R(-3, 3), R(120, 380) * s, gentle).map(([px, py]) => [px, Math.max(H * 0.665, Math.min(F.RY0 + 6, py))]), { w: R(14, 30) * s + 4, cols: acc ? [hm(gc[1], ACC[Math.floor(rnd() * ACC.length)], 0.4)] : gc, a: acc ? 0.45 : 0.75, step: 8, chunk: 3, nb: 12, jit: 0.3, splay: 0.6 }); } yield; }
     for (let k = 0; k < 10; k++) wdab(gfl, R(0, TW), R(H * 0.7, F.RY0), R(60, 140) * s, R(14, 24) * s, R(-0.1, 0.1), [hm(gc[1], pal.hi, 0.25)], 0.22, 12);
-    if (!FS.snow) for (let k = 0; k < 160; k++) wdab(gfl, R(0, TW), R(H * 0.68, F.RY0), R(4, 8) * s + 2, R(3, 5) * s + 1, R(0, 3), (FS.bloom || FS.leaf).map((c) => night(c, 0.45)), 0.7, 4);
+    if (!FS.snow) for (let k = 0; k < 70; k++) wdab(gfl, R(0, TW), R(H * 0.68, F.RY0), R(10, 22) * s + 2, R(5, 9) * s + 1, R(0, 3), (FS.bloom || FS.leaf).map((c) => night(c, 0.45)), 0.7, 4);
     yield;
 
     // ---- the road: a dirt track with ruts, pebbles and puddles, a grassy verge on both sides
@@ -1099,7 +1105,7 @@ class Component extends DCLogic {
     const vc = FS.grass.map((c) => (FS.snow ? hm(c, pal.deep, 0.35) : night(c, 0.35))), vDark = hm(vc[0], '#000000', 0.4);
     gr.fillStyle = vDark; gr.fillRect(0, F.RY0 - 10, TW, H - F.RY0 + 10);
     gr.fillStyle = rc[0]; gr.fillRect(0, F.RY0 + 3, TW, F.RY1 - F.RY0 - 4);
-    for (let y = F.RY0 + 2; y < F.RY1; y += 4 + 3 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.1, 0.35) * TW; wrap(gr, [[x0, y + R(-1, 1)], [x0 + len, y + R(-1.5, 1.5)]], { w: R(6, 12) * s + 4, cols: rc, a: 0.8, step: 8, chunk: 3, nb: 10 }); } yield; }
+    for (let y = F.RY0 + 2; y < F.RY1; y += 4 + 3 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.06, 0.2) * TW; wrap(gr, trace(x0, y + R(-1, 1), len, (px, py) => 0.08 * nz(px, py * 4)).map(([px, py]) => [px, Math.max(F.RY0 + 2, Math.min(F.RY1, py))]), { w: R(12, 24) * s + 4, cols: rnd() < 0.1 ? [hm(rc[1], ACC[Math.floor(rnd() * ACC.length)], 0.3)] : rc, a: 0.7, step: 8, chunk: 3, nb: 12, jit: 0.3, splay: 0.5 }); } yield; }
     const rut = (yy) => { for (let k = 0; k < 6; k++) { const x0 = R(0, TW); wrap(gr, [[x0, yy + R(-1, 1)], [x0 + TW * R(0.2, 0.45), yy + R(-1, 1)]], { w: 5 * s + 2, cols: [rDark, hm(rDark, rc[0], 0.4)], a: 0.55, nb: 5, step: 8 }); } };
     const lane = F.RY1 - F.RY0; rut(F.RY0 + lane * 0.38); rut(F.RY0 + lane * 0.78);
     for (let k = 0; k < 10; k++) { const x0 = R(0, TW); wrap(gr, [[x0, F.RY0 + lane * 0.58], [x0 + TW * R(0.1, 0.3), F.RY0 + lane * 0.6]], { w: 4 * s + 2, cols: [rLit], a: 0.35, nb: 4, step: 8 }); }
@@ -1107,12 +1113,12 @@ class Component extends DCLogic {
       const x = R(0, TW), y = F.RY0 + lane * R(0.35, 0.8), w = R(40, 90) * s, h = R(5, 9) * s;
       wdab(gr, x, y, w, h, 0, [hm(pal.deep, pal.mid, 0.4), hm(pal.mid, pal.deep, 0.3)], 0.9, 10); wdab(gr, x - w * 0.15, y - h * 0.15, w * 0.4, 2 * s + 1, 0, [hm(pal.hi, '#ffffff', 0.3)], 0.5, 3);
     }
-    for (let k = 0; k < 140; k++) wdab(gr, R(0, TW), R(F.RY0 + 4, F.RY1 - 3), R(2, 5) * s + 1, R(2, 4) * s + 1, R(0, 3), [hm('#8a8a80', pal.bg, 0.45), hm('#5a5a52', pal.bg, 0.4)], 0.85, 3);
+    for (let k = 0; k < 40; k++) wdab(gr, R(0, TW), R(F.RY0 + 4, F.RY1 - 3), R(4, 9) * s + 1, R(2, 4) * s + 1, R(0, 3), [hm('#8a8a80', pal.bg, 0.45), hm('#5a5a52', pal.bg, 0.4)], 0.85, 3);
     yield;
     // verges: grass blades along both edges of the road, and the near bank down to the bottom
-    for (let y = F.RY1 - 2; y < H + 8; y += 5 + 5 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.1, 0.3) * TW; wrap(gr, [[x0, y], [x0 + len, y + R(-2, 2)]], { w: R(8, 14) * s + 4, cols: vc.concat(vDark), a: 0.8, step: 8, chunk: 3, nb: 10 }); } yield; }
-    for (const [ey, dir, n] of [[F.RY0 + 2, -1, 520], [F.RY1, -1, 620]]) {
-      for (let k = 0; k < n; k++) { const x = R(0, TW), h = R(5, 15) * s + 2; wrap(gr, [[x, ey + R(0, 4)], [x + R(-3, 3) * s, ey + R(0, 4) + dir * h]], { w: 2 * s + 1, cols: vc.concat(hm(vc[1], pal.hi, 0.25)), a: 0.85, nb: 3, step: 2, chunk: 2, splay: 0 }); }
+    for (let y = F.RY1 - 2; y < H + 8; y += 5 + 5 * s) { for (let k = 0; k < 5; k++) { const x0 = R(0, TW), len = R(0.1, 0.3) * TW; wrap(gr, trace(x0, y, len * 0.6, (px, py) => 0.2 * nz(px, py * 2)), { w: R(16, 30) * s + 4, cols: rnd() < 0.12 ? [hm(vc[1], ACC[Math.floor(rnd() * ACC.length)], 0.35)] : vc.concat(vDark), a: 0.75, step: 8, chunk: 3, nb: 12, jit: 0.3, splay: 0.6 }); } yield; }
+    for (const [ey, dir, n] of [[F.RY0 + 2, -1, 170], [F.RY1, -1, 200]]) {
+      for (let k = 0; k < n; k++) { const x = R(0, TW), h = R(10, 24) * s + 2; wrap(gr, [[x, ey + R(0, 4)], [x + R(-6, 6) * s, ey + R(0, 4) + dir * h]], { w: 4 * s + 2, cols: vc.concat(hm(vc[1], pal.hi, 0.25)), a: 0.85, nb: 3, step: 2, chunk: 2, splay: 0 }); }
       yield;
     }
     if (FS.snow) for (let k = 0; k < 90; k++) wdab(gr, R(0, TW), R(F.RY1, H), R(20, 60) * s, R(6, 12) * s, 0, ['#dfe9ee', hm('#dfe9ee', pal.deep, 0.3)], 0.6, 8);
@@ -1180,21 +1186,17 @@ class Component extends DCLogic {
     const dab = (g, x, y, len, w, ang, cols, a, nb, extra) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], Object.assign({ w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 5), chunk: 2 }, extra || {})); };
     const h = o.h, tw = o.tw, reach = (mid ? 0.6 : 1) * 270 * s, cw = Math.round(2 * (tw + reach + 24)), above = Math.round(110 * s + 40), below = 14 * s + 6, ch = h + above + below;
     const [cv, g] = F.mk(cw, ch, cw / 2, h + above);   // origin at the foot of the trunk
-    const bark = [fog('#3a2f28'), fog('#2b231e'), fog('#4a3c30')], barkLit = hm(pal.hi, bark[2], mid ? 0.7 : 0.5), moss = fog(FS.snow ? '#dfe9ee' : '#4a6a3a');
+    const TACC = (F.ACC || [pal.hi]).map((c) => fog(c)), bark = [fog('#3a2f28'), fog('#2b231e'), fog('#4a3c30')], barkLit = hm(pal.hi, bark[2], mid ? 0.7 : 0.5), moss = fog(FS.snow ? '#dfe9ee' : '#4a6a3a');
     const lean = R(-0.04, 0.04) * h, hw = (y) => (tw / 2) * (0.62 + 0.38 * Math.max(0, Math.min(1, 1 + y / h)));   // y is negative going up
     const cx = (y) => lean * Math.pow(-y / h, 1.5) + Math.sin(-y / h * 3 + tw) * tw * 0.08;
     // roots first, so the trunk sits on them, and verge colour brushed over their tips
     const vc = FS.grass.map((c) => (FS.snow ? hm(c, pal.deep, 0.35) : this.hmix(c, pal.bg, 0.35)));
     for (let k = 0; k < (mid ? 4 : 7); k++) { const sd = k % 2 ? 1 : -1, sp = R(0.5, 1.5) * tw; stroke(g, [[sd * tw * R(0.1, 0.35), -tw * R(0.6, 1.1)], [sd * (tw * 0.45 + sp * 0.4), -tw * 0.18], [sd * (tw * 0.5 + sp), below * 0.35 + R(-2, 2)]], { w: tw * R(0.2, 0.32), cols: bark, a: 0.95, nb: 8, step: 3, edge: sd < 0 ? barkLit : null }); }
     g.fillStyle = bark[1]; g.beginPath(); g.moveTo(-hw(0), 2); for (let y = 0; y >= -h - above; y -= 20) g.lineTo(cx(y) - hw(y) * 0.95, y); for (let y = -h - above; y <= 0; y += 20) g.lineTo(cx(y) + hw(y) * 0.95, y); g.closePath(); g.fill();
-    for (let k = 0; k < (mid ? 6 : 11); k++) { const off = -1 + ((k + 0.5) / (mid ? 6 : 11)) * 2, pts = []; for (let y = 4; y >= -h - above; y -= 30) pts.push([cx(y) + off * hw(y) * 0.85 + R(-1, 1), y]); stroke(g, pts, { w: tw / (mid ? 3 : 4.5), cols: bark, a: 0.95, step: 5, chunk: 4, nb: 10, load: 3, splay: 0 }); }
+    const nTr = mid ? 3 : 4; for (let k = 0; k < nTr; k++) { const off = -1 + ((k + 0.5) / nTr) * 2, pts = [], wob = R(0, 6); for (let y = 4; y >= -h - above; y -= 40) pts.push([cx(y) + off * hw(y) * 0.7 + Math.sin(y * 0.02 + wob) * tw * 0.12, y]); stroke(g, pts, { w: tw / (nTr - 0.6), cols: bark.concat(rnd() < 0.5 ? hm(bark[2], TACC[k % TACC.length], 0.3) : bark[0]), a: 0.95, step: 6, chunk: 4, nb: 12, load: R(1.2, 3), splay: 0, jit: 0.3 }); }
     yield;
     for (let k = 0; k < 4; k++) { const off = -0.95 + k * 0.08, pts = []; for (let y = 0; y >= -h; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 8 + 1, cols: [barkLit, hm(barkLit, bark[2], 0.4)], a: 0.35, step: 5, chunk: 3, nb: 5, load: R(0.4, 1.2) }); }
-    if (!mid) {
-      for (let k = 0; k < h / 22; k++) { const y = -R(0, h), x = cx(y) + R(-0.6, 0.6) * hw(y); dab(g, x, y, R(5, 12) * s + 2, 2.5 * s + 1, R(-0.3, 0.3) + (rnd() < 0.5 ? 0 : Math.PI / 2), [bark[1], hm(bark[1], '#000000', 0.4)], 0.65, 3); }
-      for (let k = 0; k < 2; k++) { const y = -R(0.2, 0.6) * h, x = cx(y) + R(-0.2, 0.3) * hw(y); g.fillStyle = hm(bark[1], '#000000', 0.5); g.beginPath(); g.ellipse(x, y, 3 * s + 1.5, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); stroke(g, [[x - 4 * s, y - 6 * s], [x - 5 * s, y + 6 * s]], { w: 2 * s + 1, cols: [barkLit], a: 0.5, nb: 3, step: 2 }); }
-      for (let k = 0; k < 14; k++) { const y = -R(0, 0.35) * h, x = cx(y) + R(-0.8, -0.1) * hw(y); dab(g, x, y, R(4, 9) * s + 2, R(3, 5) * s + 1, R(0, 3), [moss, hm(moss, pal.hi, 0.25)], 0.75, 4); }
-    }
+    for (let k = 0; k < (mid ? 1 : 3); k++) { const off = R(-0.8, 0.8), y0 = -R(0.05, 0.6) * h, pts = []; for (let y = y0; y >= y0 - R(0.15, 0.4) * h; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 5 + 2, cols: [TACC[Math.floor(rnd() * TACC.length)]], a: 0.35, nb: 5, step: 5, load: R(0.5, 1) }); }
     for (let k = 0; k < (mid ? 10 : 22); k++) { const x = R(-1.6, 1.6) * tw, y = below * R(-0.1, 0.4); dab(g, x, y, R(6, 14) * s + 2, R(3, 6) * s + 2, R(-0.3, 0.3), vc, 0.85, 5); }
     yield;
     // branches that fork twice, ending in leaf masses
@@ -1202,12 +1204,14 @@ class Component extends DCLogic {
     const masses = [];
     const cluster = (x0, y0, r, nd) => {
       masses.push([x0, y0, r]);
-      for (let k = 0; k < nd * 0.45; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * r, x2 = x0 + Math.cos(a) * rr * 1.25 + r * 0.12, y2 = y0 + Math.sin(a) * rr * 0.8 + r * 0.15; dab(g, x2, y2, R(14, 24) * s + 5, R(9, 14) * s + 4, R(-0.6, 0.6), leafDark, 0.9, 9); }
-      for (let k = 0; k < nd * 0.4; k++) { const a = R(0, 6.3), rr = Math.sqrt(rnd()) * r * 0.9, x2 = x0 + Math.cos(a) * rr * 1.2, y2 = y0 + Math.sin(a) * rr * 0.75; dab(g, x2, y2, R(11, 19) * s + 4, R(7, 11) * s + 3, R(-0.7, 0.7), leaf, 0.9, 8); }
-      for (let k = 0; k < nd * 0.3; k++) { const a = R(3.4, 6.0), rr = Math.sqrt(rnd()) * r * 0.75, x2 = x0 + Math.cos(a) * rr * 1.1 - r * 0.15, y2 = y0 + Math.sin(a) * rr * 0.7 - r * 0.1; dab(g, x2, y2, R(7, 13) * s + 3, R(5, 8) * s + 2, R(-0.8, 0.8), leafLit, 0.92, 6); }
-      for (let k = 0; k < nd * 0.2; k++) { const a = R(0, 6.3), x2 = x0 + Math.cos(a) * r * 1.3, y2 = y0 + Math.sin(a) * r * 0.85; dab(g, x2, y2, R(5, 9) * s + 2, R(2, 4) * s + 1, a + R(-0.4, 0.4), a > 3.4 && a < 6 ? leafLit : leaf, 0.85, 3); }
-      if (FS.bloom) for (let k = 0; k < nd / 5; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 + R(-0.7, 0.6) * r, 4 * s + 2, 3 * s + 2, R(0, 3), FS.bloom.map((c) => fog(c)), 0.95, 4);
-      if (FS.snow) for (let k = 0; k < nd / 3; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 - R(0.2, 0.85) * r, R(10, 16) * s + 3, 4 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, mid ? 0.45 : 0.3), '#dfe9ee'], 0.85, 5);
+      const sweep = (xc, yc, rr, a0, span, w, cols, al) => { const pts = []; for (let q = 0; q <= 9; q++) { const a = a0 + (span * q) / 9; pts.push([xc + Math.cos(a) * rr * 1.3, yc + Math.sin(a) * rr * 0.8]); } stroke(g, pts, { w, cols, a: al, nb: Math.max(6, Math.round(w / 1.3)), step: 4, chunk: 2, splay: 0.8, jit: 0.32 }); };
+      const accLeaf = TACC[Math.floor(rnd() * TACC.length)];
+      for (let k = 0; k < nd * 0.16; k++) sweep(x0 + R(-0.55, 0.55) * r, y0 + r * 0.12 + R(-0.3, 0.3) * r, r * R(0.25, 0.8), R(0, 6.3), R(0.7, 1.7), R(16, 30) * s + 6, leafDark, 0.85);
+      for (let k = 0; k < nd * 0.13; k++) sweep(x0 + R(-0.5, 0.5) * r, y0 + R(-0.3, 0.2) * r, r * R(0.2, 0.7), R(0, 6.3), R(0.6, 1.6), R(13, 24) * s + 5, rnd() < 0.2 ? leaf.concat(hm(leaf[0], accLeaf, 0.45)) : leaf, 0.85);
+      for (let k = 0; k < nd * 0.09; k++) sweep(x0 - r * 0.15, y0 - r * 0.18, r * R(0.15, 0.65), R(3.5, 5.3), R(0.6, 1.5), R(9, 18) * s + 4, leafLit, 0.9);
+      for (let k = 0; k < nd * 0.07; k++) { const a = R(0, 6.3), r0 = r * R(0.6, 0.9); stroke(g, [[x0 + Math.cos(a) * r0 * 1.2, y0 + Math.sin(a) * r0 * 0.8], [x0 + Math.cos(a + 0.2) * r * 1.5, y0 + Math.sin(a + 0.2) * r * 1.0]], { w: R(4, 8) * s + 2, cols: a > 3.4 && a < 6 ? leafLit : leaf, a: 0.85, nb: 4, step: 3, splay: 0.9, jit: 0.3 }); }
+      if (FS.bloom) for (let k = 0; k < nd / 9; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 + R(-0.7, 0.6) * r, 9 * s + 3, 5 * s + 2, R(0, 3), FS.bloom.map((c) => fog(c)), 0.95, 4);
+      if (FS.snow) for (let k = 0; k < nd / 7; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 - R(0.2, 0.85) * r, R(20, 34) * s + 3, 7 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, mid ? 0.45 : 0.3), '#dfe9ee'], 0.85, 5);
     };
     const branch = (x, y, ang, len, w, depth) => {
       const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len, mx = (x + ex) / 2 + Math.cos(ang) * len * 0.12, my = (y + ey) / 2 + len * 0.08;
