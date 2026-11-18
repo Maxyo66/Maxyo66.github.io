@@ -826,21 +826,26 @@ class Component extends DCLogic {
   // shaded undersides are crusted with sponges and pink coralline algae. Corals thin
   // out with depth while sponges get bigger.
   CORAL_KINDS = ['stag', 'table', 'brain', 'soft', 'fan', 'tubes', 'anemone', 'sponge', 'whip', 'pen'];
-  CORAL_CATS = { stag: [2, 8, 11], table: [9, 8, 2], brain: [8, 3, 9, 11], soft: [1, 3, 10, 2], fan: [10, 1, 3, 2], tubes: [3, 10, 8], anemone: [1, 9, 2, 10], sponge: [7, 11, 8], whip: [2, 10, 11], pen: [1, 8, 11] };
+  CORAL_CATS = { stag: [2, 8, 11], table: [9, 8, 2], brain: [8, 3, 9, 11], soft: [1, 3, 10, 2], fan: [10, 1, 3, 2], tubes: [3, 10, 8], anemone: [1, 9, 2, 10], sponge: [7, 11, 8, 2, 10, 3, 6, 9], whip: [2, 10, 11], pen: [1, 8, 11] };
   initWall(vw, vh) {
     let seed = 21; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const sc = Math.max(0.5, Math.min(1, vw / 1440)), len = vh * 4.6;
     const branch = (x, y, a, l, d, out) => { const x2 = x + Math.cos(a) * l, y2 = y + Math.sin(a) * l; out.push([x, y, x2, y2, d]); if (d < 3) { branch(x2, y2, a - 0.35 - rnd() * 0.3, l * 0.72, d + 1, out); branch(x2, y2, a + 0.3 + rnd() * 0.3, l * 0.72, d + 1, out); } return out; };
-    let last = '';
+    let spongeForm = Math.floor(rnd() * 5); const placed = [];
     const mk = (kind, h) => {
       const cats = this.CORAL_CATS[kind];
       const it = { kind, h, cat: cats[Math.floor(rnd() * cats.length)], cat2: [11, 8, 9, 1][Math.floor(rnd() * 4)], ph: rnd() * 6, n: 4 + Math.floor(rnd() * 3) };
       if (kind === 'stag') it.segs = branch(0, 0, -Math.PI / 2 + (rnd() - 0.5) * 0.5, h * 0.4, 0, []);
+      if (kind === 'sponge') {
+        it.form = ['barrel', 'vase', 'rope', 'ear', 'ball'][spongeForm++ % 5];
+        if (it.form === 'rope') it.fingers = Array.from({ length: 3 + Math.floor(rnd() * 3) }, () => [(rnd() - 0.5) * 1.1, 0.6 + rnd() * 0.5, rnd() * 6]);
+        if (it.form === 'ball') it.lumps = Array.from({ length: 5 }, () => [(rnd() - 0.5) * 0.7, 0.25 + rnd() * 0.4, 0.16 + rnd() * 0.12]);
+      }
       if (kind === 'soft') it.puffs = Array.from({ length: 6 + Math.floor(rnd() * 3) }, () => [(rnd() - 0.5) * h * 0.95, -h * (0.4 + rnd() * 0.6), h * (0.14 + rnd() * 0.1)]);
       return it;
     };
-    this.wall = [0, 1].map(() => {
-      const slabs = [];
+    this.wall = [0, 1].map((side) => {
+      const slabs = [], recent = [];
       for (let y = -140 + rnd() * 60; y < len;) {
         const hS = (70 + rnd() * 90) * sc, deep = Math.max(0, Math.min(1, y / len));
         const slab = { y0: y, y1: y + hS, out: (22 + rnd() * 38) * sc, under: 0.35 + rnd() * 0.5, ph: rnd() * 9, type: ['over', 'over', 'bulge', 'slope'][Math.floor(rnd() * 4)], tilt: (rnd() - 0.5) * 0.5, caves: [], crusts: [], corals: [] };
@@ -850,9 +855,14 @@ class Component extends DCLogic {
         // what grows on the lip: plate and table corals up shallow, big sponges deeper
         const n = rnd() < 0.85 - deep * 0.3 ? 1 : 0;
         for (let k = 0; k < n; k++) {
-          let kind; const pool = deep > 0.55 && rnd() < 0.5 ? ['sponge', 'tubes', 'whip', 'fan'] : this.CORAL_KINDS;
-          do kind = pool[Math.floor(rnd() * pool.length)]; while (kind === last && pool.length > 1); last = kind;
-          slab.corals.push({ ...mk(kind, (34 + rnd() * 30) * sc * (kind === 'sponge' ? 1 + deep * 0.6 : 1)), at: 0.25 + rnd() * 0.5 });
+          // no kind twice in a row nearby on this side, and big sponges spread out across both sides
+          const pool = deep > 0.55 && rnd() < 0.4 ? ['sponge', 'tubes', 'whip', 'fan', 'soft', 'anemone'] : this.CORAL_KINDS;
+          const near = (k, r) => placed.some((q) => q.kind === k && Math.abs(q.y - y) < r);
+          let kind, tries = 0;
+          do kind = pool[Math.floor(rnd() * pool.length)];
+          while (tries++ < 30 && (recent.includes(kind) || (kind === 'sponge' && near('sponge', vh * 0.8)) || near(kind, vh * 0.35)));
+          recent.push(kind); if (recent.length > 3) recent.shift(); placed.push({ kind, y, side });
+          slab.corals.push({ ...mk(kind, (34 + rnd() * 30) * sc * (kind === 'sponge' ? 1 + deep * 0.25 : 1)), at: 0.25 + rnd() * 0.5 });
         }
         slabs.push(slab); y += hS * (0.82 + rnd() * 0.1);  // shelves overlap a little, like stacked rock
       }
@@ -919,10 +929,35 @@ class Component extends DCLogic {
         break;
       }
       case 'sponge': {
-        ctx.fillStyle = lin(0.88, 0.4, -h, 0); ctx.beginPath(); ctx.moveTo(-h * 0.2, 0); ctx.quadraticCurveTo(-h * 0.36, -h * 0.6, -h * 0.25, -h); ctx.lineTo(h * 0.25, -h); ctx.quadraticCurveTo(h * 0.36, -h * 0.6, h * 0.2, 0); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = this.g(0.12); ctx.beginPath(); ctx.ellipse(0, -h, h * 0.22, h * 0.06, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = this.g(0.35); ctx.lineWidth = Math.max(1, h / 50); for (let k = 1; k < 7; k++) { ctx.beginPath(); ctx.moveTo(-h * 0.27, -h * k / 7); ctx.lineTo(h * 0.27, -h * k / 7); ctx.stroke(); }
-        for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * h * 0.08, 0); ctx.lineTo(k * h * 0.11, -h); ctx.stroke(); }
+        const f = it.form || 'barrel';
+        if (f === 'barrel') {  // squat barrel with a flared lip and ribbed sides
+          const H = h * 0.8, W = h * 0.34;
+          ctx.fillStyle = lin(0.86, 0.36, -H, 0); ctx.beginPath(); ctx.moveTo(-W * 0.7, 0); ctx.quadraticCurveTo(-W * 1.15, -H * 0.55, -W * 1.05, -H); ctx.lineTo(W * 1.05, -H); ctx.quadraticCurveTo(W * 1.15, -H * 0.55, W * 0.7, 0); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = this.g(0.1); ctx.beginPath(); ctx.ellipse(0, -H, W * 0.88, H * 0.09, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = this.g(0.3); ctx.lineWidth = Math.max(1, h / 50);
+          for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * W * 0.3, 0); ctx.quadraticCurveTo(k * W * 0.5, -H * 0.5, k * W * 0.42, -H); ctx.stroke(); }
+          accent(() => { ctx.strokeStyle = this.g(0.9); ctx.lineWidth = Math.max(1, h / 40); ctx.beginPath(); ctx.ellipse(0, -H, W * 1.02, H * 0.1, 0, Math.PI, Math.PI * 2); ctx.stroke(); });
+        } else if (f === 'vase') {  // narrow foot opening into a tall tilted cup
+          const lean = side * 0.12 + sw;
+          ctx.fillStyle = lin(0.92, 0.4, -h, 0); ctx.beginPath(); ctx.moveTo(-h * 0.07, 0); ctx.quadraticCurveTo(-h * 0.1, -h * 0.5, -h * 0.26 + lean * h, -h * 1.05); ctx.lineTo(h * 0.26 + lean * h, -h * 0.95); ctx.quadraticCurveTo(h * 0.1, -h * 0.5, h * 0.07, 0); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = this.g(0.1); ctx.beginPath(); ctx.ellipse(lean * h, -h, h * 0.24, h * 0.06, -0.2 * side, 0, Math.PI * 2); ctx.fill();
+          accent(() => dots([[-h * 0.06, -h * 0.4], [h * 0.05, -h * 0.62], [-h * 0.1 + lean * h * 0.5, -h * 0.78]], Math.max(1.2, h / 30), 0.9));
+        } else if (f === 'rope') {  // a few thin wavy fingers
+          ctx.strokeStyle = lin(0.9, 0.42, -h * 1.1, 0); ctx.lineWidth = Math.max(2, h / 11);
+          const tips = [];
+          for (const [dx, len, ph] of it.fingers) { const ex = dx * h * 0.5 + Math.sin(t * 0.6 + ph) * h * 0.05, ey = -h * len; tips.push([ex, ey]); ctx.beginPath(); ctx.moveTo(dx * h * 0.15, 0); ctx.bezierCurveTo(dx * h * 0.4 + h * 0.12, -h * len * 0.35, dx * h * 0.3 - h * 0.12, -h * len * 0.7, ex, ey); ctx.stroke(); }
+          accent(() => dots(tips, Math.max(1.4, h / 24), 0.92));
+        } else if (f === 'ear') {  // elephant-ear: a broad wavy plate leaning out from the rock
+          ctx.fillStyle = lin(0.85, 0.38, -h * 0.9, 0); ctx.beginPath(); ctx.moveTo(-h * 0.08, 0);
+          ctx.bezierCurveTo(-h * 0.5, -h * 0.2, -h * 0.55, -h * 0.85, -h * 0.1, -h * 0.82); ctx.quadraticCurveTo(h * 0.1, -h * 0.95, h * 0.3, -h * 0.7);
+          ctx.bezierCurveTo(h * 0.6, -h * 0.45, h * 0.35, -h * 0.1, h * 0.08, 0); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = this.g(0.28); ctx.lineWidth = Math.max(1, h / 45);
+          for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(0, -h * 0.05, h * 0.14 * k, h * 0.24 * k, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+          accent(() => dots([[-h * 0.25, -h * 0.5], [h * 0.2, -h * 0.55], [0, -h * 0.72]], Math.max(1.2, h / 32), 0.9));
+        } else {  // lumpy ball sponge with dark holes
+          for (const [dx, dy, r] of it.lumps) { ctx.fillStyle = rad(0.9, 0.38, dx * h, -dy * h, r * h); ctx.beginPath(); ctx.arc(dx * h, -dy * h, r * h, 0, Math.PI * 2); ctx.fill(); }
+          ctx.fillStyle = this.g(0.1); for (const [dx, dy, r] of it.lumps) { ctx.beginPath(); ctx.arc(dx * h + r * h * 0.2, -dy * h - r * h * 0.3, r * h * 0.22, 0, Math.PI * 2); ctx.fill(); }
+        }
         break;
       }
       case 'whip': {
