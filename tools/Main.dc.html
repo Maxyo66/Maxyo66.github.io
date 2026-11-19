@@ -2771,9 +2771,16 @@ void main() {
   }
   forestLeave = () => { const F = this.forest; if (F) { F.mouse.x = -999; F.mouse.y = -999; F.hover = {}; } };
 
+  PAINT_SEASON = {
+    spring: ['#b48ac8', '#d68aa8', '#8ab89a', '#8aa8d0', '#e0b0c0'],
+    summer: ['#3a6ab0', '#3a9a9a', '#c8a048', '#4a8a50', '#6a5aa8'],
+    autumn: ['#c06a30', '#a8442e', '#c89a40', '#7a3a58', '#8a6a3a'],
+    winter: ['#6a9ac0', '#4aa0a0', '#9a8ac8', '#5ab890', '#b8cad8'],
+  };
   startBrush(x, y) {
     const F = this.forest; F.paintN = (F.paintN || 0) + 1;
-    const c = this.PAINTS[F.paintN % this.PAINTS.length], w = 16 * F.s + 12, n = Math.round(w / 1.5), br = { x, y, c, w, dist: 0, bris: [], note: -1, nx: 0, ny: 1, tp: 0.35 };
+    // paint is taken from the season's own palette and dulled toward the night, so it sits in the picture
+    const sp = this.PAINT_SEASON[F.season] || this.PAINTS, c = this.hmix(sp[F.paintN % sp.length], F.pal.bg, 0.3), w = 16 * F.s + 12, n = Math.round(w / 1.5), br = { x, y, c, w, dist: 0, bris: [], note: -1, nx: 0, ny: 1, tp: 0.35 };
     for (let i = 0; i < n; i++) br.bris.push({ off: (i + 0.5) / n - 0.5 + ((Math.random() - 0.5) * 0.6) / n, th: (w / n) * (0.8 + Math.random() * 1.3), load: (0.45 + Math.random() * 0.6) * (700 * F.s + 300), col: Math.random() < 0.5 ? this.hmix(c, '#ffffff', Math.random() * 0.3) : this.hmix(c, '#000000', Math.random() * 0.25), a: 0.5 + Math.random() * 0.5 });
     F.brush = br; F.lastPaint = this.time;
     if (this.state.sound && this.audio) { this.endSwish(); F.swish = this.noise(0, 0, 1800, 0.8, (x / F.W) * 1.6 - 0.8, true); }
