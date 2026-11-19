@@ -644,23 +644,36 @@ let autoRot = false, active = false, T = 0;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // pointer: drag orbits (or looks around while riding), a tap clicks
-const ray = new THREE.Raycaster(); let down=null;
-const onDown = e=>{ if (!active) return; down={x:e.clientX,y:e.clientY,moved:0,yaw:cam.yaw,pitch:cam.pitch,ry:rideLook.yaw,rp:rideLook.pitch}; try{ canvas.setPointerCapture(e.pointerId); }catch(_){} };
-const onMove = e=>{ if(!down) return; const dx=e.clientX-down.x, dy=e.clientY-down.y; down.moved=Math.max(down.moved,Math.abs(dx)+Math.abs(dy));
+const ray = new THREE.Raycaster(); let down=null; const pts=new Map(); let pinch=null;
+// one finger (or the mouse) drags to orbit and taps to click; two fingers pinch to zoom, twist or slide to rotate
+const base=(x,y,multi)=>({x,y,moved:multi?99:0,multi:!!multi,yaw:cam.yaw,pitch:cam.pitch,ry:rideLook.yaw,rp:rideLook.pitch});
+const pinchState=()=>{ const [a,b]=[...pts.values()]; return {d:Math.hypot(b.x-a.x,b.y-a.y)||1, ang:Math.atan2(b.y-a.y,b.x-a.x), mx:(a.x+b.x)/2, my:(a.y+b.y)/2}; };
+const onDown = e=>{ if (!active) return; pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+  if (pts.size===1){ down=base(e.clientX,e.clientY,false); pinch=null; }
+  else if (pts.size===2 && !camRide){ const p=pinchState(); pinch={...p, dist:cam.dist, yaw:cam.yaw, pitch:cam.pitch}; if (down){ down.multi=true; down.moved=99; } }
+  if (e.pointerType!=='mouse') e.preventDefault(); };
+const onMove = e=>{ if (pts.has(e.pointerId)) pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(!down) return;
+  if (pinch && pts.size>=2){ const p=pinchState(); let da=p.ang-pinch.ang; if (da>Math.PI) da-=TAU; if (da<-Math.PI) da+=TAU;
+    cam.dist=Math.max(12,Math.min(60,pinch.dist*pinch.d/p.d));
+    cam.yaw=pinch.yaw - da - (p.mx-pinch.mx)*.006; cam.pitch=Math.max(-.05,Math.min(1.1,pinch.pitch+(p.my-pinch.my)*.004)); cam.idle=0; return; }
+  if (pts.size>1 && !camRide) return;
+  const dx=e.clientX-down.x, dy=e.clientY-down.y; down.moved=Math.max(down.moved,Math.abs(dx)+Math.abs(dy));
   if (camRide){ rideLook.yaw = down.ry - dx*.005; rideLook.pitch = Math.max(-1, Math.min(1, down.rp - dy*.004)); return; }
   cam.yaw = down.yaw - dx*.006; cam.pitch = Math.max(-.05, Math.min(1.1, down.pitch + dy*.004)); cam.idle=0; };
-const onUp = e=>{ if(!down) return; const moved=down.moved; down=null; if (moved>6 || !active) return;
+const onUp = e=>{ pts.delete(e.pointerId); if(!down) return;
+  if (down.multi){ pinch=null; if (pts.size===1){ const q=[...pts.values()][0]; down=base(q.x,q.y,true); } else if (!pts.size) down=null; return; }
+  const moved=down.moved; down=null; if (moved>(e.pointerType==='mouse'?6:12) || !active) return;
   if (camRide){ camRide.dismount(); return; }
   syncAudio();
   const r=canvas.getBoundingClientRect(); const v=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
   ray.setFromCamera(v,camera); const hits=ray.intersectObjects(W.pick,false).filter(h=>{ for(let o=h.object;o;o=o.parent) if(!o.visible) return false; return true; });
   W.click(hits[0]||null, ray.ray); cam.idle=0; };
-const onCancel = ()=>{ down=null; };
+const onCancel = e=>{ pts.delete(e.pointerId); if (!pts.size){ down=null; pinch=null; } };
 const onWheel = e=>{ if (!active) return; e.preventDefault(); cam.dist=Math.max(12,Math.min(60,cam.dist+e.deltaY*.02)); };
 canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointermove', onMove);
 canvas.addEventListener('pointerup', onUp); canvas.addEventListener('pointercancel', onCancel);
 canvas.addEventListener('wheel', onWheel, {passive:false});
-canvas.style.cursor = 'grab';
+canvas.style.cursor = 'grab'; canvas.style.touchAction = 'none';
 
 function frame(dt){
   if (!active) return;
@@ -679,7 +692,7 @@ function frame(dt){
 return {
   frame,
   start(){ active=true; W.reset(); resetCam(); rideLook.yaw=0; rideLook.pitch=0; cw=0; resize(); },
-  stop(){ active=false; down=null; stopPad(); if (droneStop) droneStop(); },
+  stop(){ active=false; down=null; pinch=null; pts.clear(); stopPad(); if (droneStop) droneStop(); },
   drop(){ if (active) W.drop(); },
   setRotate(on){ autoRot=!!on; cam.idle=9; },
   destroy(){ this.stop(); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onCancel); canvas.removeEventListener('wheel', onWheel);
