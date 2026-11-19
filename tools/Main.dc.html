@@ -1318,7 +1318,11 @@ class Component extends DCLogic {
   // One stroke of a bristle brush along pts. Every bristle carries its own load of paint,
   // so a stroke streaks, runs dry and breaks up toward its end, fans out a little where
   // the brush lifts, and can catch light along one edge.
+  // Canvas records paint calls and rasterises them in one go when its queue fills, which lands as a
+  // single ~90 ms stall. Reading one pixel after each slice of work flushes the queue a little at a time.
+  flushPaint() { const g = this._lastG; if (g && g.canvas.width > 1) { try { g.getImageData(0, 0, 1, 1); } catch (e) {} } }
   gouache(g, pts, o) {
+    if (g !== this._lastG) { this.flushPaint(); this._lastG = g; this._nG = 0; } else if (++this._nG % 30 === 0) this.flushPaint();
     const rnd = o.rnd, w = o.w, step = Math.max(1.2, o.step || w * 0.35), P = [pts[0]];
     for (let i = 1; i < pts.length; i++) {
       const a = P[P.length - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
@@ -1373,7 +1377,9 @@ class Component extends DCLogic {
     const pal = this.PALS[this.palKey()] || this.PALS.abyss, key = vw + 'x' + vh + this.palKey() + this.seasonKey(), cur = this.forest;
     if (cur && cur.key !== key && cur.ready && cur.W === vw && cur.H === vh && this.state.scene === 'forest' && budget < 100) {
       let N = this.nextForest; if (!N || N.key !== key) N = this.nextForest = this.newForest(vw, vh, key, pal, cur);
-      const t0 = performance.now(); while (!N.ready && performance.now() - t0 < 6) { const r = N.gen.next(); if (r.done) { N.done = N.ready = true; } }
+      // spend whatever the frame has to spare: more when the drive is running smoothly, less when it is not
+      const now = performance.now(), dt = Math.min(100, now - (this._pfT || now)); this._pfT = now; this._fdt = this._fdt ? this._fdt * 0.85 + dt * 0.15 : 16;
+      const t0 = performance.now(), slice = this._fdt < 18 ? 7 : this._fdt < 24 ? 4 : 2.5; while (!N.ready && performance.now() - t0 < slice) { const r = N.gen.next(); if (r.done) { N.done = N.ready = true; } }
       if (!N.ready) { this.paintMore(cur, 0); return cur; }
       N.dist = cur.dist; N.v = cur.v; N.vt = cur.vt; N.mouse = cur.mouse; if (cur.air) { N.air = cur.air; N.airG = cur.airG; N.airDirty = cur.airDirty; N.lastPaint = cur.lastPaint; }
       if (this.forCv) { const sn = document.createElement('canvas'); sn.width = this.forCv.width; sn.height = this.forCv.height; sn.getContext('2d').drawImage(this.forCv, 0, 0); N.fadeFrom = sn; N.fadeT = performance.now(); }
@@ -1396,7 +1402,7 @@ class Component extends DCLogic {
   // essentials come first so the drive can start while the rest is still being painted.
   *paintForest(F) {
     const { W, H, s, pal, FS, TW } = F, rnd = this.seeded(41), R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k);
-    const mk = (F.mk = (w, h, ox, oy) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * F.d); cv.height = Math.ceil(h * F.d); const g = cv.getContext('2d'); g.scale(F.d, F.d); g.translate(ox || 0, oy || 0); return [cv, g]; });
+    const mk = (F.mk = (w, h, ox, oy) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * F.d); cv.height = Math.ceil(h * F.d); const g = cv.getContext('2d', { willReadFrequently: true }); g.scale(F.d, F.d); g.translate(ox || 0, oy || 0); return [cv, g]; });
     const night = (c, k) => hm(c, pal.bg, k == null ? 0.3 : k);
     const stroke = (g, pts, o) => this.gouache(g, pts, Object.assign({ rnd }, o));
     // a stroke that wraps around the edges of a tile, so tiles join without a seam
@@ -1424,7 +1430,7 @@ class Component extends DCLogic {
       const x = R(-80, W + 40), y = R(-30, hz + 20), c = skyAt(Math.max(0, Math.min(1, y / hz))), acc = rnd() < 0.07;
       const cols = acc ? [hm(c, ACC[Math.floor(rnd() * ACC.length)], 0.45), c] : [c, hm(c, pal.mid, 0.25), hm(c, '#000000', 0.18), hm(c, pal.hi, 0.1)];
       stroke(gs, trace(x, y, R(70, 230) * s, swirl), { w: R(12, 30) * s + 6, cols, a: acc ? 0.5 : 0.6, step: 6, chunk: 3, nb: 14, jit: 0.3, splay: 0.6 });
-      if (i % 25 === 0) yield;
+      if (i % 5 === 0) yield;
     }
     // the moon, laid in with round strokes, and rings of light swirling around it
     const halo = gs.createRadialGradient(mo.x, mo.y, mo.r * 0.8, mo.x, mo.y, mo.r * 6); halo.addColorStop(0, this.rgba(pal.hi, 0.2)); halo.addColorStop(1, this.rgba(pal.hi, 0));
@@ -1469,9 +1475,9 @@ class Component extends DCLogic {
       for (let x = -10; x < TW + 10; x += R(16, 34) * s + 8) {
         const h = R(0.09, 0.19) * H * (row ? 1.15 : 0.85), hw = h * R(0.2, 0.28), sd = Math.floor(rnd() * 1e9) + 1;
         for (const sh of [-TW, 0, TW]) if (x + sh > -hw - 10 && x + sh < TW + hw + 10) fir(gf, x + sh, baseY, h, hw, col, lit, dark, sd);
-        if (rnd() < 0.2) yield;
+        yield;
       }
-      for (let y = baseY; y < baseY + H * 0.05; y += 6 * s + 3) wrap(gf, [[-30, y], [TW * 0.5, y + R(-3, 3)], [TW + 30, y]], { w: 10 * s + 5, cols: [col, dark], a: 0.95, nb: 8, step: 12, chunk: 4, load: 3 });
+      for (let y = baseY; y < baseY + H * 0.05; y += 6 * s + 3) { yield; wrap(gf, [[-30, y], [TW * 0.5, y + R(-3, 3)], [TW + 30, y]], { w: 10 * s + 5, cols: [col, dark], a: 0.95, nb: 8, step: 12, chunk: 4, load: 3 }); }
       F.rows.push({ cv, k: row ? 0.24 : 0.12, y0: ty0, h: th0 }); yield;
     }
     // moonlit mist between the layers, so each row of trees stands out against a lighter band
@@ -1483,7 +1489,9 @@ class Component extends DCLogic {
     const gentle = (x, y) => 0.18 * nz(x, y * 3);
     for (let y = H * 0.665; y < F.RY0 + 4; y += 8 + 7 * s) { for (let k = 0; k < 6; k++) { const x0 = R(0, TW), acc = rnd() < 0.12; wrap(gfl, trace(x0, y + R(-3, 3), R(120, 380) * s, gentle).map(([px, py]) => [px, Math.max(H * 0.665, Math.min(F.RY0 + 6, py))]), { w: R(14, 30) * s + 4, cols: acc ? [hm(gc[1], ACC[Math.floor(rnd() * ACC.length)], 0.4)] : gc, a: acc ? 0.45 : 0.75, step: 8, chunk: 3, nb: 12, jit: 0.3, splay: 0.6 }); } yield; }
     for (let k = 0; k < 10; k++) wdab(gfl, R(0, TW), R(H * 0.7, F.RY0), R(60, 140) * s, R(14, 24) * s, R(-0.1, 0.1), [hm(gc[1], pal.hi, 0.25)], 0.22, 12);
-    if (!FS.snow) for (let k = 0; k < 70; k++) wdab(gfl, R(0, TW), R(H * 0.68, F.RY0), R(10, 22) * s + 2, R(5, 9) * s + 1, R(0, 3), (FS.bloom || FS.leaf).map((c) => night(c, 0.45)), 0.7, 4);
+    // fallen petals lie in small drifts of single petals; leaves elsewhere
+    if (FS.bloom) for (let k = 0; k < 26; k++) { const cx0 = R(0, TW), cy0 = R(H * 0.7, F.RY0); for (let q = 0; q < 7; q++) wdab(gfl, cx0 + R(-30, 30) * s, cy0 + R(-5, 5) * s, R(3, 6) * s + 1, R(2, 3.5) * s + 1, R(0, 3), FS.bloom.map((c) => night(c, 0.45)), 0.55, 2); }
+    else if (!FS.snow) for (let k = 0; k < 70; k++) wdab(gfl, R(0, TW), R(H * 0.68, F.RY0), R(10, 22) * s + 2, R(5, 9) * s + 1, R(0, 3), FS.leaf.map((c) => night(c, 0.45)), 0.7, 4);
     yield;
 
     // ---- the road: a dirt track with ruts, pebbles and puddles, a grassy verge on both sides
@@ -1560,13 +1568,25 @@ class Component extends DCLogic {
     for (let i = 0; i < img.data.length; i += 4) { const v = (Math.random() - 0.5) * 2 + Math.sin(i * 0.0007) * 0.15; img.data[i] = img.data[i + 1] = img.data[i + 2] = v > 0 ? 255 : 0; img.data[i + 3] = Math.min(255, Math.abs(v) * 60); }
     gg2.putImageData(img, 0, 0); F.grain = gcv;
     F.leafSpr = [];
-    for (let q = 0; q < 6; q++) { const sz = 14 * s + 6, [cv, g] = mk(sz, sz, sz / 2, sz / 2), cols = FS.bloom ? FS.bloom : FS.leaf.map((c) => night(c, 0.15)); dab(g, 0, 0, sz * (FS.bloom ? 0.45 : 0.8), sz * (FS.bloom ? 0.35 : 0.45), R(0, 3), cols, 1, 6); F.leafSpr.push({ cv, sz }); }
+    // Falling things are cut to a real shape: in spring a blossom petal (rounded, notched at the tip,
+    // pinker at the base), otherwise a leaf with a pointed tip and a pale midrib.
+    for (let q = 0; q < 8; q++) {
+      const pet = !!FS.bloom, sz = (pet ? 10 : 14) * s + (pet ? 4 : 6), [cv, g] = mk(sz, sz, sz / 2, sz / 2), L = sz * (pet ? 0.42 : 0.46), W2 = sz * (pet ? 0.3 : 0.2);
+      const base = pet ? night(FS.bloom[q % FS.bloom.length], 0.12) : night(FS.leaf[q % FS.leaf.length], 0.15), deep = pet ? night(hm(FS.bloom[0], '#d0607a', 0.45), 0.15) : hm(base, '#000000', 0.25), tip = hm(base, pet ? '#ffffff' : pal.hi, pet ? 0.35 : 0.15);
+      g.rotate(R(-0.3, 0.3)); g.beginPath();
+      if (pet) { g.moveTo(-L, 0); g.bezierCurveTo(-L * 0.4, -W2 * 1.1, L * 0.6, -W2 * 1.2, L, -W2 * 0.3); g.lineTo(L * 0.82, 0); g.lineTo(L, W2 * 0.3); g.bezierCurveTo(L * 0.6, W2 * 1.2, -L * 0.4, W2 * 1.1, -L, 0); }
+      else { g.moveTo(-L, 0); g.quadraticCurveTo(-L * 0.1, -W2 * 1.6, L, 0); g.quadraticCurveTo(-L * 0.1, W2 * 1.6, -L, 0); }
+      const gr = g.createLinearGradient(-L, 0, L, 0); gr.addColorStop(0, deep); gr.addColorStop(0.45, base); gr.addColorStop(1, tip); g.fillStyle = gr; g.fill();
+      g.strokeStyle = pet ? this.rgba(deep, 0.5) : this.rgba(tip, 0.6); g.lineWidth = Math.max(0.6, sz * 0.04); g.beginPath(); g.moveTo(-L * 0.9, 0); g.lineTo(L * (pet ? 0.4 : 0.85), 0); g.stroke();
+      F.leafSpr.push({ cv, sz, pet });
+    }
     F.parts.leaves = []; for (let q = 0; q < (FS.fallN || 0); q++) F.parts.leaves.push(this.newLeaf(F, R(0, W), R(-H, H), FS.fall === 'snow'));
     F.flies = []; for (let q = 0; q < 26; q++) F.flies.push({ x: R(0, W), y: R(H * 0.45, H * 0.95), ph: R(0, 6), sp: R(0.3, 0.8), vx: 0, vy: 0 });
     F.motes = []; for (let q = 0; q < 50; q++) F.motes.push({ x: R(0, W), y: R(0, H), ph: R(0, 6) });
 
     // ---- the first few trees, ferns and tufts; then the drive can begin
-    for (let i = 0; i < 3; i++) F.lib.near.push(yield* this.paintTree(F, rnd, { h: H * R(0.92, 1.02), tw: R(26, 44) * s + 8, near: true }));
+    // the darkened foreground copies are made here too, so the first one to pass doesn't hitch
+    for (let i = 0; i < 3; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.92, 1.02), tw: R(26, 44) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
     for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.5, 0.62), tw: R(12, 20) * s + 5, near: false }));
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 110) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
     F.ready = true; yield;
@@ -1578,11 +1598,11 @@ class Component extends DCLogic {
     { const o = this.paintCampfire(F, rnd); yield* P(o.cv); F.lib.sets.campfire = o; }
     { const o = yield* this.paintBridge(F, rnd); yield* P(o.cv); yield* P(o.front.cv); F.lib.sets.bridge = o; }
     { const o = yield* this.paintCabin(F, rnd); yield* P(o.cv); F.lib.sets.cabin = o; }
-    { const o = this.paintLanterns(F, rnd); yield* P(o.cv); for (const l of o.sprites) yield* P(l.cv, 0.5); F.lib.sets.lanterns = o; }
+    { const o = this.paintLanterns(F, rnd); yield* P(o.cv); for (const l of o.sprites) { yield* P(l.cv, 0.5); this.tinted(l, 'on', 'brightness(1.5)'); this.tinted(l, 'off', 'brightness(0.55) saturate(0.6)'); yield; } F.lib.sets.lanterns = o; }
     { const o = this.paintMailbox(F, rnd); yield* P(o.cv); F.lib.sets.mailbox = o; }
     { const o = this.paintRing(F, rnd); yield* P(o.cv, 0.6); F.lib.sets.ring = o; }
     { const o = this.paintFox(F, rnd); for (const k of ['sit', 'trot']) yield* P(o[k].cv); F.lib.sets.fox = o; }
-    for (let i = 0; i < 4; i++) F.lib.near.push(yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }));
+    for (let i = 0; i < 4; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
     for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.45, 0.62), tw: R(10, 20) * s + 5, near: false }));
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 120) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
   }
@@ -1614,7 +1634,7 @@ class Component extends DCLogic {
     // branches that fork twice, ending in leaf masses
     const leaf = FS.leaf.map((c) => fog(c)), leafLit = FS.leaf.map((c) => hm(fog(c), pal.hi, mid ? 0.12 : 0.25)), leafDark = FS.leaf.map((c) => hm(fog(c), '#000000', 0.35));
     const masses = [];
-    const cluster = (x0, y0, r, nd) => {
+    const cluster = function* (x0, y0, r, nd) {
       masses.push([x0, y0, r]);
       const sweep = (xc, yc, rr, a0, span, w, cols, al) => { const pts = []; for (let q = 0; q <= 9; q++) { const a = a0 + (span * q) / 9; pts.push([xc + Math.cos(a) * rr * 1.3, yc + Math.sin(a) * rr * 0.8]); } stroke(g, pts, { w, cols, a: al, nb: Math.max(6, Math.round(w / 1.3)), step: 4, chunk: 2, splay: 0.8, jit: 0.32 }); };
       const accLeaf = TACC[Math.floor(rnd() * TACC.length)], lobes = [];
@@ -1622,30 +1642,37 @@ class Component extends DCLogic {
       lobes.push([x0, y0, r * 0.75]);
       const blob = () => { g.beginPath(); for (const [lx, ly, lr] of lobes) { g.moveTo(lx + lr * 1.3, ly); g.ellipse(lx, ly, lr * 1.3, lr * 0.85, 0, 0, Math.PI * 2); } };
       g.save(); blob(); g.fillStyle = leafDark[0]; g.fill(); g.clip();
+      yield;
       for (let k = 0; k < nd * 0.16; k++) sweep(x0 + R(-0.55, 0.55) * r, y0 + r * 0.12 + R(-0.3, 0.3) * r, r * R(0.25, 0.8), R(0, 6.3), R(0.7, 1.7), R(16, 30) * s + 6, leafDark, 0.85);
+      yield;
       for (let k = 0; k < nd * 0.13; k++) sweep(x0 + R(-0.5, 0.5) * r, y0 + R(-0.3, 0.2) * r, r * R(0.2, 0.7), R(0, 6.3), R(0.6, 1.6), R(13, 24) * s + 5, rnd() < 0.2 ? leaf.concat(hm(leaf[0], accLeaf, 0.45)) : leaf, 0.85);
       for (let k = 0; k < nd * 0.09; k++) sweep(x0 - r * 0.15, y0 - r * 0.18, r * R(0.15, 0.65), R(3.5, 5.3), R(0.6, 1.5), R(9, 18) * s + 4, leafLit, 0.9);
-      g.restore();
+      g.restore(); yield;
       // the moonlit rim along the top left of the mass
       for (let k = 0; k < 3; k++) { const a0 = R(3.5, 4.2), pts = []; for (let q = 0; q <= 8; q++) { const a = a0 + (R(0.6, 1.2) * q) / 8; pts.push([x0 + Math.cos(a) * r * 1.05 * 1.25, y0 + Math.sin(a) * r * 0.75]); } stroke(g, pts, { w: R(4, 7) * s + 2, cols: leafLit.map((c) => hm(c, pal.hi, 0.25)), a: 0.8, nb: 5, step: 3, jit: 0.25 }); }
       for (let k = 0; k < nd * 0.07; k++) { const a = R(0, 6.3), r0 = r * R(0.6, 0.9); stroke(g, [[x0 + Math.cos(a) * r0 * 1.2, y0 + Math.sin(a) * r0 * 0.8], [x0 + Math.cos(a + 0.2) * r * 1.5, y0 + Math.sin(a + 0.2) * r * 1.0]], { w: R(4, 8) * s + 2, cols: a > 3.4 && a < 6 ? leafLit : leaf, a: 0.85, nb: 4, step: 3, splay: 0.9, jit: 0.3 }); }
-      if (FS.bloom) for (let k = 0; k < nd / 9; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 + R(-0.7, 0.6) * r, 9 * s + 3, 5 * s + 2, R(0, 3), FS.bloom.map((c) => fog(c)), 0.95, 4);
+      // blossom: loose sprays of small round flowers, thicker toward the lit top of the mass
+      if (FS.bloom) for (let k = 0; k < nd / 7; k++) {
+        const bx = x0 + R(-1.05, 1.05) * r, by = y0 + R(-0.75, 0.45) * r, cols = FS.bloom.map((c) => fog(c));
+        for (let q = 0; q < 5 + Math.floor(rnd() * 5); q++) { const fx = bx + R(-9, 9) * s, fy = by + R(-6, 6) * s, fr = R(1.6, 3.2) * s + 0.8; g.globalAlpha = R(0.7, 1); g.fillStyle = cols[Math.floor(rnd() * cols.length)]; g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill(); if (rnd() < 0.5) { g.fillStyle = hm(cols[0], '#c8507a', 0.4); g.beginPath(); g.arc(fx, fy, fr * 0.35, 0, Math.PI * 2); g.fill(); } }
+        g.globalAlpha = 1;
+      }
       if (FS.snow) for (let k = 0; k < nd / 7; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 - R(0.2, 0.85) * r, R(20, 34) * s + 3, 7 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, mid ? 0.45 : 0.3), '#dfe9ee'], 0.85, 5);
     };
-    const branch = (x, y, ang, len, w, depth) => {
+    const branch = function* (x, y, ang, len, w, depth) {
       const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len, mx = (x + ex) / 2 + Math.cos(ang) * len * 0.12, my = (y + ey) / 2 + len * 0.08;
       stroke(g, [[x, y], [mx, my], [ex, ey]], { w, cols: bark, a: 0.95, nb: Math.max(4, Math.round(w)), step: 3, edge: ang < 0 ? barkLit : null });
       if (FS.snow && ang > -1.4 && ang < 1.4) stroke(g, [[x, y - w * 0.4], [mx, my - w * 0.5], [ex, ey - w * 0.4]], { w: w * 0.5, cols: ['#dfe9ee'], a: 0.7, nb: 4, step: 3, load: 0.8 });
-      if (depth < 2) { branch(ex, ey, ang - R(0.3, 0.6), len * 0.62, w * 0.6, depth + 1); if (rnd() < 0.7) branch(ex, ey, ang + R(0.3, 0.6), len * 0.55, w * 0.55, depth + 1); }
-      else cluster(ex, ey, R(26, 42) * s * (mid ? 0.6 : 1) + 8, mid ? 30 : 46);
+      if (depth < 2) { yield* branch(ex, ey, ang - R(0.3, 0.6), len * 0.62, w * 0.6, depth + 1); if (rnd() < 0.7) yield* branch(ex, ey, ang + R(0.3, 0.6), len * 0.55, w * 0.55, depth + 1); }
+      else yield* cluster(ex, ey, R(26, 42) * s * (mid ? 0.6 : 1) + 8, mid ? 30 : 46);
     };
     const nbr = mid ? 2 : 3 + Math.floor(rnd() * 2);
     for (let b = 0; b < nbr; b++) {
       const sd = b % 2 ? 1 : -1, y = -h * R(0.42, 0.72), x = cx(y) + sd * hw(y) * 0.6;
       if (o.owl && b === 1) continue;
-      branch(x, y, sd * R(0.7, 1.2), R(50, 90) * s * (mid ? 0.6 : 1), tw * 0.22, 0); yield;
+      yield* branch(x, y, sd * R(0.7, 1.2), R(50, 90) * s * (mid ? 0.6 : 1), tw * 0.22, 0);
     }
-    for (let c = 0; c < (mid ? 3 : 4); c++) { cluster(cx(-h) + R(-150, 150) * s * (mid ? 0.6 : 1), -h + R(-10, h * 0.12), R(45, 75) * s * (mid ? 0.6 : 1) + 10, mid ? 50 : 80); yield; }
+    for (let c = 0; c < (mid ? 3 : 4); c++) { yield* cluster(cx(-h) + R(-150, 150) * s * (mid ? 0.6 : 1), -h + R(-10, h * 0.12), R(45, 75) * s * (mid ? 0.6 : 1) + 10, mid ? 50 : 80); yield; }
     const T = { cv, cw, ch, ax: cw / 2, ay: h + above, h, tw, masses, near: !mid, lean };
     if (o.owl) {
       // a stub branch for the owl to sit on
@@ -1695,38 +1722,78 @@ class Component extends DCLogic {
   }
 
   // ---- set pieces: each is painted once, then placed along the road
+  // A white-tailed stag, built like one: a deep chest and slim waist, a long neck, a wedge of a
+  // head with big ears and branching antlers, and legs with real joints (the hind hock bends
+  // backwards). Each part is blocked in as a flat shape first, then brushed over with fur that
+  // follows the body, lit along the back by the moon. Drawn facing the way it runs.
   paintDeer(F, rnd) {
-    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), sc = 1.15 * s + 0.2;
-    const fur = hm('#8a5a3a', pal.bg, 0.35), furD = hm('#5a3a26', pal.bg, 0.35), furL = hm(hm('#b07a4e', pal.bg, 0.25), pal.hi, 0.15), cream = hm('#e8dcc8', pal.bg, 0.35), dark = hm('#2a1c14', pal.bg, 0.2);
+    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), sc = 1.05 * s + 0.2, nt = (c, k) => hm(c, pal.bg, k);
+    const fur = nt('#8f6040', 0.3), furD = nt('#5a3a25', 0.3), furL = hm(nt('#c08b5c', 0.2), pal.hi, 0.18), cream = nt('#efe6d6', 0.28), dark = nt('#1e140e', 0.12), antC = hm(nt('#e8dcc0', 0.1), pal.hi, 0.1), antD = nt('#a8916c', 0.15);
     const pose = (kind) => {
-      const W0 = 150 * sc, H0 = 150 * sc, [cv, g] = F.mk(W0, H0, W0 * 0.42, H0 - 4); g.scale(sc, sc);
-      const st = (pts, w, cols, a, extra) => this.gouache(g, pts, Object.assign({ rnd, w, cols, a: a || 0.95, nb: Math.max(3, Math.round(w * 1.2)), step: 2 }, extra || {}));
-      const leap = kind === 'leap', head = kind === 'graze' ? [62, -24] : [60, -112], by = leap ? -72 : -64;
-      // legs
-      const legs = leap ? [[[-30, by + 8], [-48, by + 22], [-66, by + 30]], [[-24, by + 10], [-40, by + 26], [-58, by + 38]], [[28, by + 6], [44, by - 2], [58, by - 14]], [[22, by + 8], [40, by + 4], [56, by - 4]]]
-        : [[[-28, by + 8], [-30, by + 34], [-28, 0]], [[-20, by + 10], [-18, by + 36], [-20, 0]], [[24, by + 8], [26, by + 36], [26, 0]], [[30, by + 8], [34, by + 36], [34, 0]]];
-      legs.forEach((p, i) => st(p, 4, i % 2 ? [furD] : [fur, furD], 0.95));
-      if (!leap) for (const x of [-28, -20, 26, 34]) st([[x - 2, -1], [x + 2, -1]], 3, [dark]);
-      // body
-      g.save(); g.beginPath(); g.ellipse(0, by, 40, 18, leap ? -0.12 : 0, 0, Math.PI * 2); g.clip(); g.fillStyle = fur; g.fill();
-      for (let k = 0; k < 13; k++) for (let j = 0; j < 4; j++) { const yy = by - 17 + k * 2.9, x0 = -46 + j * 22 + R(-4, 4); st([[x0, yy + R(-1, 1)], [x0 + 14, yy - 1.5 + R(-1, 1)], [x0 + 30, yy + R(-1, 1)]], 4.5, k < 4 ? [furL, fur] : k > 9 ? [cream, hm(cream, fur, 0.4)] : [fur, hm(fur, furD, 0.4)], 0.75, { load: 1.5 }); }
-      st([[-38, by - 15], [0, by - 19], [36, by - 15]], 3, [hm(furL, pal.hi, 0.3)], 0.6);
+      const W0 = 200 * sc, H0 = 190 * sc, ax = W0 * 0.5, ay = H0 - 6, [cv, g] = F.mk(W0, H0, ax, ay); g.scale(-sc, sc);
+      const st = (pts, w, cols, a, ex) => this.gouache(g, pts, Object.assign({ rnd, w, cols, a: a || 0.9, nb: Math.max(3, Math.round(w * 1.1)), step: 2 }, ex || {}));
+      const smooth = (P) => { const n = P.length, m = (i) => [(P[i % n][0] + P[(i + 1) % n][0]) / 2, (P[i % n][1] + P[(i + 1) % n][1]) / 2], a = m(n - 1); g.beginPath(); g.moveTo(a[0], a[1]); for (let i = 0; i < n; i++) { const b = m(i); g.quadraticCurveTo(P[i][0], P[i][1], b[0], b[1]); } g.closePath(); };
+      const leap = kind === 'leap', graze = kind === 'graze', tilt = leap ? -0.2 : 0, lift = leap ? -16 : 0;
+      const T = (p) => { const c = Math.cos(tilt), sn = Math.sin(tilt), dy = p[1] + 58; return [p[0] * c - dy * sn, p[0] * sn + dy * c - 58 + lift]; };
+      const add = (p, d) => [p[0] + d[0], p[1] + d[1]];
+      // a leg: a tapered shape through its joints, then a few strokes down its length and a dark hoof
+      const limb = (P, ws, col) => {
+        const L = [], Rr = [], n = P.length;
+        for (let i = 0; i < n; i++) { const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, w = ws[i] / 2; L.push([P[i][0] - (dy / l) * w, P[i][1] + (dx / l) * w]); Rr.push([P[i][0] + (dy / l) * w, P[i][1] - (dx / l) * w]); }
+        g.beginPath(); g.moveTo(L[0][0], L[0][1]); for (let i = 1; i < n; i++) g.lineTo(L[i][0], L[i][1]); for (let i = n - 1; i >= 0; i--) g.lineTo(Rr[i][0], Rr[i][1]); g.closePath(); g.fillStyle = col; g.fill();
+        st(P.slice(0, -1), ws[1] * 0.55, [hm(col, pal.hi, 0.14), col], 0.55, { nb: 4 }); st(L.slice(0, -1), 1.6, [hm(col, '#000000', 0.3)], 0.5, { nb: 2 });
+        const h = P[n - 1], hp = P[n - 2], an = Math.atan2(h[1] - hp[1], h[0] - hp[0]);
+        g.save(); g.translate(h[0], h[1]); g.rotate(an - Math.PI / 2); g.fillStyle = dark; g.beginPath(); g.moveTo(-ws[n - 1] * 0.6, -4); g.lineTo(ws[n - 1] * 0.7, -4); g.lineTo(ws[n - 1] * 0.9, 1.5); g.lineTo(-ws[n - 1] * 0.6, 1.5); g.closePath(); g.fill(); g.restore();
+      };
+      const hip = T([-24, -46]), elbow = T([30, -48]);
+      const front = (dx, k) => (leap ? [add(elbow, [dx, 0]), add(elbow, [dx + 16, 8]), add(elbow, [dx + 5, 22]), add(elbow, [dx + 10, 27])]
+        : [[elbow[0] + dx, elbow[1]], [elbow[0] + dx + 1 + k, -24], [elbow[0] + dx - 1 + k * 1.3, -6], [elbow[0] + dx + 1 + k * 1.4, 0]]);
+      const hind = (dx) => (leap ? [add(hip, [dx, 0]), add(hip, [dx - 22, 14]), add(hip, [dx - 40, 22]), add(hip, [dx - 47, 24])]
+        : [[hip[0] + dx, hip[1]], [hip[0] + dx - 12, -22], [hip[0] + dx - 7, -5], [hip[0] + dx - 5, 0]]);
+      const legW = [9, 6, 4, 3.6], hindW = [12, 6, 4, 3.6];
+      // far legs, in shade
+      limb(hind(7), hindW, furD); limb(front(-6, graze ? -4 : 0), legW, furD);
+      // body and neck, as one silhouette
+      const hd = graze ? [58, -30] : leap ? T([60, -104]) : [56, -108];
+      const torso = [[-44, -60], [-40, -72], [-18, -72], [6, -70], [22, -75], [44, -55], [36, -45], [16, -41], [-6, -41], [-24, -45], [-36, -48], [-43, -53]].map(T);
+      const neck = graze ? [T([14, -76]), [42, -68], [hd[0] + 8, hd[1] - 14], [hd[0] + 8, hd[1] - 4], [hd[0] - 7, hd[1] - 4], [hd[0] - 6, hd[1] - 14], [44, -44], T([44, -52])]
+        : [T([14, -74]), [(hd[0] + 22) / 2 - 2, (hd[1] - 74) / 2 - 2], [hd[0] - 8, hd[1] - 4], [hd[0] + 4, hd[1] + 7], [(hd[0] + 44) / 2 + 5, (hd[1] - 52) / 2 + 4], T([44, -52])];
+      g.save(); smooth(torso); g.fillStyle = fur; g.fill(); smooth(neck); g.fill();
+      smooth(torso); g.clip();
+      // fur strokes that follow the barrel of the body: lit back, warm flank, pale belly
+      for (let k = 0; k < 11; k++) { const v = k / 10, yy = -73 + v * 33; for (let j = 0; j < 3; j++) { const x0 = -48 + j * 30 + R(-6, 6), pts = [0, 1, 2].map((q) => T([x0 + q * 16, yy + Math.sin((x0 + q * 16) * 0.05) * 1.5 + R(-1, 1)])); st(pts, 5, v < 0.25 ? [furL, fur] : v > 0.78 ? [cream, hm(cream, fur, 0.5)] : [fur, hm(fur, furD, 0.35), hm(fur, furL, 0.3)], 0.7, { load: 1.4 }); } }
+      st([T([-30, -48]), T([-38, -58]), T([-34, -68])], 9, [hm(fur, furD, 0.5)], 0.45);   // the swell of the haunch
+      st([T([28, -50]), T([30, -62]), T([20, -70])], 8, [hm(fur, furD, 0.45)], 0.4);     // shoulder
+      st([T([-38, -43]), T([0, -43]), T([34, -45])], 4, [dark], 0.35);                    // shade under the belly
       g.restore();
-      st([[-38, by - 6], [-44, by + 4]], 7, [cream], 0.95); st([[-42, by - 8], [-48, by - 4]], 3, [furD]);
-      // neck and head
-      const nb0 = [30, by - 6];
-      st([nb0, [(nb0[0] + head[0]) / 2 + 4, (nb0[1] + head[1]) / 2], [head[0] - 4, head[1] + 8]], 13, [fur, furL], 0.95);
-      g.save(); g.translate(head[0], head[1]); g.rotate(kind === 'graze' ? 1.2 : 0.35);
-      g.fillStyle = fur; g.beginPath(); g.ellipse(4, 0, 12, 7, 0, 0, Math.PI * 2); g.fill();
-      st([[-6, -2], [16, 2]], 8, [fur, furL], 0.9); g.fillStyle = dark; g.beginPath(); g.arc(16, 2, 2.2, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(2, -2, 1.5, 0, Math.PI * 2); g.fill();
-      st([[-4, -6], [-10, -16]], 5, [fur, furD]); st([[0, -6], [2, -16]], 4, [furD]);
-      // antlers
-      const ant = (sd) => { st([[-2, -7], [-6 + sd * 2, -22], [-2 + sd * 6, -34]], 2.6, [cream, hm(cream, furD, 0.4)], 0.95); st([[-5 + sd * 2, -18], [4 + sd * 3, -24]], 2, [cream]); st([[-4 + sd * 4, -28], [-14 + sd * 2, -38]], 2, [cream]); };
-      ant(-1); ant(1);
+      g.save(); smooth(neck); g.clip();
+      for (let k = 0; k < 8; k++) { const u = k / 7, a = T([18 + u * 22, -74 + u * 18]), b = [hd[0] - 6 + u * 10, hd[1] - 4 + u * 10]; st([a, [(a[0] + b[0]) / 2 + R(-2, 2), (a[1] + b[1]) / 2], b], 5, u < 0.3 ? [furL, fur] : u > 0.75 ? [cream, fur] : [fur, furD], 0.65); }
       g.restore();
-      return { cv, w: W0, h: H0, ax: W0 * 0.42, ay: H0 - 4 };
+      st([T([-38, -70]), T([-10, -74]), T([20, -76])], 2.6, [hm(furL, pal.hi, 0.4)], 0.6, { nb: 3 });   // moonlight along the back
+      // tail: a white flag held up when alarmed, tucked down when calm
+      if (graze) st([T([-42, -66]), T([-47, -60]), T([-47, -54])], 6, [fur, furD], 0.95);
+      else { st([T([-41, -66]), T([-48, -74]), T([-52, -80])], 8, [cream, '#ffffff'], 0.95); st([T([-42, -64]), T([-46, -58])], 7, [cream], 0.9); }
+      // near legs
+      limb(hind(0), hindW, fur); limb(front(0, graze ? 4 : 0), legW, fur);
+      // head: a tapering wedge with a dark nose, a white throat patch, big ears and antlers
+      g.save(); g.translate(hd[0], hd[1]); g.rotate(graze ? 1.62 : leap ? 0.05 + tilt : 0.25); g.scale(1.2, 1.2);
+      const ant = (dx, c1, c2) => {
+        const beam = [[-2 + dx, -7], [-9 + dx, -21], [-3 + dx, -33], [10 + dx, -38], [20 + dx, -34]];
+        st(beam, 3.6, [c1, c2], 0.95, { nb: 4, splay: 0 });
+        for (const [b, t] of [[[-7 + dx, -16], [0 + dx, -24]], [[1 + dx, -35], [0 + dx, -48]], [[9 + dx, -37], [12 + dx, -50]], [[16 + dx, -36], [22 + dx, -46]]]) st([b, t], 2.2, [c1, c2], 0.95, { nb: 3, splay: 0 });
+      };
+      ant(5, antD, hm(antD, '#000000', 0.2));
+      for (const [ex, dd, c] of [[3, -1, furD], [-3, 1, fur]]) { g.save(); g.translate(-4 + ex, -6); g.rotate(-2.3 + dd * 0.15); g.fillStyle = c; g.beginPath(); g.ellipse(0, -8, 4.2, 9.5, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = hm(cream, c, 0.5); g.beginPath(); g.ellipse(0, -8, 2, 6.5, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
+      smooth([[-8, -6], [4, -8], [16, -5], [25, -1], [24, 4], [16, 6], [4, 8], [-8, 6]]); g.fillStyle = fur; g.fill();
+      st([[-6, -5], [8, -6], [22, -2]], 3.5, [furL, fur], 0.75); st([[-4, 4], [10, 5], [20, 4]], 3, [furD, fur], 0.6);
+      g.fillStyle = cream; g.beginPath(); g.ellipse(-4, 7, 4, 2.6, 0.3, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(20, 3.5, 3, 2, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = dark; g.beginPath(); g.ellipse(24.5, 0.5, 2.6, 2.2, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.ellipse(5, -2.5, 2, 1.6, -0.2, 0, Math.PI * 2); g.fill();
+      g.fillStyle = hm(pal.hi, '#ffffff', 0.5); g.beginPath(); g.arc(5.6, -3, 0.6, 0, Math.PI * 2); g.fill();
+      ant(0, antC, antD);
+      g.restore();
+      return { cv, w: W0, h: H0, ax, ay };
     };
-    return { graze: pose('graze'), alert: pose('alert'), leap: pose('leap'), w: 150 * sc, sc };
+    return { graze: pose('graze'), alert: pose('alert'), leap: pose('leap'), w: 170 * sc, sc };
   }
   paintFox(F, rnd) {
     const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), sc = 0.8 * s + 0.15;
@@ -1797,11 +1864,46 @@ class Component extends DCLogic {
     const top = H * 0.67, [cv, g] = F.mk(w, H - top + 4, w / 2, -top);
     const st = (gg, pts, ww, cols, a, ex) => this.gouache(gg, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 3 }, ex || {}));
     const water = hm(pal.deep, pal.mid, 0.35), waterD = hm(water, pal.bg, 0.35), bank = hm('#3a3026', pal.bg, 0.35), wood = hm('#6a5038', pal.bg, 0.3), woodD = hm('#3a2a1e', pal.bg, 0.3), woodL = hm(hm('#8a6a4a', pal.bg, 0.3), pal.hi, 0.2);
-    const half = (y) => (y < RY0 ? Math.max(4, 14 * s + 4 + (y - top) * 0.55) : span * 0.32 + (y - RY1) * 0.9);   // narrow upstream, widening toward you
-    for (let y = top; y < H + 4; y += 4) { if (y > RY0 - 4 && y < RY1) continue; const hw = half(y); g.fillStyle = waterD; g.fillRect(-hw - 6, y, hw * 2 + 12, 4.5); }
-    for (let y = top; y < H + 4; y += 5 * s + 3) { if (y > RY0 - 4 && y < RY1) continue; const hw = half(y); st(g, [[-hw, y], [0, y + R(-1, 1)], [hw, y]], 5 * s + 3, [water, waterD, hm(water, pal.hi, 0.15)], 0.8, { load: 3 }); for (const sd of [-1, 1]) st(g, [[sd * hw - 4, y], [sd * hw + sd * R(6, 16) * s, y + R(-2, 2)]], 5 * s + 2, [bank, hm(bank, '#000000', 0.3)], 0.95); }
+    // A creek that winds in from the woods: it bends as it goes back, narrows with distance, and its
+    // two banks wander independently, so nothing about it is straight or mirrored.
+    const ph = R(0, 6), ph2 = R(0, 6), bendDir = rnd() < 0.5 ? -1 : 1, FAR = RY0 - top;
+    const cx = (y) => { if (y < RY0) { const u = (RY0 - y) / FAR; return bendDir * (Math.sin(u * 2.4) * span * 0.09 + u * u * span * 0.05); } const v = (y - RY1) / (H - RY1); return Math.sin(v * 2.4 + ph2) * span * 0.07; };
+    const wid = (y) => { if (y < RY0) { const u = (RY0 - y) / FAR; return 1.5 + Math.pow(1 - u, 1.5) * span * 0.11; } return span * 0.28 + ((y - RY1) / (H - RY1)) * span * 0.1; };
+    const side = (y, sd) => wid(y) * (1 + 0.16 * Math.sin(y * 0.07 + (sd > 0 ? ph : ph2)) + 0.08 * Math.sin(y * 0.19 + sd * 2));
+    const edge = (y, sd) => cx(y) + sd * side(y, sd);
+    const half = (y) => wid(y);
+    const ys = []; for (let y = top; y <= H + 4; y += 3) ys.push(y);
+    const outline = (pad) => { g.beginPath(); ys.forEach((y, i) => (i ? g.lineTo(edge(y, -1) - pad, y) : g.moveTo(edge(y, -1) - pad, y))); for (let i = ys.length - 1; i >= 0; i--) g.lineTo(edge(ys[i], 1) + pad, ys[i]); g.closePath(); };
+    const grass = (F.FS.grass || ['#3a5030']).map((c) => (F.FS.snow ? hm(c, pal.deep, 0.35) : hm(c, pal.bg, 0.4))), mud = hm(bank, '#000000', 0.25);
+    // muddy margin, then the water, which holds the sky's light in the distance and darkens toward you
+    outline(2.5 * s + 2); g.fillStyle = mud; g.fill();
+    outline(0); const wg = g.createLinearGradient(0, top, 0, H); wg.addColorStop(0, hm(water, pal.hi, 0.12)); wg.addColorStop(0.45, hm(water, waterD, 0.3)); wg.addColorStop(1, waterD); g.fillStyle = wg; g.fill();
+    g.save(); outline(0); g.clip();
+    // current: strokes that run along the channel, short and flat far away, longer close up
+    for (let k = 0; k < 70; k++) {
+      const y = R(top, H), near = (y - top) / (H - top), w0 = wid(y), x0 = cx(y) + R(-0.8, 0.8) * w0, len = (6 + near * 26) * s + 3, dy = (2 + near * 14) * s;
+      const y1 = Math.min(H + 4, y + dy), pts = [[x0, y], [x0 + (cx(y1) - cx(y)) * 0.5 + R(-2, 2), (y + y1) / 2], [x0 + (cx(y1) - cx(y)) + R(-len, len) * 0.4, y1]];
+      st(g, pts, (2 + near * 5) * s + 1.5, [water, waterD, hm(water, pal.deep, 0.4)], 0.5, { nb: 4 });
+    }
+    // reflections of the sky: broken horizontal glints, densest down the middle
+    for (let k = 0; k < 90; k++) {
+      const y = R(top, H), near = (y - top) / (H - top), x0 = cx(y) + R(-0.7, 0.7) * wid(y) * (rnd() < 0.5 ? 0.5 : 1), len = (4 + near * 18) * s + 2;
+      st(g, [[x0 - len / 2, y], [x0 + len / 2, y + R(-0.6, 0.6)]], (1 + near * 1.6) * s + 0.8, [hm(water, pal.hi, 0.55), hm(pal.hi, '#ffffff', 0.2)], R(0.25, 0.6), { nb: 2, step: 2 });
+    }
+    // dark under the overhanging banks
+    for (const sd of [-1, 1]) for (let y = top; y < H; y += 6 * s + 3) st(g, [[edge(y, sd) - sd * 2, y], [edge(y + 8 * s + 4, sd) - sd * 3, y + 8 * s + 4]], (2 + ((y - top) / (H - top)) * 6) * s + 1, [waterD, hm(waterD, '#000000', 0.3)], 0.55, { nb: 3 });
+    g.restore();
     yield;
-    for (let k = 0; k < 18; k++) { const y = R(RY1 + 6, H), sd = rnd() < 0.5 ? -1 : 1; st(g, [[sd * half(y) - 5, y], [sd * half(y) + 5, y]], R(6, 12) * s + 2, [hm('#6a7378', pal.bg, 0.45), hm('#8a9498', pal.hi, 0.3)], 0.95); }
+    // stones, some in the bank and a few mid-stream with a curl of white water behind them
+    const stone = [hm('#6a7378', pal.bg, 0.45), hm('#4a5256', pal.bg, 0.45)], stoneL = hm('#9aa4a8', pal.hi, 0.35);
+    const rock = (x, y, r) => { g.fillStyle = stone[1]; g.beginPath(); g.ellipse(x, y, r * 1.3, r * 0.75, R(-0.2, 0.2), 0, Math.PI * 2); g.fill(); st(g, [[x - r * 0.9, y - r * 0.15], [x, y - r * 0.55], [x + r * 0.8, y - r * 0.2]], r * 0.7, [stone[0], stoneL], 0.85, { nb: 4, step: 2 }); };
+    for (let k = 0; k < 16; k++) { const y = R(top + FAR * 0.3, H), near = (y - top) / (H - top), sd = rnd() < 0.5 ? -1 : 1; if (y > RY0 - 6 && y < RY1 + 4) continue; rock(edge(y, sd) + sd * R(-3, 2) * s, y, (3 + near * 9) * s + 2); }
+    for (let k = 0; k < 4; k++) { const y = R(RY1 + 14, H - 6), near = (y - top) / (H - top), x = cx(y) + R(-0.6, 0.6) * wid(y), r = (3 + near * 6) * s + 2; rock(x, y, r); for (let q = 0; q < 3; q++) st(g, [[x - r * 1.2, y + r * 0.4 + q * 2], [x, y + r * 0.9 + q * 3], [x + r * 1.4, y + r * 0.5 + q * 2]], 1.5 * s + 1, [hm(pal.hi, '#ffffff', 0.4)], 0.55 - q * 0.12, { nb: 2 }); }
+    // grass and reeds hanging over both banks, which hides the hard edge
+    for (const sd of [-1, 1]) for (let y = top + 2; y < H + 4; y += R(3, 7) * s + 2) {
+      if (y > RY0 - 6 && y < RY1 + 2) continue; const near = (y - top) / (H - top), x0 = edge(y, sd) + sd * R(-1, 4) * s, hgt = (3 + near * 16) * s + 2;
+      for (let q = 0; q < 2; q++) { const lean = sd * R(-0.6, 0.2); st(g, [[x0 + R(-3, 3), y + 2], [x0 + lean * hgt * 0.5, y - hgt * 0.5], [x0 + lean * hgt, y - hgt]], (1.2 + near * 2) * s + 1, rnd() < 0.15 ? [hm(grass[0], pal.hi, 0.3)] : grass, 0.9, { nb: 3, step: 2 }); }
+    }
     // deck: planks across the road
     const plank = 9 * s + 4; g.fillStyle = hm(wood, woodD, 0.5); g.fillRect(-span / 2, RY0 - 2, span, RY1 - RY0 + 6);
     for (let x = -span / 2; x < span / 2; x += plank) { st(g, [[x + plank / 2, RY0], [x + plank / 2 + R(-1, 1), RY1 + 2]], plank * 0.8, [wood, hm(wood, woodD, 0.3)], 0.5, { load: 3, jit: 0.08 }); g.globalAlpha = 0.35; g.fillStyle = woodD; g.fillRect(x, RY0, 1.2, RY1 - RY0 + 2); g.globalAlpha = 1; }
@@ -1815,7 +1917,7 @@ class Component extends DCLogic {
     const [fcv, fg] = F.mk(w, railH + 20, w / 2, railH + 10);
     for (let x = -span / 2; x <= span / 2 + 1; x += span / 6) st(fg, [[x, 6], [x, -railH]], 7 * s + 2, [wood, woodD], 0.95, { edge: woodL });
     for (const yy of [-railH + 4, -railH * 0.45]) st(fg, [[-span / 2 - 6, yy], [span / 2 + 6, yy + 1]], 6 * s + 2, [wood, woodD], 0.95, { edge: woodL, load: 3 });
-    return { cv, w, h: H - top + 4, ax: w / 2, top, front: { cv: fcv, w, h: railH + 20, ax: w / 2, ay: railH + 10 }, span, half, plank };
+    return { cv, w, h: H - top + 4, ax: w / 2, top, front: { cv: fcv, w, h: railH + 20, ax: w / 2, ay: railH + 10 }, span, half, cx, plank };
   }
   paintLanterns(F, rnd) {
     const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), span = 380 * s + 80, ph = 150 * s + 40;
@@ -1831,14 +1933,40 @@ class Component extends DCLogic {
     });
     return { cv, w: span + 40, h: ph + 10, ax: span / 2 + 20, ay: ph, span, ph, sprites };
   }
+  // A country mailbox seen a little from the front: a weathered post with a cross-arm and brace,
+  // a long tin box with a rounded top and an arched door, rust where the rain runs, and weeds at the foot.
   paintMailbox(F, rnd) {
-    const { s, pal } = F, hm = (a, b, k) => this.hmix(a, b, k), w = 70 * s + 20, h = 90 * s + 24;
+    const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), w = 96 * s + 30, h = 104 * s + 30;
     const [cv, g] = F.mk(w, h, w / 2, h - 4), st = (pts, ww, cols, a, ex) => this.gouache(g, pts, Object.assign({ rnd, w: ww, cols, a: a || 0.95, nb: Math.max(3, Math.round(ww)), step: 2 }, ex || {}));
-    const wood = hm('#5a4030', pal.bg, 0.3), box = hm('#3e6a8a', pal.bg, 0.3), boxL = hm(box, pal.hi, 0.3);
-    st([[0, 4], [0, -h * 0.55]], 7 * s + 3, [wood, hm(wood, '#000000', 0.3)], 0.95, { edge: hm(wood, pal.hi, 0.3) });
-    g.fillStyle = box; g.beginPath(); g.moveTo(-22 * s - 6, -h * 0.55); g.lineTo(-22 * s - 6, -h * 0.82); g.quadraticCurveTo(0, -h * 1.02, 22 * s + 6, -h * 0.82); g.lineTo(22 * s + 6, -h * 0.55); g.closePath(); g.fill();
-    for (let k = 0; k < 5; k++) st([[-22 * s - 6, -h * (0.58 + k * 0.06)], [22 * s + 6, -h * (0.58 + k * 0.06)]], 5 * s + 2, [box, boxL], 0.75);
-    return { cv, w, h, ax: w / 2, ay: h - 4, flag: { x: 22 * s + 6, y: -h * 0.72 }, slot: { x: -22 * s - 6, y: -h * 0.7 } };
+    const wood = hm('#6a5a48', pal.bg, 0.3), woodD = hm('#3a3026', pal.bg, 0.3), woodL = hm(wood, pal.hi, 0.3);
+    const tin = hm('#8c949a', pal.bg, 0.38), tinD = hm('#555c62', pal.bg, 0.38), tinL = hm(hm('#c4ccd2', pal.bg, 0.25), pal.hi, 0.25), rust = hm('#8a4a2a', pal.bg, 0.35);
+    const yb = -h * 0.6, bh = 22 * s + 8, x0 = -20 * s - 6, x1 = 30 * s + 10, dw = 22 * s + 8, r = dw / 2;
+    // post, leaning a touch, with its grain, then the cross-arm and a brace
+    const lean = R(-3, 3) * s, pw = 8 * s + 4;
+    g.fillStyle = woodD; g.beginPath(); g.moveTo(-pw / 2, 4); g.lineTo(pw / 2, 4); g.lineTo(pw / 2 + lean, yb + 2); g.lineTo(-pw / 2 + lean, yb + 2); g.closePath(); g.fill();
+    for (let k = 0; k < 4; k++) { const o = -pw / 2 + 1 + (k * (pw - 2)) / 3; st([[o, 2], [o + lean * 0.5 + R(-0.5, 0.5), yb * 0.5], [o + lean, yb + 4]], 2.2, k === 0 ? [woodL, wood] : [wood, woodD], 0.8, { nb: 3 }); }
+    st([[x0 + 4, yb + 3], [x1 - 4, yb + 3]], 5 * s + 2, [wood, woodD], 0.95, { edge: woodL, nb: 5 });
+    st([[pw / 2 + lean * 0.4, yb * 0.55], [x1 - 10 * s, yb + 6]], 3.5 * s + 1.5, [wood, woodD], 0.9, { nb: 4 });
+    // the box's long side: dark below, curving up into a moonlit top
+    g.fillStyle = tinD; g.beginPath(); g.moveTo(x0, yb); g.lineTo(x1, yb); g.lineTo(x1, yb - bh + r * 0.6); g.quadraticCurveTo(x1, yb - bh - r * 0.35, x1 - r * 0.9, yb - bh - r * 0.35); g.lineTo(x0, yb - bh - r * 0.35); g.closePath(); g.fill();
+    g.save(); g.clip();
+    for (let k = 0; k < 7; k++) { const v = k / 6, y = yb - bh - r * 0.35 + v * (bh + r * 0.35); st([[x0, y + R(-0.5, 0.5)], [(x0 + x1) / 2, y + R(-0.8, 0.8)], [x1, y]], 4.5 * s + 2, v < 0.3 ? [tinL, tin] : v > 0.75 ? [tinD, hm(tinD, '#000000', 0.25)] : [tin, hm(tin, tinD, 0.4)], 0.8, { load: 2 }); }
+    for (let k = 0; k < 3; k++) { const x = R(x0 + 8, x1 - 4); st([[x, yb - bh * R(0.4, 0.8)], [x + R(-1, 1), yb]], R(1.5, 3) * s + 1, [hm(rust, tinD, 0.3), hm(rust, tinD, 0.6)], R(0.2, 0.35), { nb: 2 }); }
+    g.restore();
+    // the arched door facing us, a hair proud of the box, with its latch
+    const dx = x0 - dw * 0.15, dTop = yb - bh - r * 0.35;
+    g.fillStyle = tin; g.beginPath(); g.moveTo(dx - r, yb + 1); g.lineTo(dx - r, dTop + r); g.arc(dx, dTop + r, r, Math.PI, 0); g.lineTo(dx + r, yb + 1); g.closePath(); g.fill();
+    g.save(); g.clip();
+    for (let k = 0; k < 6; k++) { const v = k / 5, y = dTop + v * (yb - dTop); st([[dx - r, y], [dx + r, y + R(-0.6, 0.6)]], 4 * s + 2, v < 0.35 ? [tinL, tin] : [tin, hm(tin, tinD, 0.3)], 0.75); }
+    st([[dx - r * 0.6, yb - 2], [dx - r * 0.5, yb - bh * 0.5]], 2 * s + 1, [rust], 0.45, { nb: 2 });
+    g.restore();
+    g.strokeStyle = hm(tinD, '#000000', 0.3); g.lineWidth = 1.2; g.beginPath(); g.moveTo(dx - r, yb + 1); g.lineTo(dx - r, dTop + r); g.arc(dx, dTop + r, r, Math.PI, 0); g.lineTo(dx + r, yb + 1); g.stroke();
+    st([[dx + r + 1.5, dTop + r * 0.6], [dx + r + 1.5, yb]], 3 * s + 1.5, [hm(tinD, '#000000', 0.45)], 0.8, { nb: 3 });   // the door's shadow on the box
+    st([[dx - 2 * s - 1, dTop + 2], [dx + 2 * s + 1, dTop + 2]], 3 * s + 1.5, [hm(tinD, '#000000', 0.3)], 0.95, { nb: 2 });
+    // weeds round the foot of the post
+    const grass = (F.FS.grass || ['#3a5030']).map((c) => (F.FS.snow ? hm(c, pal.deep, 0.35) : hm(c, pal.bg, 0.35)));
+    for (let k = 0; k < 16; k++) { const x = R(-1.6, 1.6) * pw, hh = R(8, 22) * s + 3, ln = R(-0.5, 0.5) * hh; st([[x, 4], [x + ln * 0.4, -hh * 0.5], [x + ln, -hh]], R(1.4, 2.6) * s + 1, grass, 0.9, { nb: 3 }); }
+    return { cv, w, h, ax: w / 2, ay: h - 4, flag: { x: x1 - 20 * s - 4, y: yb - bh * 0.5 }, slot: { x: dx, y: yb - bh * 0.5 } };
   }
   paintRing(F, rnd) {
     const { s, pal } = F, R = (a, b) => a + rnd() * (b - a), hm = (a, b, k) => this.hmix(a, b, k), rx = 70 * s + 20, ry = 14 * s + 5, w = rx * 2 + 40, h = 60 * s + 30;
@@ -2110,10 +2238,10 @@ class Component extends DCLogic {
     const sp = o.spr, s = F.s;
     g.strokeStyle = F.pal.hi; g.lineWidth = 1.3; g.lineCap = 'round';
     for (let k = 0; k < 26; k++) {
-      const yy = F.RY1 + 8 + ((k * 37.7 + t * (16 + (k % 5) * 6)) % (F.H - F.RY1)), hw = sp.half(yy), xx = x + Math.sin(k * 2.3) * hw * 0.7, a = 0.15 + 0.3 * Math.max(0, Math.sin(t * 1.4 + k));
+      const yy = F.RY1 + 8 + ((k * 37.7 + t * (16 + (k % 5) * 6)) % (F.H - F.RY1)), hw = sp.half(yy), xx = x + sp.cx(yy) + Math.sin(k * 2.3) * hw * 0.7, a = 0.15 + 0.3 * Math.max(0, Math.sin(t * 1.4 + k));
       g.globalAlpha = a; g.beginPath(); g.moveTo(xx - 5 * s, yy); g.lineTo(xx + 5 * s, yy); g.stroke();
     }
-    for (let k = 0; k < 6; k++) { const yy = sp.top + 6 + ((k * 13 + t * 8) % (F.RY0 - sp.top - 8)), xx = x + Math.sin(k * 1.7 + t) * sp.half(yy) * 0.5; g.globalAlpha = 0.25; g.beginPath(); g.moveTo(xx - 3 * s, yy); g.lineTo(xx + 3 * s, yy); g.stroke(); }
+    for (let k = 0; k < 6; k++) { const yy = sp.top + 6 + ((k * 13 + t * 8) % (F.RY0 - sp.top - 8)), xx = x + sp.cx(yy) + Math.sin(k * 1.7 + t) * sp.half(yy) * 0.5; g.globalAlpha = 0.25; g.beginPath(); g.moveTo(xx - 3 * s, yy); g.lineTo(xx + 3 * s, yy); g.stroke(); }
     g.globalAlpha = 1;
     // planks thunk under the wheels
     const C = this.carState(), inside = Math.abs(C.sx - x) < sp.span / 2 && F.v > 5;
@@ -2131,9 +2259,9 @@ class Component extends DCLogic {
         g.globalAlpha = Math.min(1, (1 - u) * 2.5); g.drawImage(pose.cv, x + dx - pose.ax * sc, by + dy - pose.ay * sc, pose.w * sc, pose.h * sc); g.globalAlpha = 1; return;
       }
       const pose = o.state === 'alert' ? sp.alert : sp.graze, chew = o.state === 'graze' ? Math.sin(t * 3 + o.ph) * 1.2 : 0;
-      g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x, by, 42 * sp.sc, 4 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+      g.globalAlpha = 0.3; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x - 4 * sp.sc, by, 46 * sp.sc, 4 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
       g.drawImage(pose.cv, x - pose.ax, by - pose.ay + chew * 0.3, pose.w, pose.h);
-      o.hit = [x - 50 * sp.sc, by - 130 * sp.sc, x + 80 * sp.sc, by];
+      o.hit = [x - pose.ax, by - 140 * sp.sc, x + pose.w - pose.ax, by];
     } else if (o.kind === 'fox') {
       if (o.state === 'trot') {
         const u = (t - o.t0) / 2.2; if (u >= 1) { o.state = 'gone'; return; }
@@ -2188,7 +2316,7 @@ class Component extends DCLogic {
     } else if (o.kind === 'mailbox') {
       g.drawImage(sp.cv, x - sp.ax, by - sp.ay, sp.w, sp.h);
       const up = o.flag ? Math.min(1, (t - o.flagT) / 0.3) : 0, fx = x + sp.flag.x, fy = by + sp.flag.y;
-      g.save(); g.translate(fx, fy); g.rotate(-up * Math.PI / 2); g.fillStyle = '#2a2018'; g.fillRect(0, -1.5, 3, 18 * s + 4); g.fillStyle = '#e15554'; g.fillRect(0, 12 * s + 2, 12 * s + 4, 7 * s + 3); g.restore();
+      g.save(); g.translate(fx, fy); g.rotate(-Math.PI / 2 - up * Math.PI / 2); g.fillStyle = '#2a2018'; g.fillRect(0, -1.5, 2.5, 16 * s + 4); g.fillStyle = this.hmix('#b2443a', F.pal.bg, 0.25); g.fillRect(0.5, 10 * s + 2, 11 * s + 4, 6 * s + 3); g.fillStyle = this.hmix('#d06a5a', F.pal.hi, 0.3); g.fillRect(0.5, 10 * s + 2, 11 * s + 4, 1.5); g.restore();
       if (o.letter) {
         const u = (t - o.letterT) / 2.4;
         if (u < 1) { const lx = x + sp.slot.x - u * 160 * s + Math.sin(u * 12) * 10 * s, ly = by + sp.slot.y - u * 220 * s; g.save(); g.translate(lx, ly); g.rotate(Math.sin(u * 9) * 0.6); g.globalAlpha = 1 - u * 0.8; g.fillStyle = '#efe6d2'; g.fillRect(-9 * s - 3, -6 * s - 2, 18 * s + 6, 12 * s + 4); g.strokeStyle = '#b0a080'; g.lineWidth = 1; g.beginPath(); g.moveTo(-9 * s - 3, -6 * s - 2); g.lineTo(0, 0); g.lineTo(9 * s + 3, -6 * s - 2); g.stroke(); g.restore(); g.globalAlpha = 1; }
@@ -2228,10 +2356,11 @@ class Component extends DCLogic {
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     const drawLeaf = (p) => {
       if (p.snow) { g.globalAlpha = 0.8; g.fillStyle = '#eef4f7'; g.beginPath(); g.arc(p.x, p.y, 1.6 * s + 0.6, 0, Math.PI * 2); g.fill(); return; }
-      const L = F.leafSpr[p.i]; if (!L) return; g.globalAlpha = 0.95; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.scale(1, 0.5 + 0.5 * Math.abs(Math.sin(t * 2 + p.ph))); g.drawImage(L.cv, -L.sz / 2, -L.sz / 2, L.sz, L.sz); g.restore();
+      // tumbling: it rocks like a pendulum as it drifts and turns edge-on now and then
+      const L = F.leafSpr[p.i]; if (!L) return; g.globalAlpha = 0.95; g.save(); g.translate(p.x, p.y); g.rotate(p.rot + Math.sin(t * 2.1 + p.ph) * 0.7); g.scale(0.25 + 0.75 * Math.abs(Math.cos(t * 1.3 + p.ph * 2)), 0.7 + 0.3 * Math.abs(Math.sin(t * 1.7 + p.ph))); g.drawImage(L.cv, -L.sz / 2, -L.sz / 2, L.sz, L.sz); g.restore();
     };
     for (const p of P.leaves) {
-      p.y += (p.snow ? 18 : 26) * p.sp * dt; p.x += (Math.sin(t * 0.9 + p.ph) * (p.snow ? 8 : 22) + 6) * dt + drift * 0.9; p.rot += p.vr * dt;
+      const pet = F.FS.bloom && !p.snow; p.y += (p.snow ? 18 : pet ? 15 + Math.sin(t * 2.1 + p.ph) * 6 : 26) * p.sp * dt; p.x += (Math.sin(t * 0.9 + p.ph) * (p.snow ? 8 : pet ? 28 : 22) + 6) * dt + drift * 0.9; p.rot += p.vr * dt;
       if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; } if (p.x > W + 10) p.x = -10; drawLeaf(p);
     }
     P.shaken = P.shaken.filter((p) => p.y < H + 10 && p.x < W + 20);
@@ -2261,7 +2390,7 @@ class Component extends DCLogic {
         for (const [mx, my, r] of sp.masses) { const px = cx + (o.flip ? -mx : mx), py = F.baseNear + my; if (Math.hypot((x - px) / 1.3, y - py) < r * 0.85) return { tree: o }; }
       } else if (this.inBox(o.hit, x, y) || this.inBox(o.hit2, x, y)) return { set: o };
     }
-    for (const o of F.objs) if (o.z === 'bridge') { const ox = this.objX(F, o), sp = o.spr; if (y > F.RY1 + 8 && Math.abs(x - ox) < sp.half(y) * 0.95) return { water: o }; }
+    for (const o of F.objs) if (o.z === 'bridge') { const ox = this.objX(F, o), sp = o.spr; if (y > F.RY1 + 8 && Math.abs(x - ox - sp.cx(y)) < sp.half(y) * 0.95) return { water: o }; }
     return {};
   }
   forestDown = (e) => {
