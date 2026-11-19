@@ -94,6 +94,14 @@ main.text-off { opacity: 0; filter: blur(6px); transform: translateY(10px) } mai
 .surface.scene-toForest .sc-meadow, .surface.scene-forest .sc-meadow { transform: translateX(100%) }
 .surface.scene-toForest .sc-forest, .surface.scene-forest .sc-forest { transform: none }
 .surface.scene-meadow .sc-forest, .surface.scene-forest .sc-meadow { visibility: hidden }
+.sc-sky { transform: translateY(-100%); transition: transform 1.3s cubic-bezier(.65,0,.35,1); background: #3f7fb8 }
+.surface.scene-toSky .sc-meadow, .surface.scene-sky .sc-meadow { transform: translateY(100%) }
+.surface.scene-toSky .sc-sky, .surface.scene-sky .sc-sky { transform: none }
+.surface.scene-meadow .sc-sky, .surface.scene-forest .sc-sky, .surface.scene-toForest .sc-sky, .surface.scene-toMeadow .sc-sky, .surface.scene-sky .sc-meadow, .surface.scene-sky .sc-forest, .surface.scene-toSky .sc-forest, .surface.scene-fromSky .sc-forest { visibility: hidden }
+.sky-toast { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); font-family: 'Silkscreen', monospace; font-size: clamp(15px, 2.4vw, 22px); color: #f5c22b; text-shadow: 2px 2px 0 #17171a, -1px -1px 0 #17171a, 1px -1px 0 #17171a, -1px 1px 0 #17171a; text-align: center; pointer-events: none; animation: sky-toast 0.4s ease both }
+.sky-toast.leave { animation: sky-toast-out 0.5s ease both }
+@keyframes sky-toast { from { opacity: 0; transform: translate(-50%, 6px) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes sky-toast-out { from { opacity: 1 } to { opacity: 0 } }
 .surf-bubbles i { position: absolute; left: var(--x); bottom: -20px; width: var(--s); height: var(--s); border-radius: 50%; border: 1.5px solid var(--hi); background: radial-gradient(circle at 32% 30%, rgba(255,255,255,0.55) 0 18%, rgba(255,255,255,0) 24%); opacity: 0; animation: surf-bub 1.4s ease-in var(--d) both }
 @keyframes surf-bub { 0% { transform: translate(0, 0); opacity: 0.9 } 100% { transform: translate(var(--w), -110vh); opacity: 0 } }
 main .wipe-wait { opacity: 0 }
@@ -277,14 +285,18 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" onContextMenu="{{forCtx}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-gl" ref="{{glRef}}" aria-hidden="true" style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 0.4s"></canvas>
+<canvas class="sc-sky" ref="{{skyRef}}" aria-label="The Storm Throne: a ruined palace on the clouds in black, white and gold. Drag to look around. Click the crown, the shields, the dragon, the golden cloud, or the anvil on the red balloon to fall back down." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none"></canvas>
+<sc-if value="{{skyToastOn}}"><div class="sky-toast {{skyToastCls}}" role="status">{{skyToastText}}</div></sc-if>
+<sc-if value="{{skyUi}}"><button onClick="{{skyDrop}}" title="Cut the balloon string and fall back to the meadow" style="position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; white-space: nowrap">Ride the anvil down ↓</button></sc-if>
 <sc-if value="{{surfUi}}"><div style="position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none">
-<span style="color: var(--hi); font-weight: 700">{{surfLabel}}</span>
+<span style="color: var(--hi); font-weight: 700; {{surfLblStyle}}">{{surfLabel}}</span>
 </div></sc-if>
 <sc-if value="{{forestUi}}"><button onClick="{{cycleLook}}" title="Painting style" style="position: absolute; top: 88px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Look: {{lookLabel}} ↻</button></sc-if>
 <sc-if value="{{forestUi}}"><button onClick="{{turnBack}}" style="position: absolute; top: 46px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">↻ Back to the meadow</button></sc-if>
-<sc-if value="{{surfUi}}"><button onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
+<sc-if value="{{groundUi}}"><button onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
 <button onClick="{{closeSurface}}" style="position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer">Dive back ↓</button></sc-if>
-<div class="surf-ctl {{surfCtlCls}}" style="position: absolute; top: 62px; right: 24px; display: flex; gap: 8px; padding: 6px; margin: -6px">
+<div class="surf-ctl {{surfCtlCls}}" style="position: absolute; top: {{surfCtlTop}}px; right: 24px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 6px; margin: -6px">
+<sc-if value="{{skyOn}}"><button onClick="{{skyRotate}}" aria-pressed="{{skyRotStr}}" title="Slowly turn the camera around the palace" style="min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Rotate: {{skyRotLabel}}</button></sc-if>
 <button onClick="{{toggleSound}}" aria-pressed="{{soundStr}}" title="Sound" style="min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Sound: {{soundLabel}}</button>
 <button onClick="{{toggleSurfText}}" aria-pressed="{{surfTextStr}}" title="Hide the text and buttons so you can see the whole painting" style="min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{surfTextLabel}}</button>
 </div>
@@ -688,7 +700,7 @@ class Component extends DCLogic {
   closeSurface = () => {
     if (this.state.surface !== 'up') return;
     if (this.surf) this.surf.hold = false;
-    this.endBrush(); this.stopRoadAudio(); clearTimeout(this.sceneT);
+    this.endBrush(); this.stopRoadAudio(); clearTimeout(this.sceneT); if (this.sky) this.sky.stop(); this.skyLive = false;
     this.setState({ surface: 'out' }); this.sfx('sink');
     clearTimeout(this.surfT); this.surfT = setTimeout(() => { this.car = null; this.setState({ surface: null, scene: 'meadow' }); }, 1500);
   };
@@ -728,6 +740,9 @@ class Component extends DCLogic {
     // a parking spot for the little car at the far left of the front meadow
     S.carX0 = Math.max(14, Math.round(W * 0.07)); { const hy = this.hillY(S, 2, S.carX0); S.carY = Math.round(hy + (H - hy) * 0.42); }
     const nearCar = (li, x, base) => li === 2 && Math.abs(x - S.carX0) < 14 && base > S.carY - 4 && base < S.carY + 3;
+    // the anvil that falls from the Storm Throne lands here, in the front row of flowers
+    S.anvX = Math.max(Math.round(W * 0.24), S.carX0 + 32); { const hy = this.hillY(S, 2, S.anvX); S.anvY = Math.round(hy + (H - hy) * 0.5); }
+    const nearAnvil = (li, x, base) => li === 2 && Math.abs(x - S.anvX) < 12 && base > S.anvY - 3 && base < S.anvY + 2;
     // meadows: flowers grow in clumps of one species (sometimes one colour, sometimes
     // mixed), with a few companions, scattered singles and tufts of grass between
     const SE = this.SEASONS[this.seasonKey()]; S.season = SE;
@@ -739,7 +754,7 @@ class Component extends DCLogic {
       const top = (x) => this.hillY(S, li, x);
       const minD = 2.6 + L.sc * 4.5, placed = [];
       const add = (x, e, cols, base) => {
-        if (x < -4 || x > W + 4 || onPath(x, base) || nearCar(li, x, base)) return;
+        if (x < -4 || x > W + 4 || onPath(x, base) || nearCar(li, x, base) || nearAnvil(li, x, base)) return;
         for (const q of placed) if (Math.abs(q[0] - x) < minD && Math.abs(q[1] - base) < minD * 0.7) return;  // no flowers on top of each other
         placed.push([x, base]);
         const kind = e[0], F = this.FLOWERS[kind], snd = e[4] || kind, D = this.FSND[snd] || this.FSND.daisy;
@@ -758,7 +773,7 @@ class Component extends DCLogic {
       for (let i = 0; i < L.clumps; i++) { const e2 = pick(), x = R(0, W); add(x, e2, colsOf(e2), top(x) + 2 + rnd() * H * L.band); }
       for (let i = 0; i < L.grass; i++) {
         const x = R(-4, W + 4), base = top(x) + 2 + rnd() * H * (L.band + 0.03);
-        if (onPath(x, base) || nearCar(li, x, base)) continue;
+        if (onPath(x, base) || nearCar(li, x, base) || nearAnvil(li, x, base)) continue;
         const blades = [], nb = 2 + Math.floor(rnd() * 4);
         for (let b = 0; b < nb; b++) blades.push({ a: R(-0.5, 0.5), h: R(3, 9) * (0.4 + L.sc) * (SE.snow ? 0.6 : 1), c: SE.grass[Math.floor(rnd() * SE.grass.length)] });
         S.items[li].push({ grass: true, x, base, layer: li, sc: L.sc, blades, ph: R(0, 6), bend: 0, bv: 0 });
@@ -768,6 +783,8 @@ class Component extends DCLogic {
     const along = (y, side) => { const px = this.pathX(S, y); return px + side * (this.pathHalf(S, y) + 3); };
     const ly = H * 0.75; S.items[1].push({ prop: 'lamp', x: along(ly, 1), base: ly, layer: 1 }); S.lampPos = { x: along(ly, 1), y: ly - 12 }; S.lampLit = false;
     S.items[2].push({ prop: 'car', x: S.carX0, base: S.carY, layer: 2 });
+    S.items[2].push({ prop: 'anvil', x: S.anvX, base: S.anvY, layer: 2 });
+    { const vw = W * 3, narrow = vw < 760; S.thunder = { w: 46, h: 21, x: Math.round(Math.min(W - 50, Math.max(4, W * (narrow ? 0.5 : 0.36) - 23))), y: narrow ? 38 : Math.max(2, Math.round(wy * 0.03)) }; }
     // three constellations hidden among the stars; trace them in order to light them up
     const cst = (name, cx, cy, w, h, pts, edges) => ({ name, last: 0, done: 0, edges, pts: pts.map(([u, v]) => [Math.round(cx + u * w), Math.round(cy + v * h)]) });
     S.consts = [
@@ -967,7 +984,10 @@ class Component extends DCLogic {
     const [x, y] = this.surfXY(e);
     const dx = S.mouse.x > -900 ? x - S.mouse.x : 0;
     S.mouse.vx = dx; S.mouse.x = x; S.mouse.y = y; S.mouse.t = this.time;
-    const onCar = this.meadowCarHit(S, x, y); if (onCar !== !!this.carHover) { this.carHover = onCar; this.surfCv.style.cursor = onCar ? 'pointer' : 'crosshair'; }
+    const onCar = this.meadowCarHit(S, x, y), onCloud = this.thunderHit(S, x, y), onAnv = this.anvilHit(S, x, y);
+    if (onCloud && !this.skyLoad) this.loadSky().catch(() => {});
+    const hot = onCar || onCloud || onAnv;
+    if (onCar !== !!this.carHover || onCloud !== !!this.cloudHover || hot !== !!this.surfHot) { this.carHover = onCar; this.cloudHover = onCloud; this.surfHot = hot; this.surfCv.style.cursor = hot ? 'pointer' : 'crosshair'; }
     const Wv = S.wave || (S.wave = { dir: 0, dist: 0, seq: [] }), d = Math.sign(dx);
     if (d && d !== Wv.dir) { Wv.dir = d; Wv.dist = 0; }
     Wv.dist += Math.abs(dx);
@@ -994,13 +1014,15 @@ class Component extends DCLogic {
     });
     setTimeout(() => { if (this.surf) this.surf.song = null; this.secret('You found the meadow song.'); }, at + 600);
   }
-  surfaceLeave = () => { this.carHover = false; if (this.surf) { this.surf.mouse.x = -999; this.surf.mouse.y = -999; this.surf.hold = false; } };
+  surfaceLeave = () => { this.carHover = false; this.cloudHover = false; this.surfHot = false; if (this.surfCv) this.surfCv.style.cursor = 'crosshair'; if (this.surf) { this.surf.mouse.x = -999; this.surf.mouse.y = -999; this.surf.hold = false; } };
   surfaceUp = () => { if (this.surf) this.surf.hold = false; };
   surfaceDown = (e) => {
     const S = this.surf; if (!S || !this.surfCv || this.state.surface !== 'up') return;
     const [x, y] = this.surfXY(e);
     S.mouse.x = x; S.mouse.y = y; S.mouse.vx = 0; S.mouse.t = this.time; S.hold = true;
     if ((this.state.scene || 'meadow') === 'meadow' && this.meadowCarHit(S, x, y)) { S.hold = false; this.carGo(); return; }
+    if ((this.state.scene || 'meadow') === 'meadow' && this.thunderHit(S, x, y)) { S.hold = false; this.skyGo(); return; }
+    if (this.anvilHit(S, x, y)) { S.hold = false; this.anvilClang(S); return; }
     const L = S.light;
     if (Math.abs(x - L.x) < 7 && y > L.y - 50 && y < L.y + 3) { S.sweep = this.time + 3.2; S.nextJump = 0.6; this.sfx('lamp'); return; }
     if (S.lampPos && Math.hypot(x - S.lampPos.x, y - S.lampPos.y) < 7) { S.lampLit = !S.lampLit; this.sfx(S.lampLit ? 'lamp' : 'blip'); return; }
@@ -1060,6 +1082,7 @@ class Component extends DCLogic {
       if (!c.cv) c.cv = this.cloudCanvas(c.shape, pal);
       g.globalAlpha = 0.5; g.drawImage(c.cv, Math.round(c.x), c.y);
     }
+    this.drawThunderCloud(g, S, t, px);
 
     // ---- seasonal air: drifting leaves, falling snow or loose blossom
     for (const p of S.fall) {
@@ -1228,6 +1251,7 @@ class Component extends DCLogic {
 
   drawProp(g, S, p, t, px) {
     if (p.prop === 'car') { this.drawMeadowCar(g, S, t, px); return; }
+    if (p.prop === 'anvil') { this.drawMeadowAnvil(g, S, t, px); return; }
     const wood = '#3a2c20', woodLit = '#5a4632', x = Math.round(p.x), y = Math.round(p.base);
     g.globalAlpha = 1;
     if (p.prop === 'lamp') {
@@ -1297,6 +1321,131 @@ class Component extends DCLogic {
       this.setState({ scene: to });
       if (to === 'forest' && !this.roadHinted) { this.roadHinted = true; this.secret('Click the car to pull over. Click anything you pass. Right-drag to smear the paint.'); }
     }, 1300);
+  }
+
+  // ---- the sky: a thundercloud parked over the meadow pulls you up to the Storm Throne,
+  // a dithered 3D palace (assets/sky-realm.js, loaded with three.js the first time you go)
+  thunderHit(S, x, y) { const T = S.thunder; return !!T && (this.state.scene || 'meadow') === 'meadow' && x > T.x - 2 && x < T.x + T.w + 2 && y > T.y - 2 && y < T.y + T.h + 6; }
+  thunderSprite() {
+    if (this.tcSpr) return this.tcSpr;
+    const Wc = 46, Hc = 21, base = 17, B = this.BAYER;
+    const puffs = [[8, 13, 6], [16, 9, 7.5], [25, 7, 8.5], [34, 9.5, 7], [40, 13, 5.5], [21, 13, 6], [30, 13, 6]];
+    const mk = (lit, body, under) => {
+      const cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc; const g = cv.getContext('2d');
+      for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
+        let best = -1, ny = 0, nx = 0;
+        for (const [cx, cy, r] of puffs) { const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), v = 1 - d / r; if (v > best) { best = v; ny = (y + 0.5 - cy) / r; nx = (x + 0.5 - cx) / r; } }
+        if (best < 0 || y > base + (x > 6 && x < 40 ? 1 : 0)) continue;
+        const th = (B[(y & 3) * 4 + (x & 3)] + 0.5) / 16, light = -ny * 0.8 - nx * 0.35;
+        g.fillStyle = y >= base - 1 || (y > base - 4 && th > 0.45) ? under : light > 0.35 + th * 0.3 ? lit : body; g.fillRect(x, y, 1, 1);
+      }
+      return cv;
+    };
+    return (this.tcSpr = { dim: mk('#a3a9b8', '#5c6274', '#2a2e3a'), lit: mk('#fff4c8', '#d4d0c4', '#7d7a70') });
+  }
+  drawThunderCloud(g, S, t, px) {
+    const T = S.thunder; if (!T) return;
+    const spr = this.thunderSprite(), hover = this.cloudHover && (this.state.scene || 'meadow') === 'meadow';
+    // a flicker of lightning inside it every few seconds says "click me"; hovering keeps it crackling
+    const w = (t + 2) % 6, flick = hover ? Math.sin(t * 23) > 0.55 : (w < 0.09 || (w > 0.2 && w < 0.26)) || t - (T.zap || -9) < 0.5;
+    const bob = Math.round(Math.sin(t * 0.8) * 1) - (hover ? 1 : 0), x0 = T.x, y0 = T.y + bob;
+    g.globalAlpha = 0.95; g.drawImage(flick ? spr.lit : spr.dim, x0, y0);
+    if (flick) {
+      // a tiny gold bolt forks out of the bottom
+      let bx = x0 + 14 + ((Math.floor(t * 7) * 7) % 16), by = y0 + T.h - 3;
+      for (let k = 0; k < 7; k++) { px(bx, by, '#f5c22b', 1); by++; if (k % 2) bx += (Math.floor(t * 31 + k) % 3) - 1; }
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5; g.drawImage(this.glowSprite('#f5c22b'), x0 + 12, y0 + 2); g.globalCompositeOperation = 'source-over';
+    } else if (Math.random() < S.dt * 4) px(x0 + 8 + Math.random() * 30, y0 + T.h - 2 + Math.random() * 6, '#9fb8d0', 0.7);
+    g.globalAlpha = 1;
+  }
+  loadSky() {
+    if (this.skyLoad) return this.skyLoad;
+    const add = (src) => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.async = true; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+    this.skyLoad = (window.THREE ? Promise.resolve() : add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'))
+      .then(() => (window.SkyRealm ? null : add('assets/sky-realm.js')))
+      .catch((e) => { this.skyLoad = null; throw e; });
+    return this.skyLoad;
+  }
+  setSkyCv = (el) => { if (el === this.skyCv) return; if (this.sky) { this.sky.destroy(); this.sky = null; } this.skyCv = el; };
+  ensureSky() {
+    if (this.sky || !this.skyCv || !window.SkyRealm) return this.sky;
+    try {
+      this.sky = window.SkyRealm.create({
+        canvas: this.skyCv,
+        getAudio: () => (this.state.sound && this.audio ? { ctx: this.audio.ctx, out: this.audio.master } : null),
+        toast: (m, secs) => this.skyToast(m, secs),
+        onExit: () => this.skyExit()
+      });
+    } catch (e) { this.sky = null; }
+    return this.sky;
+  }
+  skyToast(text, secs) {
+    clearTimeout(this.skyToastT); this.setState({ skyToast: text, skyToastLeave: false });
+    this.skyToastT = setTimeout(() => { this.setState({ skyToastLeave: true }); this.skyToastT = setTimeout(() => this.setState({ skyToast: '' }), 500); }, (secs || 2.6) * 1000);
+  }
+  skyGo() {
+    if ((this.state.scene || 'meadow') !== 'meadow' || this.state.surface !== 'up') return;
+    const S = this.surf; if (S && S.thunder) S.thunder.zap = this.time;
+    this.sfx('skyUp'); this.endBrush(); this.stopRoadAudio();
+    this.setState({ scene: 'toSky' });
+    const boot = () => { const sky = this.ensureSky(); if (!sky) throw new Error('no sky'); if (!this.skyLive) { this.skyLive = true; sky.setRotate(!!this.state.skyRot); sky.start(); } return sky; };
+    const ready = this.loadSky().then(() => { if (this.state.scene === 'toSky') boot(); });
+    this.skyLive = false;
+    clearTimeout(this.sceneT); this.sceneT = setTimeout(() => {
+      ready.then(() => {
+        if (this.state.scene !== 'toSky') return;
+        boot(); this.setState({ scene: 'sky' });
+        if (!this.skyHinted) { this.skyHinted = true; this.skyToast('Drag to look around. Click anything.', 3.2); }
+      }).catch(() => {
+        this.setState({ scene: 'fromSky' }); this.secret('The storm cloud would not let you up. Try again in a moment.');
+        clearTimeout(this.sceneT); this.sceneT = setTimeout(() => this.setState({ scene: 'meadow' }), 1300);
+      });
+    }, 1300);
+  }
+  skyExit() {
+    if (this.state.scene !== 'sky') return;
+    this.setState({ scene: 'fromSky', skyToast: '' });
+    // the same anvil keeps falling: it drops out of the meadow sky and thuds into the flowers
+    this.mAnvil = { mode: 'wait', t: 0, y: -40, vy: 0 };
+    clearTimeout(this.sceneT); this.sceneT = setTimeout(() => { this.setState({ scene: 'meadow' }); if (this.sky) this.sky.stop(); this.skyLive = false; }, 1300);
+  }
+  skyDrop = () => { if (this.sky && this.state.scene === 'sky') this.sky.drop(); };
+  skyRotate = () => { const on = !this.state.skyRot; this.setState({ skyRot: on }); if (this.sky) this.sky.setRotate(on); };
+  ANVIL_SPR = ['..llllllllllllll......', '.liiiiiiiiiiiiiillll..', 'liiiiiiiiiiiiiiiiiiiil', '.siiiiiiiiiiiiiisssss.', '..ssiiiiiiiiiiss......', '.....siiiiiis.........', '.....siiiiiis.........', '....siiiiiiiis........', '..ssiiiiiiiiiiss......', '.siiiiiiiiiiiiiis.....', '.ssssssssssssssss.....'];
+  anvilHit(S, x, y) { const A = this.mAnvil; return !!A && A.mode === 'rest' && (this.state.scene || 'meadow') === 'meadow' && Math.abs(x - S.anvX) < 13 && y > S.anvY - 15 && y < S.anvY + 3; }
+  anvilClang(S) {
+    const A = this.mAnvil; A.ring = this.time; A.hop = this.time;
+    for (let k = 0; k < 14; k++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, v = 14 + Math.random() * 26; S.sparks.push({ x: S.anvX + (Math.random() - 0.5) * 8, y: S.anvY - 9, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.7, color: Math.random() < 0.5 ? '#f5c22b' : '#fff4c8', spin: 0, big: false }); }
+    this.sfx('clang');
+  }
+  drawMeadowAnvil(g, S, t, px) {
+    const A = this.mAnvil; if (!A) return;
+    const dt = Math.min(0.05, S.dt || 0.016), x0 = S.anvX - 9, ground = S.anvY;
+    if (A.mode === 'wait') { A.t += dt; if (A.t > 0.45) { A.mode = 'fall'; A.t = 0; this.sfx('whistle'); } return; }
+    if (A.mode === 'fall') {
+      A.vy += 520 * dt; A.y += A.vy * dt;
+      if (A.y >= ground) {
+        A.y = ground; A.mode = 'rest'; A.land = this.time; this.sfx('thud');
+        // dust, and the flowers it lands on burst
+        for (let k = 0; k < 22; k++) { const s = k % 2 ? 1 : -1, v = 10 + Math.random() * 30; S.sparks.push({ x: S.anvX + s * (3 + Math.random() * 6), y: ground - 1, vx: s * v, vy: -Math.random() * 18, life: 0.8, color: Math.random() < 0.5 ? '#8a7a66' : '#b8ab96', spin: 0, big: Math.random() < 0.3 }); }
+        for (const f of S.items[2]) if (f.kind && f.petals > 0.6 && Math.abs(f.x - S.anvX) < 22 && Math.abs(f.base - ground) < 8) this.burstFlower(f, true);
+        for (const f of S.items[2]) if (!f.prop && Math.abs(f.x - S.anvX) < 30 && Math.abs(f.base - ground) < 10) f.bv += (f.x < S.anvX ? -1 : 1) * 3;
+      }
+    }
+    // a little bounce after landing, and a hop when you clang it
+    let y = Math.round(A.y);
+    if (A.mode === 'rest') { const u = (this.time - A.land) / 0.35; if (u < 1) y -= Math.round(Math.sin(u * Math.PI) * 3); const h = (this.time - (A.hop || -9)) / 0.25; if (h < 1) y -= Math.round(Math.sin(h * Math.PI) * 2); }
+    const top = y - this.ANVIL_SPR.length;
+    // speed lines and the snapped balloon string trailing above while it falls
+    if (A.mode === 'fall') for (let k = 0; k < 7; k++) { const lx = x0 + 2 + k * 2.6, len = 6 + ((k * 7) % 5) * 3; for (let j = 0; j < len; j++) px(lx, top - 3 - j * 1.4, '#e6f4f2', 0.35 * (1 - j / len)); }
+    g.globalAlpha = 0.4; g.fillStyle = '#000000'; g.fillRect(x0 + 1, ground, 17, 1); g.globalAlpha = 1;
+    const col = { l: '#e4e8ee', i: '#9aa1ab', s: '#555b66' }, ring = Math.max(0, 1 - (this.time - (A.ring || -9)) / 0.6);
+    this.ANVIL_SPR.forEach((r, yy) => { for (let xx = 0; xx < r.length; xx++) { const ch = r[xx]; if (ch === '.') continue; g.fillStyle = ring > 0 && ch !== 's' ? this.mix(col[ch], '#fff4c8', ring * 0.6) : col[ch]; g.fillRect(x0 + xx, top + yy, 1, 1); } });
+    // the frayed end of the string that held it to the balloon
+    const sw = A.mode === 'fall' ? Math.round(Math.sin(t * 20)) : Math.round(Math.sin(t * 1.5) * 0.6);
+    px(x0 + 9, top - 1, '#d6262b', 1); px(x0 + 9 + sw, top - 2, '#d6262b', 1); px(x0 + 10 + sw, top - 3, '#d6262b', 0.8);
+    // a glint on the top now and then says "click me"
+    if (A.mode === 'rest') { const w = (t + 1) % 5; if (w < 0.35) { const a = Math.sin((w / 0.35) * Math.PI), gx = x0 + 4 + Math.round(w * 20), gy = top; px(gx, gy, '#ffffff', a); px(gx - 1, gy, '#ffffff', a * 0.5); px(gx + 1, gy, '#ffffff', a * 0.5); px(gx, gy - 1, '#ffffff', a * 0.5); } }
   }
 
   carLights(C, hover) { if (C.mode !== 'parked' || hover) return 1; if (this.time < (C.lightsOff || 0)) return 1; const w = this.time % 7; return (w < 0.12 || (w > 0.26 && w < 0.38)) ? 1 : 0; }
@@ -2947,9 +3096,10 @@ void main() {
   }
   drawScenes(dt) {
     const sc = this.state.scene || 'meadow';
-    if (sc !== 'forest') this.drawSurface(dt);
-    if (sc !== 'meadow') this.drawForest(dt);
-    else if (this.state.surface === 'up') this.prepForest(window.innerWidth || 1440, window.innerHeight || 900, 5);
+    if ((sc === 'sky' || sc === 'toSky' || sc === 'fromSky') && this.sky) this.sky.frame(dt);
+    if (sc !== 'forest' && sc !== 'sky') this.drawSurface(dt);
+    if (sc === 'forest' || sc === 'toForest' || sc === 'toMeadow') this.drawForest(dt);
+    else if (sc === 'meadow' && this.state.surface === 'up') this.prepForest(window.innerWidth || 1440, window.innerHeight || 900, 5);
   }
 
   // ---- THE DROP-OFF, modelled on real fore-reef walls: stacked limestone shelves,
@@ -4928,6 +5078,10 @@ void main() {
         A.cur = 1 - A.cur;
       }
       const M = this.MUSIC[A.scene], under = A.scene !== 'meadow' && A.scene !== 'forest', hasTrack = !!A.trackG;
+      if ((sc === 'sky' || sc === 'toSky') && this.state.surface === 'up') {
+        A.padBus.gain.setTargetAtTime(0, now, 1.2); if (A.oceanG) A.oceanG.gain.setTargetAtTime(0, now, 1.2); if (A.trackG) A.trackG.gain.setTargetAtTime(0, now, 1.2);
+        if (A.wind) A.wind.g.gain.setTargetAtTime(0, now, 1); return;
+      }
       // under water the friend's track takes over from the synth pad; up top it fades out
       if (A.trackG) A.trackG.gain.setTargetAtTime(under ? 0.5 : 0, now, 2);
       if (A.oceanG) A.oceanG.gain.setTargetAtTime(under ? 0.07 + 0.05 * A.scene : 0.1, now, 2.5);
@@ -4988,6 +5142,10 @@ void main() {
       else if (kind === 'pluck') { A.pi = (A.pi + 1 + (Math.random() < 0.3 ? 1 : 0)) % this.PENTA.length; const f = this.hz(this.PENTA[A.pi]); v(f, 0.9, 0.045, 'triangle', 0.55, null, 0.004); v(f * 2, 0.4, 0.01, 'sine', 0.55, null, 0.004); }
       else if (kind === 'rustle') v(this.hz(this.PENTA[Math.floor(Math.random() * this.PENTA.length)] + 12), 0.25, 0.006, 'sine', 0.8, null, 0.01);
       else if (kind === 'rise') [69, 74, 78, 81].forEach((n, i) => setTimeout(() => this.state.sound && v(this.hz(n), 0.7, 0.02, 'sine', 0.7, null, 0.01), i * 110));
+      else if (kind === 'skyUp') { this.noise(2.2, 0.05, 160, 0.6); v(70, 1.8, 0.05, 'sawtooth', 0.6, 45, 0.05); [62, 69, 74, 81, 86].forEach((n, i) => setTimeout(() => this.state.sound && v(this.hz(n), 0.9, 0.02, 'triangle', 0.8, null, 0.01), 250 + i * 120)); }
+      else if (kind === 'whistle') v(1500, 1.1, 0.025, 'sine', 0.3, 420, 0.1);
+      else if (kind === 'thud') { v(90, 0.7, 0.12, 'sine', 0.3, 38, 0.004); this.noise(0.5, 0.08, 260, 0.7); v(1240, 0.9, 0.015, 'sine', 0.5, null, 0.002); }
+      else if (kind === 'clang') { const f = 1180 + Math.random() * 80; v(f, 1.6, 0.04, 'sine', 0.6, null, 0.002); v(f * 2.76, 0.7, 0.016, 'sine', 0.6, null, 0.002); v(f * 5.4, 0.3, 0.008, 'sine', 0.6, null, 0.002); this.noise(0.12, 0.03, 4200, 1.2); }
       else if (kind === 'sink') [81, 78, 74, 69].forEach((n, i) => setTimeout(() => this.state.sound && v(this.hz(n), 0.7, 0.018, 'sine', 0.7, null, 0.01), i * 110));
       else if (kind === 'lamp') { v(this.hz(69), 1.4, 0.02, 'sine', 0.7, null, 0.02); setTimeout(() => this.state.sound && v(this.hz(76), 1.4, 0.014, 'sine', 0.7, null, 0.02), 90); }
       else if (kind === 'reel') for (let i = 0; i < 7; i++) setTimeout(() => this.state.sound && v(1800 + i * 60, 0.03, 0.006, 'triangle', 0.2, null, 0.002), i * 70);
@@ -5075,8 +5233,12 @@ void main() {
       lureOn: (this.state.zone || 0) === 0 && !this.state.surface && !this.state.intro, openSurface: this.openSurface, surfMove: this.surfaceMove, surfLeave: this.surfaceLeave,
       surfOn: !!this.state.surface, surfDir: this.state.surface || '', surfRef: this.setSurfCv, surfDown: this.surfaceDown, surfUp: this.surfaceUp, cycleSeason: this.cycleSeason, seasonLabel: (this.SEASONS[this.seasonKey()] || {}).label || '', closeSurface: this.closeSurface,
       sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave, forCtx: this.forCtx,
-      forestUi: this.state.scene === 'forest' && !this.state.surfTextOff, surfUi: !this.state.surfTextOff, surfCtlCls: this.state.surfTextOff ? 'ghost' : '', toggleSurfText: () => this.setState({ surfTextOff: !this.state.surfTextOff }), surfTextLabel: this.state.surfTextOff ? 'Show text' : 'Hide text', surfTextStr: this.state.surfTextOff ? 'true' : 'false', turnBack: this.turnBack, glRef: this.setGlCv, cycleLook: this.cycleLook, lookLabel: this.LOOKS[this.state.look || 0],
-      surfLabel: /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
+      forestUi: this.state.scene === 'forest' && !this.state.surfTextOff, surfUi: !this.state.surfTextOff,
+      groundUi: !this.state.surfTextOff && !/ky/.test(this.state.scene || ''), skyOn: /ky/.test(this.state.scene || ''), skyUi: this.state.scene === 'sky' && !this.state.surfTextOff,
+      skyRef: this.setSkyCv, skyDrop: this.skyDrop, skyRotate: this.skyRotate, skyRotLabel: this.state.skyRot ? 'on' : 'off', skyRotStr: this.state.skyRot ? 'true' : 'false', surfCtlTop: 62,
+      skyToastOn: !!this.state.skyToast && this.state.scene === 'sky' && !this.state.surfTextOff, skyToastText: this.state.skyToast || '', skyToastCls: this.state.skyToastLeave ? 'leave' : '', surfCtlCls: this.state.surfTextOff ? 'ghost' : '', toggleSurfText: () => this.setState({ surfTextOff: !this.state.surfTextOff }), surfTextLabel: this.state.surfTextOff ? 'Show text' : 'Hide text', surfTextStr: this.state.surfTextOff ? 'true' : 'false', turnBack: this.turnBack, glRef: this.setGlCv, cycleLook: this.cycleLook, lookLabel: this.LOOKS[this.state.look || 0],
+      surfLblStyle: /ky/.test(this.state.scene || '') ? 'background: var(--panel); padding: 4px 8px; margin: -4px -8px' : '',
+      surfLabel: /ky/.test(this.state.scene || '') ? 'The Storm Throne · above the clouds' : /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /ky/.test(this.state.scene || '') ? 'The Storm Throne: a palace above the clouds, drawn in dithered black, white and gold' : /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
       dzOpen: Object.fromEntries(Object.keys(this.DOSSIERS).map((k) => [k, () => this.openDossier(k)])),
       dzOn: !!this.state.dz, dzLeave: this.state.dzLeaving ? 'leave' : '', closeDz: this.closeDossier,
       hdrRef: (el) => { this.hdrEl = el; }, hdrH: this.state.hdrH || 62, logTop: (this.state.hdrH || 62) + 10, logTopGap: (this.state.hdrH || 62) + 40, logPopTop: (this.state.hdrH || 62) + 230,
