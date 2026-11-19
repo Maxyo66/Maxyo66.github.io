@@ -274,7 +274,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <div class="surf-bubbles {{surfDir}}" aria-hidden="true"><i style="--x: 4%; --s: 10px; --d: 0.0s; --w: 8px"></i><i style="--x: 11%; --s: 6px; --d: 0.15s; --w: -6px"></i><i style="--x: 17%; --s: 14px; --d: 0.05s; --w: 10px"></i><i style="--x: 23%; --s: 8px; --d: 0.3s; --w: -8px"></i><i style="--x: 30%; --s: 12px; --d: 0.1s; --w: 6px"></i><i style="--x: 36%; --s: 6px; --d: 0.4s; --w: -4px"></i><i style="--x: 42%; --s: 16px; --d: 0.2s; --w: 12px"></i><i style="--x: 48%; --s: 9px; --d: 0.05s; --w: -10px"></i><i style="--x: 55%; --s: 12px; --d: 0.35s; --w: 8px"></i><i style="--x: 61%; --s: 7px; --d: 0.12s; --w: -6px"></i><i style="--x: 67%; --s: 15px; --d: 0.25s; --w: 10px"></i><i style="--x: 73%; --s: 8px; --d: 0.0s; --w: -8px"></i><i style="--x: 80%; --s: 11px; --d: 0.18s; --w: 6px"></i><i style="--x: 86%; --s: 6px; --d: 0.42s; --w: -6px"></i><i style="--x: 92%; --s: 13px; --d: 0.08s; --w: 8px"></i><i style="--x: 97%; --s: 8px; --d: 0.3s; --w: -4px"></i><i style="--x: 8%; --s: 7px; --d: 0.55s; --w: 5px"></i><i style="--x: 27%; --s: 9px; --d: 0.6s; --w: -5px"></i><i style="--x: 52%; --s: 7px; --d: 0.62s; --w: 6px"></i><i style="--x: 76%; --s: 10px; --d: 0.5s; --w: -6px"></i></div>
 <section class="surface {{surfDir}} scene-{{sceneCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
 <canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
-<canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
+<canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" onContextMenu="{{forCtx}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
 <div style="position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none">
 <span style="color: var(--hi); font-weight: 700">{{surfLabel}}</span>
 </div>
@@ -1235,7 +1235,7 @@ class Component extends DCLogic {
     this.setState({ scene: to === 'forest' ? 'toForest' : 'toMeadow' }); this.sfx('engine', 'in');
     clearTimeout(this.sceneT); this.sceneT = setTimeout(() => {
       this.setState({ scene: to });
-      if (to === 'forest' && !this.roadHinted) { this.roadHinted = true; this.secret('Click the car to pull over. Click anything you pass.'); }
+      if (to === 'forest' && !this.roadHinted) { this.roadHinted = true; this.secret('Click the car to pull over. Click anything you pass. Right-drag to smear the paint.'); }
     }, 1300);
   }
 
@@ -2037,6 +2037,7 @@ class Component extends DCLogic {
       g.save(); g.translate(x, H + 30 * s); g.scale(1.9, 1.9); g.transform(1, 0, -Math.tan(Math.sin(t * 0.7 + o.ph) * 0.05), 1, 0, 0); g.globalAlpha = 0.95; g.drawImage(this.tinted(sp, 'fg', 'brightness(0.45)'), -sp.cw / 2, -sp.ch + 4, sp.cw, sp.ch); g.restore(); g.globalAlpha = 1;
     }
 
+    this.drawBoil(g, F, t);
     // ---- paper grain, a soft vignette, then the paint in the air on top of it all
     if (!window.__noGrain) { g.globalAlpha = 0.32; g.fillStyle = F.grainPat || (F.grainPat = g.createPattern(F.grain, 'repeat')); g.fillRect(0, 0, W, H); }
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
@@ -2263,6 +2264,7 @@ class Component extends DCLogic {
   forestDown = (e) => {
     const F = this.forest; if (!F || !F.ready || this.state.scene !== 'forest') return;
     const [x, y] = this.forXY(e), M = F.mouse, t = this.time; M.x = x; M.y = y; M.t = t; M.vx = 0;
+    if (e.button === 2 || e.shiftKey) { this.startSmudge(x, y); try { e.target.setPointerCapture(e.pointerId); } catch (err) {} return; }
     const h = this.forestHit(x, y), pan = Math.max(-0.8, Math.min(0.8, (x / F.W) * 1.6 - 0.8));
     if (h.car) { this.carGo(); return; }
     if (h.owl) {
@@ -2311,12 +2313,62 @@ class Component extends DCLogic {
   forestMove = (e) => {
     const F = this.forest; if (!F || !F.ready || !this.forCv) return;
     const [x, y] = this.forXY(e), M = F.mouse; M.vx = M.x > -900 ? x - M.x : 0; M.x = x; M.y = y; M.t = this.time;
+    if (F.smudge) { this.smudgeTo(x, y); return; }
     if (F.brush) { this.paintTo(x, y); return; }
     const h = this.forestHit(x, y), hov = h.car || h.owl || h.set || h.tree || h.water;
     this.forCv.style.cursor = hov ? 'pointer' : 'crosshair'; F.hover = h;
     if (h.owl && h.owl.owl.want < 0.5) h.owl.owl.peek = this.time + 0.8;
   };
-  forestUp = () => { this.endBrush(); };
+  forestUp = () => { this.endBrush(); if (this.forest) this.forest.smudge = null; };
+  forCtx = (e) => { e.preventDefault(); };
+  // Right-drag (or shift-drag) smears the wet paint: a soft round patch of the picture is
+  // lifted from where the brush was and laid down where it is now, then dries away.
+  startSmudge(x, y) {
+    const F = this.forest, r = 26 * F.s + 12, n = Math.ceil(r * 2 * F.d);
+    if (!F.smTmp || F.smTmp.width !== n) {
+      const c = document.createElement('canvas'), m = document.createElement('canvas'); c.width = m.width = c.height = m.height = n;
+      const mg = m.getContext('2d'), gr = mg.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); mg.fillStyle = gr; mg.fillRect(0, 0, n, n);
+      F.smTmp = c; F.smMask = m;
+    }
+    F.smudge = { x, y, r }; F.lastPaint = this.time;
+    if (this.state.sound && this.audio) { this.endSwish(); F.swish = this.noise(0, 0, 700, 0.7, (x / F.W) * 1.6 - 0.8, true); }
+  }
+  smudgeTo(x, y) {
+    const F = this.forest, S = F.smudge; if (!S || !F.air || !this.forCv) return;
+    const dx = x - S.x, dy = y - S.y, L = Math.hypot(dx, dy); if (L < 2) return;
+    const d = F.d, n = F.smTmp.width, tg = F.smTmp.getContext('2d'), ag = F.airG, steps = Math.ceil(L / 5);
+    ag.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 1; i <= steps; i++) {
+      const px = S.x + (dx * (i - 1)) / steps, py = S.y + (dy * (i - 1)) / steps, nx = S.x + (dx * i) / steps, ny = S.y + (dy * i) / steps;
+      tg.globalCompositeOperation = 'copy'; tg.drawImage(this.forCv, (px - S.r) * d, (py - S.r) * d, n, n, 0, 0, n, n);
+      tg.globalCompositeOperation = 'destination-in'; tg.drawImage(F.smMask, 0, 0);
+      ag.globalAlpha = 0.6; ag.drawImage(F.smTmp, (nx - S.r) * d, (ny - S.r) * d);
+    }
+    ag.globalAlpha = 1; S.x = x; S.y = y; F.airDirty = true; F.lastPaint = this.time;
+    if (F.swish && this.audio) F.swish.g.gain.setTargetAtTime(Math.min(0.05, L * 0.003), this.audio.ctx.currentTime, 0.04);
+  }
+  // The boil of hand-painted animation: eight times a second the surface strokes are laid
+  // again, taking colour from the picture beneath and following its edges, so even a still
+  // moment looks freshly painted. It eases off while the car is moving fast.
+  drawBoil(g, F, t) {
+    const W = F.W, H = F.H, s = F.s, bw = Math.ceil(W / 4), bh = Math.ceil(H / 4), tick = Math.floor(t * 8);
+    if (!F.boil) { const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh; F.boil = { cv, g: cv.getContext('2d', { willReadFrequently: true }), tick: -1, st: [] }; }
+    const B = F.boil;
+    if (tick !== B.tick && this.forCv) {
+      B.tick = tick; B.g.drawImage(this.forCv, 0, 0, bw, bh); const D = B.g.getImageData(0, 0, bw, bh).data, px = (x, y) => (Math.max(0, Math.min(bh - 1, y)) * bw + Math.max(0, Math.min(bw - 1, x))) * 4;
+      const L = (i) => D[i] * 0.3 + D[i + 1] * 0.59 + D[i + 2] * 0.11, n = Math.round((W * H) / (2300 * Math.max(0.6, s))); B.st = [];
+      for (let k = 0; k < n; k++) {
+        const x = Math.random() * W, y = Math.random() * H, cx = Math.floor(x / 4), cy = Math.floor(y / 4), i = px(cx, cy);
+        const gx = L(px(cx + 1, cy)) - L(px(cx - 1, cy)), gy = L(px(cx, cy + 1)) - L(px(cx, cy - 1)), ang = Math.hypot(gx, gy) > 6 ? Math.atan2(gy, gx) + Math.PI / 2 : (Math.random() - 0.5) * 0.8;
+        const j = (Math.random() - 0.5) * 40, len = (5 + Math.random() * 10) * s + 2;
+        B.st.push([x, y, Math.cos(ang) * len, Math.sin(ang) * len, (2 + Math.random() * 2.5) * s + 1, 'rgb(' + (D[i] + j | 0) + ',' + (D[i + 1] + j | 0) + ',' + (D[i + 2] + j | 0) + ')', 0.5 + Math.random() * 0.5]);
+      }
+    }
+    const a = 0.55 * (1 - 0.6 * Math.min(1, F.v / (F.cruise || 1))); if (a < 0.03) return;
+    g.lineCap = 'round';
+    for (const [x, y, ex, ey, w, c, al] of B.st) { g.globalAlpha = a * al; g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(x - ex / 2, y - ey / 2); g.quadraticCurveTo(x - ey * 0.15, y + ex * 0.15, x + ex / 2, y + ey / 2); g.stroke(); }
+    g.globalAlpha = 1;
+  }
   forestLeave = () => { const F = this.forest; if (F) { F.mouse.x = -999; F.mouse.y = -999; F.hover = {}; } };
 
   startBrush(x, y) {
@@ -4593,7 +4645,7 @@ class Component extends DCLogic {
       showSurface: (this.state.zone || 0) > 0,
       lureOn: (this.state.zone || 0) === 0 && !this.state.surface && !this.state.intro, openSurface: this.openSurface, surfMove: this.surfaceMove, surfLeave: this.surfaceLeave,
       surfOn: !!this.state.surface, surfDir: this.state.surface || '', surfRef: this.setSurfCv, surfDown: this.surfaceDown, surfUp: this.surfaceUp, cycleSeason: this.cycleSeason, seasonLabel: (this.SEASONS[this.seasonKey()] || {}).label || '', closeSurface: this.closeSurface,
-      sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave,
+      sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave, forCtx: this.forCtx,
       forestUi: this.state.scene === 'forest', turnBack: this.turnBack,
       surfLabel: /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
       dzOpen: Object.fromEntries(Object.keys(this.DOSSIERS).map((k) => [k, () => this.openDossier(k)])),
