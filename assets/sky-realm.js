@@ -470,11 +470,21 @@ function buildStorm(){
 
   /* ---- the way down: an anvil tied to a balloon. Click it and ride the anvil down ---- */
   const anvil=new THREE.Group(); const ANV_HOME=new THREE.Vector3(16,6.5,8); anvil.position.copy(ANV_HOME); S.add(anvil);
-  const iron=lam(0x3c3c3c), ironL=lam(0x6a6a6a);
+  const iron=lam(0x4e4e4e), ironL=lam(0x8a8a8a);
   { const A=(geo,m,x,y,z,rx=0,rz=0)=>{ const k=new THREE.Mesh(geo,m); k.position.set(x,y,z); k.rotation.set(rx,0,rz); anvil.add(k); return k; };
-    A(new THREE.BoxGeometry(1.1,.35,.8),iron,0,-.55,0); A(new THREE.BoxGeometry(.6,.45,.45),iron,0,-.2,0);
-    A(new THREE.BoxGeometry(1.5,.38,.7),ironL,.1,.2,0); A(new THREE.ConeGeometry(.33,.9,4),ironL,1.25,.2,0,0,-Math.PI/2).rotation.y=Math.PI/4;
-    A(new THREE.BoxGeometry(.25,.25,.5),iron,-.75,.2,0); }
+    // a proper blacksmith's anvil: one side profile (flat face, square heel, curved waist,
+    // flared feet) pushed out into a solid, with a round tapering horn on the front
+    const sh=new THREE.Shape();
+    sh.moveTo(-1.0,-.75); sh.lineTo(1.0,-.75); sh.lineTo(1.0,-.6);
+    sh.quadraticCurveTo(.5,-.56,.34,-.2); sh.quadraticCurveTo(.3,.02,.5,.1); sh.lineTo(.85,.12);
+    sh.lineTo(.85,.4); sh.lineTo(-.98,.4); sh.lineTo(-.98,.16);
+    sh.quadraticCurveTo(-.5,.12,-.36,-.06); sh.quadraticCurveTo(-.3,-.45,-.6,-.56); sh.quadraticCurveTo(-.9,-.6,-1.0,-.6); sh.closePath();
+    const body=new THREE.ExtrudeGeometry(sh,{depth:.62,bevelEnabled:true,bevelThickness:.04,bevelSize:.04,bevelSegments:2,curveSegments:10});
+    body.translate(0,0,-.31); A(body,iron,0,0,0);
+    A(new THREE.BoxGeometry(1.83,.06,.66),ironL,-.065,.43,0);  // the polished steel face
+    const horn=new THREE.ConeGeometry(.25,1.05,18); horn.rotateZ(-Math.PI/2); A(horn,ironL,1.37,.17,0).scale.set(1,1,.9);
+    A(new THREE.BoxGeometry(.12,.02,.12),lam(0x111111),-.72,.465,0);  // hardy hole
+    anvil.scale.setScalar(1.15); }
   const balloon=new THREE.Group(); S.add(balloon);
   { const bm=lam(0x000000,0xb00000); const b=new THREE.Mesh(geoBall,bm); b.scale.set(1.1,1.3,1.1); balloon.add(b);
     const knot=new THREE.Mesh(new THREE.ConeGeometry(.15,.3,6),bm); knot.position.y=-1.35; balloon.add(knot);
@@ -498,7 +508,7 @@ function buildStorm(){
       if (Math.random()<.6) puff(S,anvil.position.clone().add(new THREE.Vector3(rand(-1,1),2,rand(-1,1))),{color:0xffffff,size:rand(.2,.5),life:.5,vel:new THREE.Vector3(0,anv.v*.3,0)});
       const pos=anvil.position.clone().add(new THREE.Vector3(2.2,5.5,4.5)); camRide={pos, look:anvil.position.clone().add(new THREE.Vector3(0,-2,0)), dismount:()=>{}};
       if (anvil.position.y < -14 && !anv.exited){ anv.exited=true; if (opts.onExit) opts.onExit(); } }
-    const a=strG.attributes.position.array; const top=balloon.position.clone().add(new THREE.Vector3(0,-1.45,0)), bot=anvil.position.clone().add(new THREE.Vector3(0,.4,0));
+    const a=strG.attributes.position.array; const top=balloon.position.clone().add(new THREE.Vector3(0,-1.45,0)), bot=anvil.position.clone().add(new THREE.Vector3(0,.55,0));
     for (let k=0;k<10;k++){ const u=k/9; const p=bot.clone().lerp(top,u); if (anv.mode!=='float' && u>.5) p.copy(top).add(new THREE.Vector3(Math.sin(t*6+u*8)*.2*(1-u),-(1-u)*2.4,0)); else p.x+=Math.sin(u*Math.PI)*Math.sin(t*1.4)*.25; a[k*3]=p.x; a[k*3+1]=p.y; a[k*3+2]=p.z; }
     if (anv.mode!=='float') for (let k=0;k<5;k++){ const p=bot.clone(); a[k*3]=p.x; a[k*3+1]=p.y+k*.1; a[k*3+2]=p.z; }
     strG.attributes.position.needsUpdate=true;

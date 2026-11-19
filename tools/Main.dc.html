@@ -83,7 +83,18 @@ main.text-off { opacity: 0; filter: blur(6px); transform: translateY(10px) } mai
 @keyframes dz-out { to { transform: translateX(40px); opacity: 0 } }
 @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } } @keyframes fade-out { to { opacity: 0 } }
 .lure .lure-body { transform-origin: 50% 0; transition: transform 0.45s cubic-bezier(.2,1.6,.4,1), filter 0.3s } .lure:hover .lure-body { transform: rotate(-10deg) translateY(3px); filter: drop-shadow(0 0 6px var(--accent)) }
-.surf-ctl { transition: opacity 0.4s } .surf-ctl.ghost { opacity: 0; transition: opacity 1.2s ease 0.6s } .surf-ctl.ghost:hover, .surf-ctl.ghost:focus-within { opacity: 1; transition: opacity 0.25s }
+.surf-ctl { transition: opacity 0.4s }
+/* Hide text / idle fade: everything eases out and back in, nothing blinks. */
+.hdr, .lure, .resurface, .gauge, .surf-ctl { transition: opacity 0.45s ease }
+html.ui-ghost .hdr, html.ui-ghost .lure, html.ui-ghost .resurface, html.ui-ghost .gauge, html.ui-ghost .surf-ctl { opacity: 0; transition: opacity 1.4s ease }
+html.ui-ghost .resurface { animation: none }
+html.ui-ghost .hdr { box-shadow: none }
+.surf-lbl, .for-back, .for-look, .surf-season, .peek-zone { transition: opacity 0.6s ease; animation: ui-in 0.6s ease backwards }
+@keyframes ui-in { from { opacity: 0 } }
+.surface.ui-off .surf-lbl, .surface.ui-off .for-back, .surface.ui-off .for-look, .surface.ui-off .surf-season, .surface.ui-off .peek-zone, .surface.ui-off .sky-toast { opacity: 0 !important; pointer-events: none !important }
+.surface.ui-off .peek-zone * { pointer-events: none !important }
+.sky-toast { transition: opacity 0.6s ease }
+@media (max-width: 700px) { .hdr-more.open { animation: ui-in 0.26s ease both } .hdr-more.open.leave { animation: fade-out 0.26s ease forwards } }
 .surface.in { animation: surf-in 1.5s cubic-bezier(.65,0,.35,1) both } .surface.out { animation: surf-out 1.5s cubic-bezier(.65,0,.35,1) both }
 @keyframes surf-in { from { transform: translateY(-100%) } to { transform: none } }
 @keyframes surf-out { from { transform: none } to { transform: translateY(-100%) } }
@@ -126,7 +137,6 @@ main.text-off { opacity: 0; filter: blur(6px); transform: translateY(10px) } mai
   .for-back, .for-look { top: 82px !important; width: calc((100% - 36px) / 2); padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.06em !important; white-space: nowrap }
   .for-back { left: 14px !important } .for-look { left: auto !important; right: 14px }
 }
-@media (hover: none) { .surf-ctl.ghost { opacity: 0.5 } }
 @media (hover: none) { .peek-zone { pointer-events: none } .peek-btn { pointer-events: auto; transform: translate(-50%, 0); opacity: 1 } }
 .sc-sky { transform: translateY(-100%); transition: transform 1.3s cubic-bezier(.65,0,.35,1); background: #3f7fb8 }
 .surface.scene-toSky .sc-meadow, .surface.scene-sky .sc-meadow { transform: translateY(100%) }
@@ -315,7 +325,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </sc-if>
 <sc-if value="{{surfOn}}" hint-placeholder-val="{{false}}">
 <div class="surf-bubbles {{surfDir}}" aria-hidden="true"><i style="--x: 4%; --s: 10px; --d: 0.0s; --w: 8px"></i><i style="--x: 11%; --s: 6px; --d: 0.15s; --w: -6px"></i><i style="--x: 17%; --s: 14px; --d: 0.05s; --w: 10px"></i><i style="--x: 23%; --s: 8px; --d: 0.3s; --w: -8px"></i><i style="--x: 30%; --s: 12px; --d: 0.1s; --w: 6px"></i><i style="--x: 36%; --s: 6px; --d: 0.4s; --w: -4px"></i><i style="--x: 42%; --s: 16px; --d: 0.2s; --w: 12px"></i><i style="--x: 48%; --s: 9px; --d: 0.05s; --w: -10px"></i><i style="--x: 55%; --s: 12px; --d: 0.35s; --w: 8px"></i><i style="--x: 61%; --s: 7px; --d: 0.12s; --w: -6px"></i><i style="--x: 67%; --s: 15px; --d: 0.25s; --w: 10px"></i><i style="--x: 73%; --s: 8px; --d: 0.0s; --w: -8px"></i><i style="--x: 80%; --s: 11px; --d: 0.18s; --w: 6px"></i><i style="--x: 86%; --s: 6px; --d: 0.42s; --w: -6px"></i><i style="--x: 92%; --s: 13px; --d: 0.08s; --w: 8px"></i><i style="--x: 97%; --s: 8px; --d: 0.3s; --w: -4px"></i><i style="--x: 8%; --s: 7px; --d: 0.55s; --w: 5px"></i><i style="--x: 27%; --s: 9px; --d: 0.6s; --w: -5px"></i><i style="--x: 52%; --s: 7px; --d: 0.62s; --w: 6px"></i><i style="--x: 76%; --s: 10px; --d: 0.5s; --w: -6px"></i></div>
-<section class="surface {{surfDir}} scene-{{sceneCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
+<section class="surface {{surfDir}} scene-{{sceneCls}} {{surfCtlCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
 <canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" onContextMenu="{{forCtx}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-gl" ref="{{glRef}}" aria-hidden="true" style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 0.4s"></canvas>
@@ -855,6 +865,9 @@ class Component extends DCLogic {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       let v = 0; for (const [bx, by, br] of blobs) v = Math.max(v, 1 - Math.hypot((x - bx) / 1.7, y - by) / br);
       if (y > h * 0.72) v *= 0.55;
+      // fade everything inside a soft ellipse so no puff gets clipped square at the sprite's edge
+      const ex = (x + 0.5 - w / 2) / (w / 2), ey = (y + 0.5 - h * 0.55) / (h * 0.5);
+      v = Math.min(v, (1 - Math.hypot(ex, ey)) * 3);
       if (v > 0) cells.push([x, y, v]);
     }
     return { w, h, cells };
@@ -1360,30 +1373,32 @@ class Component extends DCLogic {
   // ---- the sky: a thundercloud parked over the meadow pulls you up to the Storm Throne,
   // a dithered 3D palace (assets/sky-realm.js, loaded with three.js the first time you go)
   thunderHit(S, x, y) { const T = S.thunder; return !!T && (this.state.scene || 'meadow') === 'meadow' && x > T.x - 2 && x < T.x + T.w + 2 && y > T.y - 2 && y < T.y + T.h + 6; }
-  thunderSprite() {
-    if (this.tcSpr) return this.tcSpr;
-    const Wc = 46, Hc = 21, base = 17, B = this.BAYER;
-    const puffs = [[8, 13, 6], [16, 9, 7.5], [25, 7, 8.5], [34, 9.5, 7], [40, 13, 5.5], [21, 13, 6], [30, 13, 6]];
-    const mk = (lit, body, under) => {
-      const cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc; const g = cv.getContext('2d');
-      for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
-        let best = -1, ny = 0, nx = 0;
-        for (const [cx, cy, r] of puffs) { const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), v = 1 - d / r; if (v > best) { best = v; ny = (y + 0.5 - cy) / r; nx = (x + 0.5 - cx) / r; } }
-        if (best < 0 || y > base + (x > 6 && x < 40 ? 1 : 0)) continue;
-        const th = (B[(y & 3) * 4 + (x & 3)] + 0.5) / 16, light = -ny * 0.8 - nx * 0.35;
-        g.fillStyle = y >= base - 1 || (y > base - 4 && th > 0.45) ? under : light > 0.35 + th * 0.3 ? lit : body; g.fillRect(x, y, 1, 1);
+  // The thundercloud is painted exactly like the drifting clouds (same soft dithered blobs
+  // and palette) so it blends into the sky; only its lightning flicker gives it away.
+  thunderSprite(pal) {
+    if (this.tcSpr && this.tcSpr.pal === pal) return this.tcSpr;
+    // round puffs that all sit inside the sprite, so no edge gets cut off square
+    const shape = this.tcShape || (this.tcShape = (() => {
+      const w = 46, h = 21, cells = [], puffs = [[8, 14, 4.5], [14, 11.5, 6], [21, 8.5, 7.5], [28.5, 7.5, 7.5], [35, 10.5, 6], [40, 14, 4.5], [18, 15, 5], [26, 15.5, 5], [33, 15, 4.5]];
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let v = 0; for (const [cx, cy, r] of puffs) v = Math.max(v, 1 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r);
+        // keep the whole silhouette inside a soft ellipse so the underside curves too
+        const ex = (x + 0.5 - 23) / 23, ey = (y + 0.5 - 12) / 9, e = (1 - Math.hypot(ex, ey)) * 4;
+        v = Math.min(v * 1.25, e, 1);
+        if (v > 0) cells.push([x, y, v]);
       }
-      return cv;
-    };
-    return (this.tcSpr = { dim: mk('#a3a9b8', '#5c6274', '#2a2e3a'), lit: mk('#fff4c8', '#d4d0c4', '#7d7a70') });
+      return { w, h, cells };
+    })());
+    const warm = Object.assign({}, pal, { hi: '#fff4c8', deep: this.mix(pal.deep, '#f5c22b', 0.35) });
+    return (this.tcSpr = { pal, dim: this.cloudCanvas(shape, pal), lit: this.cloudCanvas(shape, warm) });
   }
   drawThunderCloud(g, S, t, px) {
     const T = S.thunder; if (!T) return;
-    const spr = this.thunderSprite(), hover = this.cloudHover && (this.state.scene || 'meadow') === 'meadow';
+    const spr = this.thunderSprite(this.PALS[this.palKey()] || this.PALS.abyss), hover = this.cloudHover && (this.state.scene || 'meadow') === 'meadow';
     // a flicker of lightning inside it every few seconds says "click me"; hovering keeps it crackling
     const w = (t + 2) % 6, flick = hover ? Math.sin(t * 23) > 0.55 : (w < 0.09 || (w > 0.2 && w < 0.26)) || t - (T.zap || -9) < 0.5;
     const bob = Math.round(Math.sin(t * 0.8) * 1) - (hover ? 1 : 0), x0 = T.x, y0 = T.y + bob;
-    g.globalAlpha = 0.95; g.drawImage(flick ? spr.lit : spr.dim, x0, y0);
+    g.globalAlpha = flick ? 0.8 : 0.55; g.drawImage(flick ? spr.lit : spr.dim, x0, y0);
     if (flick) {
       // a tiny gold bolt forks out of the bottom
       let bx = x0 + 14 + ((Math.floor(t * 7) * 7) % 16), by = y0 + T.h - 3;
@@ -3577,6 +3592,15 @@ void main() {
   palKey() { return this.state.pal || this.props.palette || 'abyss'; }
   modeKey() { return this.state.mode || this.props.mode || 'dither'; }
 
+  // While the text is hidden, every button and menu slowly fades away after a couple of
+  // idle seconds so the whole scene is visible (and fish are easy to tap on a phone).
+  wakeUi() { this.uiPoke = performance.now(); if (this.uiGhost) this.ghostTick(this.uiPoke); }
+  ghostTick(now) {
+    const S = this.state, hidden = S.surface ? S.surfTextOff : S.textOff;
+    const want = !!hidden && !S.logOpen && !S.moreOpen && now - (this.uiPoke || 0) > 2600;
+    if (want === !!this.uiGhost) return;
+    this.uiGhost = want; document.documentElement.classList.toggle('ui-ghost', want);
+  }
   componentDidMount() {
     this.loadGithub();
     this.last = 0; this.time = 0; this.prog = 0;
@@ -3612,6 +3636,20 @@ void main() {
     window.addEventListener('pointermove', this.onMove, { passive: true });
     window.addEventListener('pointerleave', this.onLeave);
     window.addEventListener('click', this.onClick);
+    // Faded-out buttons: hovering them (mouse) or a first tap on them (touch) brings them back
+    // instead of pressing an invisible button; taps on the open water never wake them.
+    const CHROME = '.hdr,.lure,.resurface,.gauge,.surf-ctl';
+    this.onChromeDown = (e) => {
+      const hit = e.target && e.target.closest && e.target.closest(CHROME);
+      if (!hit) return;
+      if (document.documentElement.classList.contains('ui-ghost') && e.pointerType !== 'mouse') { this.swallowTap = true; clearTimeout(this.swallowT); this.swallowT = setTimeout(() => { this.swallowTap = false; }, 700); e.preventDefault(); }
+      this.wakeUi();
+    };
+    this.onChromeClick = (e) => { if (this.swallowTap) { this.swallowTap = false; e.preventDefault(); e.stopPropagation(); } };
+    this.onChromeOver = (e) => { if (e.pointerType === 'mouse' && e.target && e.target.closest && e.target.closest(CHROME)) this.wakeUi(); };
+    window.addEventListener('pointerdown', this.onChromeDown, true);
+    window.addEventListener('click', this.onChromeClick, true);
+    window.addEventListener('pointerover', this.onChromeOver, true);
     this.onKey = (e) => { this.konamiKey(e.key || ''); if (!this.state.dz) return; if (e.key === 'ArrowRight') this.galStep(1); else if (e.key === 'ArrowLeft') this.galStep(-1); else if (e.key === 'Escape') this.closeDossier(); };
     window.addEventListener('keydown', this.onKey);
     // The tag is pinned where you clicked, so it gets out of the way the moment
@@ -3648,6 +3686,7 @@ void main() {
     clearTimeout(this.tagTimer);
     cancelAnimationFrame(this.raf);
     window.removeEventListener('pointermove', this.onMove);
+    window.removeEventListener('pointerdown', this.onChromeDown, true); window.removeEventListener('click', this.onChromeClick, true); window.removeEventListener('pointerover', this.onChromeOver, true);
     window.removeEventListener('pointerleave', this.onLeave);
     window.removeEventListener('click', this.onClick);
     window.removeEventListener('scroll', this.onScroll);
@@ -4968,6 +5007,7 @@ void main() {
     const cv = this.cv; if (!cv) return;
     const mode = this.modeKey();
     if (document.hidden) { this.last = 0; return; }
+    this.ghostTick(now);
     if (now - this.last < (this.lowPower ? 31 : 15)) return;
     const dt = this.last ? Math.min(0.1, (now - this.last) / 1000) : 0.016;
     this.last = now;
@@ -5317,17 +5357,17 @@ void main() {
       lureOn: (this.state.zone || 0) === 0 && !this.state.surface && !this.state.intro, openSurface: this.openSurface, surfMove: this.surfaceMove, surfLeave: this.surfaceLeave,
       surfOn: !!this.state.surface, surfDir: this.state.surface || '', surfRef: this.setSurfCv, surfDown: this.surfaceDown, surfUp: this.surfaceUp, cycleSeason: this.cycleSeason, seasonLabel: (this.SEASONS[this.seasonKey()] || {}).label || '', closeSurface: this.closeSurface,
       sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave, forCtx: this.forCtx,
-      forestUi: this.state.scene === 'forest' && !this.state.surfTextOff, surfUi: !this.state.surfTextOff,
-      groundUi: !this.state.surfTextOff && !/ky/.test(this.state.scene || ''), skyOn: /ky/.test(this.state.scene || ''), skyUi: this.state.scene === 'sky' && !this.state.surfTextOff,
+      forestUi: this.state.scene === 'forest', surfUi: true,
+      groundUi: !/ky/.test(this.state.scene || ''), skyOn: /ky/.test(this.state.scene || ''), skyUi: this.state.scene === 'sky',
       skyRef: this.setSkyCv, skyDrop: this.skyDrop, skyRotate: this.skyRotate, skyRotLabel: this.state.skyRot ? 'on' : 'off', skyRotStr: this.state.skyRot ? 'true' : 'false', surfCtlTop: 62,
-      skyToastOn: !!this.state.skyToast && this.state.scene === 'sky' && !this.state.surfTextOff, skyToastText: this.state.skyToast || '', skyToastCls: this.state.skyToastLeave ? 'leave' : '', surfCtlCls: this.state.surfTextOff ? 'ghost' : '', toggleSurfText: () => this.setState({ surfTextOff: !this.state.surfTextOff }), surfTextLabel: this.state.surfTextOff ? 'Show text' : 'Hide text', surfTextStr: this.state.surfTextOff ? 'true' : 'false', turnBack: this.turnBack, glRef: this.setGlCv, cycleLook: this.cycleLook, lookLabel: this.LOOKS[this.state.look || 0],
+      skyToastOn: !!this.state.skyToast && this.state.scene === 'sky', skyToastText: this.state.skyToast || '', skyToastCls: this.state.skyToastLeave ? 'leave' : '', surfCtlCls: this.state.surfTextOff ? 'ui-off' : '', toggleSurfText: () => { this.wakeUi(); this.setState({ surfTextOff: !this.state.surfTextOff }); }, surfTextLabel: this.state.surfTextOff ? 'Show text' : 'Hide text', surfTextStr: this.state.surfTextOff ? 'true' : 'false', turnBack: this.turnBack, glRef: this.setGlCv, cycleLook: this.cycleLook, lookLabel: this.LOOKS[this.state.look || 0],
       surfLblStyle: /ky/.test(this.state.scene || '') ? 'background: var(--panel); padding: 4px 8px; margin: -4px -8px' : '',
       surfLabel: /ky/.test(this.state.scene || '') ? 'The Storm Throne · above the clouds' : /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /ky/.test(this.state.scene || '') ? 'The Storm Throne: a palace above the clouds, drawn in dithered black, white and gold' : /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
       dzOpen: Object.fromEntries(Object.keys(this.DOSSIERS).map((k) => [k, () => this.openDossier(k)])),
       dzOn: !!this.state.dz, dzLeave: this.state.dzLeaving ? 'leave' : '', closeDz: this.closeDossier,
       hdrRef: (el) => { this.hdrEl = el; }, hdrH: this.state.hdrH || 62, logTop: (this.state.hdrH || 62) + 10, logTopGap: (this.state.hdrH || 62) + 40, logPopTop: (this.state.hdrH || 62) + 230,
-      toggleMore: () => this.setState({ moreOpen: !this.state.moreOpen }), moreCls: this.state.moreOpen ? 'open' : '', moreStr: this.state.moreOpen ? 'true' : 'false', moreLabel: this.state.moreOpen ? 'Close' : 'Options',
-      toggleText: () => this.setState({ textOff: !this.state.textOff }), textLabel: this.state.textOff ? 'Show text' : 'Hide text', textHiddenStr: this.state.textOff ? 'true' : 'false', mainCls: this.state.textOff ? 'text-off' : '',
+      toggleMore: () => { clearTimeout(this.moreT); if (!this.state.moreOpen) return this.setState({ moreOpen: true, moreLeave: false }); this.setState({ moreLeave: true }); this.moreT = setTimeout(() => this.setState({ moreOpen: false, moreLeave: false }), this.reduce ? 0 : 260); }, moreCls: this.state.moreOpen ? (this.state.moreLeave ? 'open leave' : 'open') : '', moreStr: this.state.moreOpen ? 'true' : 'false', moreLabel: this.state.moreOpen ? 'Close' : 'Options',
+      toggleText: () => { this.wakeUi(); this.setState({ textOff: !this.state.textOff }); }, textLabel: this.state.textOff ? 'Show text' : 'Hide text', textHiddenStr: this.state.textOff ? 'true' : 'false', mainCls: this.state.textOff ? 'text-off' : '',
       galPrev: () => this.galStep(-1), galNext: () => this.galStep(1), galDown: this.galDown, galUp: this.galUp,
       dz: (() => { const d = this.DOSSIERS[this.state.dz] || this.DOSSIERS.abyssal, list = this.dzShots(d), si = Math.min(list.length - 1, this.state.dzShot || 0);
         const shots = list.map(([type, src, caption, poster], i) => ({ isVideo: type === 'video', isImg: type !== 'video', src, poster: poster || '', caption, thumb: poster || src, cls: i === si ? 'on' : '', hidden: i === si ? 'false' : 'true', sel: i === si ? 'true' : 'false', border: i === si ? d.accent : d.line, pick: () => { if (i !== this.state.dzShot) { this.setState({ dzShot: i }); this.sfx('blip'); } } }));
