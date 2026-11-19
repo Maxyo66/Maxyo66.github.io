@@ -275,9 +275,11 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section class="surface {{surfDir}} scene-{{sceneCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
 <canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" onContextMenu="{{forCtx}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
+<canvas class="sc-gl" ref="{{glRef}}" aria-hidden="true" style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 0.4s"></canvas>
 <div style="position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none">
 <span style="color: var(--hi); font-weight: 700">{{surfLabel}}</span>
 </div>
+<sc-if value="{{forestUi}}"><button onClick="{{cycleLook}}" title="Painting style" style="position: absolute; top: 88px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Look: {{lookLabel}} ↻</button></sc-if>
 <sc-if value="{{forestUi}}"><button onClick="{{turnBack}}" style="position: absolute; top: 46px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">↻ Back to the meadow</button></sc-if>
 <button onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
 <button onClick="{{closeSurface}}" style="position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer">Dive back ↓</button>
@@ -2045,15 +2047,16 @@ class Component extends DCLogic {
     g.drawImage(F.vig, 0, 0, W, H);
     if (F.airDirty) {
       F.airFade = (F.airFade || 0) + dt;
-      if (F.airFade > 0.2) {
+      if (F.airFade > 0.08) {
         F.airFade = 0; const ag = F.airG; ag.setTransform(1, 0, 0, 1, 0, 0);
-        if (t - F.lastPaint > 9) { ag.clearRect(0, 0, F.air.width, F.air.height); F.airDirty = false; }
-        else if (t - F.lastPaint > 1.2) { ag.globalCompositeOperation = 'destination-out'; ag.globalAlpha = 0.07; ag.fillStyle = '#000'; ag.fillRect(0, 0, F.air.width, F.air.height); ag.globalCompositeOperation = 'source-over'; ag.globalAlpha = 1; }
+        if (t - F.lastPaint > 3) { ag.clearRect(0, 0, F.air.width, F.air.height); F.airDirty = false; }
+        else if (t - F.lastPaint > 0.35) { ag.globalCompositeOperation = 'destination-out'; ag.globalAlpha = 0.12; ag.fillStyle = '#000'; ag.fillRect(0, 0, F.air.width, F.air.height); ag.globalCompositeOperation = 'source-over'; ag.globalAlpha = 1; }
       }
       g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(F.air, 0, 0); g.setTransform(d, 0, 0, d, 0, 0);
     }
     g.globalAlpha = 1;
     if (F.fadeFrom) { const u = (performance.now() - F.fadeT) / 900; if (u >= 1) F.fadeFrom = null; else { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1 - u * u * (3 - 2 * u); g.drawImage(F.fadeFrom, 0, 0); g.globalAlpha = 1; g.setTransform(d, 0, 0, d, 0, 0); } }
+    this.glPost(F);
     this.roadAudio(F, C, t);
   }
 
@@ -2078,7 +2081,7 @@ class Component extends DCLogic {
     const x = C.sx, y = F.carY;
     // headlights light the road ahead
     g.save(); g.translate(x, y); if (fl) g.scale(-1, 1);
-    const bx = -F.carW / 2 - 2, by = -Ck.h + 2 + bob, hx = bx + 2 + 8 * k, hy = by + 2 + 41 * k;
+    const bx = -F.carW / 2 - 2, by = -Ck.h + 2 + bob, hx = bx + 2 + 8 * k, hy = by + 2 + 41 * k; F.head = [x + (fl ? -hx : hx), y + hy, fl ? 1 : -1];
     g.globalCompositeOperation = 'lighter';
     const gr = g.createLinearGradient(hx, hy, hx - 380 * s, hy); gr.addColorStop(0, 'rgba(255,233,168,0.3)'); gr.addColorStop(1, 'rgba(255,233,168,0)');
     g.fillStyle = gr; g.beginPath(); g.moveTo(hx, hy - 3); g.lineTo(hx - 380 * s, hy - 40 * s); g.lineTo(hx - 380 * s, hy + 34 * s); g.lineTo(hx, hy + 3); g.fill();
@@ -2321,6 +2324,79 @@ class Component extends DCLogic {
   };
   forestUp = () => { this.endBrush(); if (this.forest) this.forest.smudge = null; };
   forCtx = (e) => { e.preventDefault(); };
+  // ---- optional finishing passes, run on the GPU over the finished frame
+  LOOKS = ['Brush', 'Brush + light', 'Painterly', 'Painterly + light'];
+  setGlCv = (el) => { this.glCv = el; };
+  cycleLook = () => { const n = ((this.state.look || 0) + 1) % this.LOOKS.length; this.setState({ look: n }); this.sfx('blip'); };
+  GL_FRAG = `precision highp float;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uKuw, uLit, uR, uD, uHeadOn, uTime; uniform vec2 uMoon; uniform vec3 uHead;
+vec3 tx(vec2 p) { return texture2D(uTex, p / uRes).rgb; }
+float lu(vec2 p) { vec3 c = tx(p); return dot(c, vec3(0.3, 0.59, 0.11)); }
+vec3 kuwahara(vec2 p) {
+  // generalised Kuwahara: eight smooth sectors, keep the calmest ones (Papari et al., Kyprianidis)
+  vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0), m4 = vec3(0.0), m5 = vec3(0.0), m6 = vec3(0.0), m7 = vec3(0.0);
+  vec3 s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0), s4 = vec3(0.0), s5 = vec3(0.0), s6 = vec3(0.0), s7 = vec3(0.0);
+  vec4 wa = vec4(0.0), wb = vec4(0.0);
+  for (int j = -4; j <= 4; j++) for (int i = -4; i <= 4; i++) {
+    vec2 v = vec2(float(i), float(j)) / 4.0; float r2 = dot(v, v); if (r2 > 1.0) continue;
+    vec3 c = tx(p + v * uR); vec3 c2 = c * c; float g = exp(-r2 * 2.0);
+    vec2 n = r2 > 0.0 ? v / sqrt(r2) : vec2(0.0);
+    vec4 da = vec4(n.x, 0.7071 * (n.x + n.y), n.y, 0.7071 * (n.y - n.x));
+    vec4 a = r2 > 0.0 ? pow(max(da, 0.0), vec4(3.0)) * g : vec4(0.125);
+    vec4 b = r2 > 0.0 ? pow(max(-da, 0.0), vec4(3.0)) * g : vec4(0.125);
+    m0 += c * a.x; s0 += c2 * a.x; m1 += c * a.y; s1 += c2 * a.y; m2 += c * a.z; s2 += c2 * a.z; m3 += c * a.w; s3 += c2 * a.w;
+    m4 += c * b.x; s4 += c2 * b.x; m5 += c * b.y; s5 += c2 * b.y; m6 += c * b.z; s6 += c2 * b.z; m7 += c * b.w; s7 += c2 * b.w;
+    wa += a; wb += b;
+  }
+  vec3 acc = vec3(0.0); float tot = 0.0;
+  #define SECT(M, S, W) { vec3 mu = M / max(W, 1e-4); vec3 va = abs(S / max(W, 1e-4) - mu * mu); float sg = (va.r + va.g + va.b) * 255.0; float al = 1.0 / (1.0 + sg * sg * sg * sg); acc += mu * al; tot += al; }
+  SECT(m0, s0, wa.x) SECT(m1, s1, wa.y) SECT(m2, s2, wa.z) SECT(m3, s3, wa.w) SECT(m4, s4, wb.x) SECT(m5, s5, wb.y) SECT(m6, s6, wb.z) SECT(m7, s7, wb.w)
+  return acc / max(tot, 1e-4);
+}
+void main() {
+  vec2 p = gl_FragCoord.xy;
+  vec3 col = uKuw > 0.5 ? kuwahara(p) : tx(p);
+  if (uLit > 0.5) {
+    // impasto: brightness stands in for paint thickness, so stroke ridges catch the light
+    float e = 1.5 * uD, hx = lu(p + vec2(e, 0.0)) - lu(p - vec2(e, 0.0)), hy = lu(p + vec2(0.0, e)) - lu(p - vec2(0.0, e));
+    float weave = sin(p.x * 0.9 / uD) * sin(p.y * 0.9 / uD) * 0.04;
+    vec3 n = normalize(vec3(-hx * 5.0 - weave, -hy * 5.0 + weave, 1.0));
+    vec3 L = normalize(vec3(uMoon - p, 420.0 * uD)), H = normalize(L + vec3(0.0, 0.0, 1.0));
+    float dif = max(dot(n, L), 0.0), spec = pow(max(dot(n, H), 0.0), 40.0);
+    col = col * (0.78 + 0.32 * dif) + vec3(0.85, 0.9, 1.0) * spec * 0.22;
+    vec2 dh = uHead.xy - p; float dist = length(dh);
+    float beam = uHeadOn * smoothstep(0.0, 60.0 * uD, -dh.x * uHead.z) * exp(-dist / (360.0 * uD)) * smoothstep(1.2, 0.2, abs(dh.y) / max(40.0 * uD, abs(dh.x) * 0.35));
+    vec3 Lh = normalize(vec3(dh, 40.0 * uD)), Hh = normalize(Lh + vec3(0.0, 0.0, 1.0));
+    col += vec3(1.0, 0.86, 0.55) * (pow(max(dot(n, Hh), 0.0), 30.0) * 0.55 + max(dot(n, Lh), 0.0) * 0.08) * beam;
+  }
+  gl_FragColor = vec4(col, 1.0);
+}`;
+  glPost(F) {
+    const look = this.state.look || 0, cv = this.glCv, show = look > 0 && this.state.scene === 'forest' && this.forCv;
+    if (!cv) return; if (!show) { if (cv.style.opacity !== '0') cv.style.opacity = '0'; return; }
+    let G = this.glS;
+    if (!G) {
+      const gl = cv.getContext('webgl', { premultipliedAlpha: false, antialias: false }); if (!gl) { this.glS = { off: true }; return; }
+      const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(o)); return o; };
+      const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 a; void main() { gl_Position = vec4(a, 0.0, 1.0); }')); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, this.GL_FRAG)); gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { console.warn(gl.getProgramInfoLog(pr)); this.glS = { off: true }; return; }
+      gl.useProgram(pr); const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const al = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
+      const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      const U = {}; for (const n of ['uTex', 'uRes', 'uKuw', 'uLit', 'uR', 'uD', 'uHeadOn', 'uTime', 'uMoon', 'uHead']) U[n] = gl.getUniformLocation(pr, n);
+      G = this.glS = { gl, U };
+    }
+    if (G.off) return;
+    const gl = G.gl, U = G.U, q = look >= 2 ? 0.5 : 0.75, w = Math.round(this.forCv.width * q), h = Math.round(this.forCv.height * q), d = F.d * q;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    gl.viewport(0, 0, w, h); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.forCv);
+    gl.uniform1i(U.uTex, 0); gl.uniform2f(U.uRes, w, h); gl.uniform1f(U.uKuw, look >= 2 ? 1 : 0); gl.uniform1f(U.uLit, look % 2 ? 1 : 0); gl.uniform1f(U.uR, 7 * d); gl.uniform1f(U.uD, d); gl.uniform1f(U.uTime, this.time);
+    const mo = F.moon || { x: 0, y: 0 }, hd = F.head || [0, 0, -1];
+    gl.uniform2f(U.uMoon, mo.x * d, h - mo.y * d); gl.uniform3f(U.uHead, hd[0] * d, h - hd[1] * d, hd[2]); gl.uniform1f(U.uHeadOn, this.carState().scene === 'forest' ? 1 : 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    if (cv.style.opacity !== '1') cv.style.opacity = '1';
+  }
   // Right-drag (or shift-drag) smears the wet paint: a soft round patch of the picture is
   // lifted from where the brush was and laid down where it is now, then dries away.
   startSmudge(x, y) {
@@ -4646,7 +4722,7 @@ class Component extends DCLogic {
       lureOn: (this.state.zone || 0) === 0 && !this.state.surface && !this.state.intro, openSurface: this.openSurface, surfMove: this.surfaceMove, surfLeave: this.surfaceLeave,
       surfOn: !!this.state.surface, surfDir: this.state.surface || '', surfRef: this.setSurfCv, surfDown: this.surfaceDown, surfUp: this.surfaceUp, cycleSeason: this.cycleSeason, seasonLabel: (this.SEASONS[this.seasonKey()] || {}).label || '', closeSurface: this.closeSurface,
       sceneCls: this.state.scene || 'meadow', forRef: this.setForCv, forDown: this.forestDown, forUp: this.forestUp, forMove: this.forestMove, forLeave: this.forestLeave, forCtx: this.forCtx,
-      forestUi: this.state.scene === 'forest', turnBack: this.turnBack,
+      forestUi: this.state.scene === 'forest', turnBack: this.turnBack, glRef: this.setGlCv, cycleLook: this.cycleLook, lookLabel: this.LOOKS[this.state.look || 0],
       surfLabel: /orest/.test(this.state.scene || '') ? 'The forest road · inland' : 'The surface · 0 m', surfAria: /orest/.test(this.state.scene || '') ? 'The forest road: a moonlit drive through a wood painted in gouache brush strokes' : 'The surface: moonlit flower meadows',
       dzOpen: Object.fromEntries(Object.keys(this.DOSSIERS).map((k) => [k, () => this.openDossier(k)])),
       dzOn: !!this.state.dz, dzLeave: this.state.dzLeaving ? 'leave' : '', closeDz: this.closeDossier,
