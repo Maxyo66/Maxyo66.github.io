@@ -71,6 +71,20 @@ window.__dcMount = function(tree, Comp, defaults, el){
 window.DCLogic = function DCLogic(){ this.props = {}; this.state = {}; };
 })();`;
 
+// Page views: GoatCounter (free, no cookies, no personal data); the stats are private to Max.
+// Clicks on links that leave the site (itch.io, GitHub, email) are counted as events.
+const analytics = String.raw`<script data-goatcounter="https://maxyo66.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script>
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (!a || !window.goatcounter || !window.goatcounter.count) return;
+  var u; try { u = new URL(a.href, location.href); } catch (_) { return; }
+  if (u.protocol === 'mailto:') u = { host: 'email', pathname: '' };
+  else if (u.host === location.host) return;
+  window.goatcounter.count({ path: 'out: ' + u.host + u.pathname.replace(/\/$/, ''), title: (a.textContent || '').trim().slice(0, 80), event: true });
+}, true);
+</script>`;
+
 const page = `<!doctype html>
 <html lang="en">
 <head>
@@ -79,6 +93,7 @@ const page = `<!doctype html>
 <title>${title}</title>
 <meta name="description" content="Max (Maxyo66): games, tools and a desktop ocean, from Florida.">
 ${swap(helmet)}
+${analytics}
 </head>
 <body>
 <div id="app"></div>

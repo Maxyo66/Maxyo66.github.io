@@ -168,6 +168,17 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} .card{transition:none} .resurface, .resurface .burst i, .specimen, .spec-wrap .pop i, .g-mark .ring, .dz, .dz-back, .gal-slide, .gal-thumb, .unlock, .intro, .intro *, .surface, .surf-bubbles i{animation:none !important} .g-item, .g-name, .g-tick{transition:none !important} .spec-wrap .pop{display:none} .log-pop{display:none} .logbook.leave{animation:none} .resurface .burst{display:none} .sc-meadow, .sc-forest{transition:none !important} }
 </style>
 
+<script data-goatcounter="https://maxyo66.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<script>
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (!a || !window.goatcounter || !window.goatcounter.count) return;
+  var u; try { u = new URL(a.href, location.href); } catch (_) { return; }
+  if (u.protocol === 'mailto:') u = { host: 'email', pathname: '' };
+  else if (u.host === location.host) return;
+  window.goatcounter.count({ path: 'out: ' + u.host + u.pathname.replace(/\/$/, ''), title: (a.textContent || '').trim().slice(0, 80), event: true });
+}, true);
+</script>
 </head>
 <body>
 <div id="app"></div>
