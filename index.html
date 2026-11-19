@@ -227,6 +227,38 @@ class Component extends DCLogic {
       flowers: [['bell', 3, ['#ffffff', '#eaf4ff'], null, 'snowdrop'], ['tulip', 2, ['#b39ddb', '#ffffff', '#ffd36b'], null, 'crocus'], ['rose', 2, ['#f3d6e0', '#ffffff', '#d8a6c0'], null, 'hellebore'],
         ['lavender', 1.5, ['#e8a0c8', '#d070a0'], null, 'heather'], ['clover', 1.8, ['#e0303a', '#c81e2e'], '#ffffff', 'berry']] }
   };
+  // Changing season starts at once: a wave of the new season's colour sweeps across the forest and
+  // its leaves, petals or snow start to fall, while the new painting is finished behind it. Then the
+  // new painting fades in under the wave, so the trees seem to turn rather than swap.
+  SEASON_WASH = { spring: ['#a8d890', '#ffc6dd', '#ffe0ec'], summer: ['#4f9156', '#3d7d42', '#7ab86a'], autumn: ['#e0a33a', '#c8642a', '#d9822b'], winter: ['#dfe9ee', '#eef4f7', '#c8d8e2'] };
+  startSeasonWash(N, cur) {
+    const cols = this.SEASON_WASH[this.seasonKey()] || this.SEASON_WASH.summer, snow = this.seasonKey() === 'winter', W = N.W, H = N.H, s = N.s;
+    N.wash = { t0: performance.now(), cols, from: cur };
+    N.burst = []; for (let k = 0; k < 140; k++) N.burst.push({ x: Math.random() * W * 1.2 - W * 0.1, y: -Math.random() * H * 0.9 - 10, d: Math.random() * 1.6, c: cols[k % cols.length], r: (snow ? 1.5 + Math.random() * 1.5 : 2.5 + Math.random() * 3) * s + 1, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 4, sp: 0.7 + Math.random() * 0.8, ph: Math.random() * 6, snow });
+  }
+  drawSeasonWash(g, F, dt) {
+    const N = this.nextForest && this.nextForest.wash ? this.nextForest : F.wash ? F : null; if (!N) return;
+    const now = performance.now(), Wv = N.wash, W = F.W, H = F.H, t = (now - Wv.t0) / 1000;
+    // the wave: a soft-edged band of the new season's colour that sweeps left to right, then holds
+    // until the new painting is ready, and fades as it crossfades in
+    let hold = 1; if (N === F) { const u = (now - (F.fadeT || Wv.t0)) / 1800; hold = Math.max(0, 1 - u); if (u >= 1 && !N.burst.length) { F.wash = null; return; } }
+    const p = Math.min(1, t / 1.6), edge = (p * 1.5 - 0.25) * W;
+    if (hold > 0) {
+      const gr = g.createLinearGradient(edge - W * 0.35, 0, edge + W * 0.1, 0); gr.addColorStop(0, this.rgba(Wv.cols[0], 1)); gr.addColorStop(1, this.rgba(Wv.cols[0], 0));
+      g.save(); g.globalCompositeOperation = 'color'; g.globalAlpha = 0.42 * hold; g.fillStyle = gr; g.fillRect(0, 0, W, F.RY0 + 10);
+      g.globalCompositeOperation = 'soft-light'; g.globalAlpha = 0.45 * hold; g.fillRect(0, 0, W, F.RY0 + 10); g.restore();
+    }
+    // the season's leaves, petals or snow, released along the wave's front
+    const T = F.time || t; g.save();
+    N.burst = N.burst.filter((b) => b.y < H + 20);
+    for (const b of N.burst) {
+      if (t < b.d) continue; b.y += (b.snow ? 40 : 55) * b.sp * dt; b.x += (Math.sin(t * 1.3 + b.ph) * 30 + 10) * dt; b.rot += b.vr * dt;
+      g.globalAlpha = 0.9; g.fillStyle = b.c;
+      if (b.snow) { g.beginPath(); g.arc(b.x, b.y, b.r, 0, Math.PI * 2); g.fill(); continue; }
+      g.translate(b.x, b.y); g.rotate(b.rot); g.scale(0.3 + 0.7 * Math.abs(Math.cos(t * 2 + b.ph)), 1); g.beginPath(); g.ellipse(0, 0, b.r * 1.5, b.r * 0.7, 0, 0, Math.PI * 2); g.fill(); g.setTransform(F.d, 0, 0, F.d, 0, 0);
+    }
+    g.restore();
+  }
   seasonKey() {
     if (this.state.season) return this.state.season;
     const m = new Date().getMonth();
@@ -1011,6 +1043,7 @@ class Component extends DCLogic {
     F.mouse = { x: -999, y: -999, vx: 0, t: -9 }; F.d0 = 0; F.dist = old && old.W === vw ? old.dist : 0; F.v = old ? old.v : 0; F.vt = old ? old.vt : 0;
     F.lib = { near: [], mid: [], ferns: [], tufts: [], sets: {} };
     F.objs = []; F.parts = { leaves: [], shaken: [], sparks: [], spores: [], rips: [], smoke: [], puffs: [] };
+    F.oldSky = old;
     F.gen = this.paintForest(F);
     return F;
   }
@@ -1020,13 +1053,13 @@ class Component extends DCLogic {
   prepForest(vw, vh, budget, needReady) {
     const pal = this.PALS[this.palKey()] || this.PALS.abyss, key = vw + 'x' + vh + this.palKey() + this.seasonKey(), cur = this.forest;
     if (cur && cur.key !== key && cur.ready && cur.W === vw && cur.H === vh && this.state.scene === 'forest' && budget < 100) {
-      let N = this.nextForest; if (!N || N.key !== key) N = this.nextForest = this.newForest(vw, vh, key, pal, cur);
+      let N = this.nextForest; if (!N || N.key !== key) { N = this.nextForest = this.newForest(vw, vh, key, pal, cur); this.startSeasonWash(N, cur); }
       // spend whatever the frame has to spare: more when the drive is running smoothly, less when it is not
       const now = performance.now(), dt = Math.min(100, now - (this._pfT || now)); this._pfT = now; this._fdt = this._fdt ? this._fdt * 0.85 + dt * 0.15 : 16;
-      const t0 = performance.now(), slice = this._fdt < 18 ? 7 : this._fdt < 24 ? 4 : 2.5; while (!N.ready && performance.now() - t0 < slice) { const r = N.gen.next(); if (r.done) { N.done = N.ready = true; } }
+      const t0 = performance.now(), slice = Math.max(6, Math.min(14, this._fdt * 0.5)); while (!N.ready && performance.now() - t0 < slice) { const r = N.gen.next(); if (r.done) { N.done = N.ready = true; } }
       if (!N.ready) { this.paintMore(cur, 0); return cur; }
       N.dist = cur.dist; N.v = cur.v; N.vt = cur.vt; N.mouse = cur.mouse; if (cur.air) { N.air = cur.air; N.airG = cur.airG; N.airDirty = cur.airDirty; N.lastPaint = cur.lastPaint; }
-      if (this.forCv) { const sn = document.createElement('canvas'); sn.width = this.forCv.width; sn.height = this.forCv.height; sn.getContext('2d').drawImage(this.forCv, 0, 0); N.fadeFrom = sn; N.fadeT = performance.now(); }
+      if (this.forCv) { const sn = document.createElement('canvas'); sn.width = this.forCv.width; sn.height = this.forCv.height; sn.getContext('2d').drawImage(this.forCv, 0, 0); N.fadeFrom = sn; N.fadeT = performance.now(); N.fadeMs = 1500; }
       this.forest = N; this.nextForest = null; return N;
     }
     if (!cur || cur.key !== key) {
@@ -1061,6 +1094,10 @@ class Component extends DCLogic {
     const ACC = [pal.hi, pal.accent || pal.hi, '#8a6fc4', '#e0a85a', '#5fb3a8', '#d0607a'].map((c) => hm(c, pal.bg, 0.3));
     F.ACC = ACC;
 
+    // the sky doesn't change with the season, so a season switch keeps the one already painted
+    const OS = F.oldSky; F.oldSky = null;
+    if (OS && OS.sky && OS.pal === pal && OS.W === W && OS.H === H) { F.sky = OS.sky; F.moon = OS.moon; F.swirl = OS.swirl; F.stars = OS.stars; F.beams = OS.beams; }
+    else {
     // ---- sky: long horizontal strokes, a painted moon with a few clouds, and stars
     const [sky, gs] = mk(W, H); F.sky = sky;
     const top = hm(pal.bg, '#000000', 0.4), midC = hm(pal.deep, pal.bg, 0.3), low = hm(pal.mid, pal.deep, 0.45), hz = H * 0.62;
@@ -1069,11 +1106,17 @@ class Component extends DCLogic {
     gs.fillStyle = grd; gs.fillRect(0, 0, W, H);
     const mo = (F.moon = { x: W * 0.3, y: H * 0.17, r: 22 * s + 12 }), mc = hm(pal.ink, '#fff4dc', 0.5);
     const swirl = (x, y) => { const dx = x - mo.x, dy = y - mo.y, d = Math.hypot(dx, dy) / mo.r, k = Math.min(1, Math.max(0, 2.6 / d - 0.25)), b = 0.5 * nz(x, y), t = Math.atan2(dy, dx) + Math.PI / 2; return Math.atan2((1 - k) * Math.sin(b) + k * Math.sin(t), (1 - k) * Math.cos(b) + k * Math.cos(t)); };
-    F.swirl = swirl; const nSky = Math.round((W * hz) / (1500 * s * s));
+    F.swirl = swirl; const nSky = Math.round((W * hz) / (1300 * s * s));
+    const SKY = { blue: ['#1d3c8c', '#2d5bb0', '#4a7fc4', '#3a9ab0'], yel: ['#f0d88a', '#e8b84a', '#fff0b0'], warm: ['#d8742e', '#c24a2c', '#e09a3a', '#8a3a5a'] };
     for (let i = 0; i < nSky; i++) {
-      const x = R(-80, W + 40), y = R(-30, hz + 20), c = skyAt(Math.max(0, Math.min(1, y / hz))), acc = rnd() < 0.07;
-      const cols = acc ? [hm(c, ACC[Math.floor(rnd() * ACC.length)], 0.45), c] : [c, hm(c, pal.mid, 0.25), hm(c, '#000000', 0.18), hm(c, pal.hi, 0.1)];
-      stroke(gs, trace(x, y, R(70, 230) * s, swirl), { w: R(12, 30) * s + 6, cols, a: acc ? 0.5 : 0.6, step: 6, chunk: 3, nb: 14, jit: 0.3, splay: 0.6 });
+      // Colour in the manner of the expressionist night skies: cobalt and ultramarine swirls, rings of
+      // yellow light around the moon, and warm bands of orange and red low over the trees.
+      const x = R(-80, W + 40), y = R(-30, hz + 20), c = skyAt(Math.max(0, Math.min(1, y / hz))), dm = Math.hypot(x - mo.x, y - mo.y) / mo.r, q = rnd(); let cols, al = 0.6;
+      if (dm < 6.5 && q < 0.55) { cols = SKY.yel.map((k) => hm(c, k, 0.62 - dm * 0.06)); al = 0.55; }
+      else if (y > hz * 0.6 && q < 0.45) { cols = SKY.warm.map((k) => hm(c, k, 0.5)); al = 0.5; }
+      else if (q < 0.6) { cols = SKY.blue.map((k) => hm(c, k, 0.6)).concat(c); }
+      else cols = rnd() < 0.1 ? [hm(c, ACC[Math.floor(rnd() * ACC.length)], 0.45), c] : [c, hm(c, pal.mid, 0.25), hm(c, '#000000', 0.18), hm(c, pal.hi, 0.1)];
+      stroke(gs, trace(x, y, R(70, 230) * s, swirl), { w: R(12, 30) * s + 6, cols, a: al, step: 6, chunk: 3, nb: 14, jit: 0.3, splay: 0.6 });
       if (i % 5 === 0) yield;
     }
     // the moon, laid in with round strokes, and rings of light swirling around it
@@ -1084,10 +1127,14 @@ class Component extends DCLogic {
     for (let rr = mo.r * 0.25; rr < mo.r * 1.05; rr += mo.r * 0.2) for (let k = 0; k < 2; k++) { const a0 = R(0, 6.3), pts = []; for (let q = 0; q <= 12; q++) { const a = a0 + (R(2.5, 4.5) * q) / 12; pts.push([mo.x + Math.cos(a) * rr, mo.y + Math.sin(a) * rr]); } stroke(gs, pts, { w: mo.r * 0.28, cols: [mc, hm(mc, '#ffffff', 0.3), hm(mc, pal.mid, 0.35)], a: 0.85, nb: 9, step: 3, jit: 0.25 }); }
     yield;
     for (let k = 0; k < 60; k++) dab(gs, R(0, W), R(0, hz * 0.8), 2.5 * s + 1.5, 1.6, R(0, 3), [pal.ink], R(0.3, 0.8), 3);
+    for (let k = 0; k < 6; k++) { const sx = R(W * 0.45, W * 0.98), sy = R(H * 0.05, hz * 0.55), sr = R(8, 14) * s + 4;
+      for (let ring = 1; ring <= 3; ring++) { const a0 = R(0, 6.3), pts = []; for (let q2 = 0; q2 <= 12; q2++) { const a = a0 + (q2 / 12) * 5.6; pts.push([sx + Math.cos(a) * sr * ring * 0.8, sy + Math.sin(a) * sr * ring * 0.8]); } stroke(gs, pts, { w: (5 - ring) * s + 2, cols: [SKY.yel[ring % 3], hm(SKY.yel[0], pal.hi, 0.4)], a: 0.7 - ring * 0.15, step: 4, nb: 6 }); }
+      gs.fillStyle = '#fff6d0'; gs.beginPath(); gs.arc(sx, sy, sr * 0.35, 0, Math.PI * 2); gs.fill(); }
     F.stars = []; for (let k = 0; k < 40; k++) F.stars.push({ x: R(0, W), y: R(0, hz * 0.7), ph: R(0, 6), sp: R(0.8, 2.4), b: R(0.4, 1) });
     F.beams = []; for (let q = 0; q < 4; q++) F.beams.push({ x: W * (0.15 + q * 0.22) + R(-30, 30), dx: W * R(0.15, 0.25), w0: R(10, 26) * s, w1: R(50, 110) * s, a: R(0.035, 0.07), ph: R(0, 6), sp: R(0.2, 0.5) });
     yield;
 
+    }
     // ---- tiling layers that scroll at their own speeds: far hills, two rows of firs, the forest floor
     const tile = (y0, y1) => { const r = mk(TW, y1 - y0, 0, -y0); r.push(y0, y1 - y0); return r; };
     const [hillsCv, gh, hy0, hh0] = tile(Math.round(H * 0.38), Math.round(H * 0.66)); F.hills = { cv: hillsCv, k: 0.05, y0: hy0, h: hh0 };
@@ -1243,8 +1290,8 @@ class Component extends DCLogic {
 
     // ---- the first few trees, ferns and tufts; then the drive can begin
     // the darkened foreground copies are made here too, so the first one to pass doesn't hitch
-    for (let i = 0; i < 3; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.92, 1.02), tw: R(26, 44) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
-    for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.5, 0.62), tw: R(12, 20) * s + 5, near: false }));
+    for (let i = 0; i < 2; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.92, 1.02), tw: R(26, 44) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
+    for (let i = 0; i < 2; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.5, 0.62), tw: R(12, 20) * s + 5, near: false }));
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 110) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
     F.ready = true; yield;
     // ---- everything else, painted while you drive
@@ -1259,8 +1306,8 @@ class Component extends DCLogic {
     { const o = this.paintMailbox(F, rnd); yield* P(o.cv); F.lib.sets.mailbox = o; }
     { const o = this.paintRing(F, rnd); yield* P(o.cv, 0.6); F.lib.sets.ring = o; }
     { const o = this.paintFox(F, rnd); for (const k of ['sit', 'trot']) yield* P(o[k].cv); F.lib.sets.fox = o; }
-    for (let i = 0; i < 4; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
-    for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.45, 0.62), tw: R(10, 20) * s + 5, near: false }));
+    for (let i = 0; i < 5; i++) { const t = yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }); F.lib.near.push(t); yield; this.tinted(t, 'fg', 'brightness(0.45)'); yield; }
+    for (let i = 0; i < 4; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.45, 0.62), tw: R(10, 20) * s + 5, near: false }));
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 120) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
   }
 
@@ -1272,19 +1319,20 @@ class Component extends DCLogic {
     const fog = (c) => (mid ? hm(hm(c, pal.bg, 0.3), pal.deep, 0.45) : hm(c, pal.bg, 0.3));
     const stroke = (g, pts, oo) => this.gouache(g, pts, Object.assign({ rnd }, oo));
     const dab = (g, x, y, len, w, ang, cols, a, nb, extra) => { const c = Math.cos(ang), sn = Math.sin(ang), bend = R(-0.15, 0.15) * len; stroke(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x - sn * bend, y + c * bend], [x + (c * len) / 2, y + (sn * len) / 2]], Object.assign({ w, cols, a: a == null ? 0.9 : a, nb: nb || 6, step: Math.max(1.2, len / 5), chunk: 2 }, extra || {})); };
-    const h = o.h, tw = o.tw, reach = (mid ? 0.6 : 1) * 270 * s, cw = Math.round(2 * (tw + reach + 24)), above = Math.round(110 * s + 40), below = 14 * s + 6, ch = h + above + below;
+    const h = o.h, tw = o.tw, reach = (mid ? 0.6 : 1) * 300 * s, cw = Math.round(2 * (tw + reach + 40)), above = Math.round(h * 0.16 + 70 * s), below = 14 * s + 6, ch = h + above + below;
     const [cv, g] = F.mk(cw, ch, cw / 2, h + above);   // origin at the foot of the trunk
     const TACC = (F.ACC || [pal.hi]).map((c) => fog(c)), bark = [fog('#3a2f28'), fog('#2b231e'), fog('#4a3c30')], barkLit = hm(pal.hi, bark[2], mid ? 0.7 : 0.5), moss = fog(FS.snow ? '#dfe9ee' : '#4a6a3a');
     const lean = R(-0.04, 0.04) * h, hw = (y) => (tw / 2) * (0.62 + 0.38 * Math.max(0, Math.min(1, 1 + y / h)));   // y is negative going up
     const cx = (y) => lean * Math.pow(-y / h, 1.5) + Math.sin(-y / h * 3 + tw) * tw * 0.08;
+    const yF = -h * (mid ? R(0.44, 0.54) : R(0.56, 0.66));   // where the trunk divides into the limbs that hold up the crown
     // roots first, so the trunk sits on them, and verge colour brushed over their tips
     const vc = FS.grass.map((c) => (FS.snow ? hm(c, pal.deep, 0.35) : this.hmix(c, pal.bg, 0.35)));
     for (let k = 0; k < (mid ? 4 : 7); k++) { const sd = k % 2 ? 1 : -1, sp = R(0.5, 1.5) * tw; stroke(g, [[sd * tw * R(0.1, 0.35), -tw * R(0.6, 1.1)], [sd * (tw * 0.45 + sp * 0.4), -tw * 0.18], [sd * (tw * 0.5 + sp), below * 0.35 + R(-2, 2)]], { w: tw * R(0.2, 0.32), cols: bark, a: 0.95, nb: 8, step: 3, edge: sd < 0 ? barkLit : null }); }
-    g.fillStyle = bark[1]; g.beginPath(); g.moveTo(-hw(0), 2); for (let y = 0; y >= -h - above; y -= 20) g.lineTo(cx(y) - hw(y) * 0.95, y); for (let y = -h - above; y <= 0; y += 20) g.lineTo(cx(y) + hw(y) * 0.95, y); g.closePath(); g.fill();
-    const nTr = mid ? 3 : 4; for (let k = 0; k < nTr; k++) { const off = -1 + ((k + 0.5) / nTr) * 2, pts = [], wob = R(0, 6); for (let y = 4; y >= -h - above; y -= 40) pts.push([cx(y) + off * hw(y) * 0.7 + Math.sin(y * 0.02 + wob) * tw * 0.12, y]); stroke(g, pts, { w: tw / (nTr - 0.6), cols: bark.concat(rnd() < 0.5 ? hm(bark[2], TACC[k % TACC.length], 0.3) : bark[0]), a: 0.95, step: 6, chunk: 4, nb: 12, load: R(1.2, 3), splay: 0, jit: 0.3 }); }
+    g.fillStyle = bark[1]; g.beginPath(); g.moveTo(-hw(0), 2); for (let y = 0; y >= yF - tw; y -= 20) g.lineTo(cx(y) - hw(y) * 0.95, y); for (let y = yF - tw; y <= 0; y += 20) g.lineTo(cx(y) + hw(y) * 0.95, y); g.closePath(); g.fill();
+    const nTr = mid ? 3 : 4; for (let k = 0; k < nTr; k++) { const off = -1 + ((k + 0.5) / nTr) * 2, pts = [], wob = R(0, 6); for (let y = 4; y >= yF - tw * 0.5; y -= 40) pts.push([cx(y) + off * hw(y) * 0.7 + Math.sin(y * 0.02 + wob) * tw * 0.12, y]); stroke(g, pts, { w: tw / (nTr - 0.6), cols: bark.concat(rnd() < 0.5 ? hm(bark[2], TACC[k % TACC.length], 0.3) : bark[0]), a: 0.95, step: 6, chunk: 4, nb: 12, load: R(1.2, 3), splay: 0, jit: 0.3 }); }
     yield;
-    for (let k = 0; k < 4; k++) { const off = -0.95 + k * 0.08, pts = []; for (let y = 0; y >= -h; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 8 + 1, cols: [barkLit, hm(barkLit, bark[2], 0.4)], a: 0.35, step: 5, chunk: 3, nb: 5, load: R(0.4, 1.2) }); }
-    { const pts = []; for (let y = 0; y >= -h; y -= 24) pts.push([cx(y) - hw(y) * 0.88, y]); stroke(g, pts, { w: Math.max(1.5, tw * 0.07), cols: [barkLit, hm(barkLit, pal.hi, 0.3)], a: mid ? 0.4 : 0.7, nb: 3, step: 4, load: R(0.6, 1.4), splay: 0 }); }
+    for (let k = 0; k < 4; k++) { const off = -0.95 + k * 0.08, pts = []; for (let y = 0; y >= yF; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 8 + 1, cols: [barkLit, hm(barkLit, bark[2], 0.4)], a: 0.35, step: 5, chunk: 3, nb: 5, load: R(0.4, 1.2) }); }
+    { const pts = []; for (let y = 0; y >= yF; y -= 24) pts.push([cx(y) - hw(y) * 0.88, y]); stroke(g, pts, { w: Math.max(1.5, tw * 0.07), cols: [barkLit, hm(barkLit, pal.hi, 0.3)], a: mid ? 0.4 : 0.7, nb: 3, step: 4, load: R(0.6, 1.4), splay: 0 }); }
     for (let k = 0; k < (mid ? 1 : 3); k++) { const off = R(-0.8, 0.8), y0 = -R(0.05, 0.6) * h, pts = []; for (let y = y0; y >= y0 - R(0.15, 0.4) * h; y -= 30) pts.push([cx(y) + off * hw(y), y]); stroke(g, pts, { w: tw / 5 + 2, cols: [TACC[Math.floor(rnd() * TACC.length)]], a: 0.16, nb: 5, step: 5, load: R(0.5, 1) }); }
     for (let k = 0; k < (mid ? 10 : 22); k++) { const x = R(-1.6, 1.6) * tw, y = below * R(-0.1, 0.4); dab(g, x, y, R(6, 14) * s + 2, R(3, 6) * s + 2, R(-0.3, 0.3), vc, 0.85, 5); }
     yield;
@@ -1306,7 +1354,7 @@ class Component extends DCLogic {
       for (let k = 0; k < nd * 0.09; k++) sweep(x0 - r * 0.15, y0 - r * 0.18, r * R(0.15, 0.65), R(3.5, 5.3), R(0.6, 1.5), R(9, 18) * s + 4, leafLit, 0.9);
       g.restore(); yield;
       // the moonlit rim along the top left of the mass
-      for (let k = 0; k < 3; k++) { const a0 = R(3.5, 4.2), pts = []; for (let q = 0; q <= 8; q++) { const a = a0 + (R(0.6, 1.2) * q) / 8; pts.push([x0 + Math.cos(a) * r * 1.05 * 1.25, y0 + Math.sin(a) * r * 0.75]); } stroke(g, pts, { w: R(4, 7) * s + 2, cols: leafLit.map((c) => hm(c, pal.hi, 0.25)), a: 0.8, nb: 5, step: 3, jit: 0.25 }); }
+      for (let k = 0; k < (r > 34 * s + 8 ? 3 : rnd() < 0.5 ? 1 : 0); k++) { const a0 = R(3.5, 4.2), pts = []; for (let q = 0; q <= 8; q++) { const a = a0 + (R(0.6, 1.2) * q) / 8; pts.push([x0 + Math.cos(a) * r * 1.05 * 1.25, y0 + Math.sin(a) * r * 0.75]); } stroke(g, pts, { w: R(4, 7) * s + 2, cols: leafLit.map((c) => hm(c, pal.hi, 0.25)), a: 0.8, nb: 5, step: 3, jit: 0.25 }); }
       for (let k = 0; k < nd * 0.07; k++) { const a = R(0, 6.3), r0 = r * R(0.6, 0.9); stroke(g, [[x0 + Math.cos(a) * r0 * 1.2, y0 + Math.sin(a) * r0 * 0.8], [x0 + Math.cos(a + 0.2) * r * 1.5, y0 + Math.sin(a + 0.2) * r * 1.0]], { w: R(4, 8) * s + 2, cols: a > 3.4 && a < 6 ? leafLit : leaf, a: 0.85, nb: 4, step: 3, splay: 0.9, jit: 0.3 }); }
       // blossom: loose sprays of small round flowers, thicker toward the lit top of the mass
       if (FS.bloom) for (let k = 0; k < nd / 7; k++) {
@@ -1316,20 +1364,46 @@ class Component extends DCLogic {
       }
       if (FS.snow) for (let k = 0; k < nd / 7; k++) dab(g, x0 + R(-1.1, 1.1) * r, y0 - R(0.2, 0.85) * r, R(20, 34) * s + 3, 7 * s + 2, R(-0.3, 0.3), [hm('#eef4f7', pal.deep, mid ? 0.45 : 0.3), '#dfe9ee'], 0.85, 5);
     };
-    const branch = function* (x, y, ang, len, w, depth) {
-      const ex = x + Math.sin(ang) * len, ey = y - Math.cos(ang) * len, mx = (x + ex) / 2 + Math.cos(ang) * len * 0.12, my = (y + ey) / 2 + len * 0.08;
-      stroke(g, [[x, y], [mx, my], [ex, ey]], { w, cols: bark, a: 0.95, nb: Math.max(4, Math.round(w)), step: 3, edge: ang < 0 ? barkLit : null });
-      if (FS.snow && ang > -1.4 && ang < 1.4) stroke(g, [[x, y - w * 0.4], [mx, my - w * 0.5], [ex, ey - w * 0.4]], { w: w * 0.5, cols: ['#dfe9ee'], a: 0.7, nb: 4, step: 3, load: 0.8 });
-      if (depth < 2) { yield* branch(ex, ey, ang - R(0.3, 0.6), len * 0.62, w * 0.6, depth + 1); if (rnd() < 0.7) yield* branch(ex, ey, ang + R(0.3, 0.6), len * 0.55, w * 0.55, depth + 1); }
-      else yield* cluster(ex, ey, R(26, 42) * s * (mid ? 0.6 : 1) + 8, mid ? 30 : 46);
+    // The crown is built like a real broadleaf: the trunk divides into two or three limbs that
+    // curve upward and fork again and again, tapering as they go, with a few lower side branches
+    // that reach out and then turn up. Leaves gather at the outer twigs, so seen from below you get
+    // the dark underside of the crown, its lit upper edge, and gaps where the limbs show through.
+    const sc0 = mid ? 0.6 : 1, tips = [];
+    const limb = function* (x, y, ang, len, w, depth, maxD) {
+      const n = 6, pts = []; let a = ang, px = x, py = y;
+      for (let i = 0; i <= n; i++) { pts.push([px, py]); a += (0 - a) * 0.08 + R(-0.06, 0.06); px += Math.sin(a) * (len / n); py -= Math.cos(a) * (len / n); }   // bends gently back toward the light
+      const w1 = w * 0.7; for (let i = 0; i < 3; i++) { const sub = pts.slice(i * 2, i * 2 + 3); stroke(g, sub, { w: w + (w1 - w) * (i / 2), cols: bark, a: 0.95, nb: Math.max(4, Math.round(w)), step: 3, edge: a < 0.2 ? barkLit : null }); }
+      if (FS.snow && Math.abs(ang) > 0.3) stroke(g, pts.map(([qx, qy]) => [qx, qy - w * 0.45]), { w: w * 0.45, cols: ['#dfe9ee'], a: 0.7, nb: 4, step: 3, load: 0.8 });
+      const [ex, ey] = pts[n];
+      if (depth >= maxD || w1 < 1.6) { tips.push([ex, ey, depth, a]); for (let t = 0; t < 3; t++) { const ta = a + R(-0.9, 0.9), tl = len * R(0.25, 0.45); stroke(g, [[ex, ey], [ex + Math.sin(ta) * tl, ey - Math.cos(ta) * tl]], { w: Math.max(1, w1 * 0.5), cols: [bark[1]], a: 0.85, nb: 2, step: 2 }); } return; }
+      const kids = depth === 0 ? 2 + (rnd() < 0.5 ? 1 : 0) : 2;
+      for (let k = 0; k < kids; k++) { const spread = (k - (kids - 1) / 2) * R(0.5, 0.8) + R(-0.12, 0.12); yield* limb(ex, ey, a + spread, len * R(0.68, 0.82), w1 * (kids > 2 ? 0.85 : 1), depth + 1, maxD); }
+      if (depth >= 1 && rnd() < 0.5) tips.push([pts[4][0], pts[4][1], depth + 1, a]);   // inner foliage along the limb, so the crown fills in
+      if (depth === 0) yield;
+      // a side shoot partway along, as real limbs have
+      if (depth < maxD - 1 && rnd() < 0.6) { const m = pts[3], sa = a + (rnd() < 0.5 ? -1 : 1) * R(0.7, 1.1); yield* limb(m[0], m[1], sa, len * 0.5, w * 0.45, depth + 2, maxD); }
     };
-    const nbr = mid ? 2 : 3 + Math.floor(rnd() * 2);
-    for (let b = 0; b < nbr; b++) {
-      const sd = b % 2 ? 1 : -1, y = -h * R(0.42, 0.72), x = cx(y) + sd * hw(y) * 0.6;
-      if (o.owl && b === 1) continue;
-      yield* branch(x, y, sd * R(0.7, 1.2), R(50, 90) * s * (mid ? 0.6 : 1), tw * 0.22, 0);
+    // the dark back of the crown first, so limbs and the front foliage sit over it
+    const crownY = (yF - h - above * 0.5) / 2, crownW = reach * 0.75;
+    for (let c = 0; c < (mid ? 2 : 3); c++) { yield* cluster(cx(yF) + R(-0.6, 0.6) * crownW, crownY + R(-0.25, 0.3) * (h * 0.3), R(55, 80) * s * sc0 + 10, mid ? 26 : 40); }
+    // lower side branches: out from the trunk, then sweeping up
+    const nSide = mid ? 1 : 2 + Math.floor(rnd() * 2);
+    for (let b = 0; b < nSide; b++) {
+      const sd = b % 2 ? 1 : -1, y = -h * R(0.4, 0.52) - b * h * 0.03, x = cx(y) + sd * hw(y) * 0.5;
+      if (o.owl && sd > 0) continue;
+      yield* limb(x, y, sd * R(1.05, 1.3), R(70, 110) * s * sc0, tw * 0.24, 1, 3);
     }
-    for (let c = 0; c < (mid ? 3 : 4); c++) { yield* cluster(cx(-h) + R(-150, 150) * s * (mid ? 0.6 : 1), -h + R(-10, h * 0.12), R(45, 75) * s * (mid ? 0.6 : 1) + 10, mid ? 50 : 80); yield; }
+    // the main limbs from the fork
+    const nMain = 2 + (rnd() < 0.5 ? 1 : 0);
+    for (let k = 0; k < nMain; k++) { const a0 = (k - (nMain - 1) / 2) * R(0.6, 0.85) + R(-0.1, 0.1); yield* limb(cx(yF) + a0 * tw * 0.3, yF, a0, h * 0.15 + above * 0.1, tw * (nMain > 2 ? 0.55 : 0.66), 0, mid ? 2 : 3); }
+    // leaves at the outer twigs, biggest at the top and outside of the crown
+    tips.sort((p, q) => q[1] - p[1]);
+    // each twig end carries a few overlapping clumps of different sizes, pushed outward and up, so the
+    // crown's outline is ragged and lumpy like real foliage rather than a row of discs
+    for (const [x, y, d, a] of tips) {
+      const nC = 1 + (rnd() < 0.6 ? 1 : 0);
+      for (let c = 0; c < nC; c++) { const r = R(18, 32) * s * sc0 + 6, off = R(0, 1) * r * 0.9; yield* cluster(x + Math.sin(a) * off + R(-0.6, 0.6) * r, y - Math.cos(a) * off * 0.7 - R(0, 0.5) * r, r, mid ? 12 : 17); }
+    }
     const T = { cv, cw, ch, ax: cw / 2, ay: h + above, h, tw, masses, near: !mid, lean };
     if (o.owl) {
       // a stub branch for the owl to sit on
@@ -1565,6 +1639,12 @@ class Component extends DCLogic {
     const plank = 9 * s + 4; g.fillStyle = hm(wood, woodD, 0.5); g.fillRect(-span / 2, RY0 - 2, span, RY1 - RY0 + 6);
     for (let x = -span / 2; x < span / 2; x += plank) { st(g, [[x + plank / 2, RY0], [x + plank / 2 + R(-1, 1), RY1 + 2]], plank * 0.8, [wood, hm(wood, woodD, 0.3)], 0.5, { load: 3, jit: 0.08 }); g.globalAlpha = 0.35; g.fillStyle = woodD; g.fillRect(x, RY0, 1.2, RY1 - RY0 + 2); g.globalAlpha = 1; }
     st(g, [[-span / 2, RY1 + 3], [span / 2, RY1 + 3]], 6 * s + 2, [woodD], 0.95, { load: 3 });
+    // where the road meets the deck: stones of the abutment and the road's dirt worn onto the first planks
+    const dirt = (F.FS.road || ['#5a4a3a']).map((c) => hm(c, pal.bg, 0.35));
+    for (const sd of [-1, 1]) {
+      for (let k = 0; k < 3; k++) rock(sd * (span / 2 + R(-4, 14) * s), RY1 + R(2, 12) * s, R(4, 8) * s + 2);
+      for (let k = 0; k < 6; k++) { const y = R(RY0, RY1), x0 = sd * (span / 2 + 10 * s); st(g, [[x0, y], [x0 - sd * R(14, 40) * s, y + R(-2, 2)]], R(4, 8) * s + 2, dirt, 0.6, { nb: 4 }); }
+    }
     // the far rail
     const railH = 40 * s + 12;
     for (let x = -span / 2; x <= span / 2 + 1; x += span / 6) st(g, [[x, RY0 + 2], [x, RY0 - railH]], 6 * s + 2, [wood, woodD], 0.95, { edge: woodL });
@@ -1745,7 +1825,7 @@ class Component extends DCLogic {
   drawSkyFlow(g, F, t, dt) {
     const W = F.W, hz = F.H * 0.6, d = F.d * 0.6, s = F.s, pal = F.pal;
     if (!F.flow) { const cv = document.createElement('canvas'); cv.width = Math.round(W * d); cv.height = Math.round(hz * d); F.flow = { cv, g: cv.getContext('2d'), tips: [], fade: 0 }; }
-    const Fl = F.flow, fg = Fl.g, cols = [this.hmix(pal.hi, pal.ink, 0.3), this.hmix(pal.hi, pal.mid, 0.4), this.hmix(pal.hi, '#ffffff', 0.2), (F.ACC || [pal.hi])[2]];
+    const Fl = F.flow, fg = Fl.g, cols = [this.hmix(pal.hi, pal.ink, 0.3), '#4a7fc4', '#e8c86a', this.hmix(pal.hi, '#ffffff', 0.2), '#2d5bb0', (F.ACC || [pal.hi])[2]];
     while (Fl.tips.length < 34) Fl.tips.push({ x: Math.random() * W, y: Math.random() * hz, life: 2 + Math.random() * 4, w: (2 + Math.random() * 5) * s + 1, c: cols[Math.floor(Math.random() * cols.length)], a: 0.05 + Math.random() * 0.1 });
     Fl.fade += dt; if (Fl.fade > 0.05) { fg.setTransform(1, 0, 0, 1, 0, 0); fg.globalCompositeOperation = 'destination-out'; fg.globalAlpha = 0.04; fg.fillRect(0, 0, Fl.cv.width, Fl.cv.height); fg.globalCompositeOperation = 'source-over'; Fl.fade = 0; }
     fg.setTransform(d, 0, 0, d, 0, 0); fg.lineCap = 'round';
@@ -1794,9 +1874,12 @@ class Component extends DCLogic {
       g.beginPath(); g.moveTo(x0 - b.w0, -10); g.lineTo(x0 + b.w0, -10); g.lineTo(x0 + b.dx + b.w1, H * 0.85); g.lineTo(x0 + b.dx - b.w1, H * 0.85); g.fill();
     }
     g.globalCompositeOperation = 'source-over';
+    // the creek upstream of the bridge lies in the ground, under the road's verge grass
+    const creekPart = (o, y0, y1) => { const x = this.objX(F, o), sp = o.spr, d = F.d, a = Math.max(0, y0 - sp.top), b = Math.min(sp.h, y1 - sp.top); if (b > a) g.drawImage(sp.cv, 0, a * d, sp.cv.width, (b - a) * d, x - sp.ax, sp.top + a, sp.w, b - a); return x; };
+    for (const o of F.objs) if (o.z === 'bridge') creekPart(o, 0, F.RY0 - 6);
     this.drawTile(g, F, F.road);
-    // behind the road: bridges' streams, trees, and the set pieces on the far verge
-    for (const o of F.objs) if (o.z === 'bridge') { const x = this.objX(F, o), sp = o.spr; g.drawImage(sp.cv, x - sp.ax, sp.top, sp.w, sp.h); this.drawCreek(g, F, o, x, t); }
+    // behind the road: the bridge deck and the creek below it, trees, and the set pieces on the far verge
+    for (const o of F.objs) if (o.z === 'bridge') { const x = creekPart(o, F.RY0 - 6, F.H + 10); this.drawCreek(g, F, o, x, t); }
     for (const o of F.objs) if (o.z === 'back') {
       const x = this.objX(F, o); if (x < -(F.pad || 600) || x > W + (F.pad || 600)) continue;
       if (o.kind === 'tree') {
@@ -1840,7 +1923,8 @@ class Component extends DCLogic {
       g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(F.air, 0, 0); g.setTransform(d, 0, 0, d, 0, 0);
     }
     g.globalAlpha = 1;
-    if (F.fadeFrom) { const u = (performance.now() - F.fadeT) / 900; if (u >= 1) F.fadeFrom = null; else { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1 - u * u * (3 - 2 * u); g.drawImage(F.fadeFrom, 0, 0); g.globalAlpha = 1; g.setTransform(d, 0, 0, d, 0, 0); } }
+    this.drawSeasonWash(g, F, dt);
+    if (F.fadeFrom) { const u = (performance.now() - F.fadeT) / (F.fadeMs || 900); if (u >= 1) F.fadeFrom = null; else { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1 - u * u * (3 - 2 * u); g.drawImage(F.fadeFrom, 0, 0); g.globalAlpha = 1; g.setTransform(d, 0, 0, d, 0, 0); } }
     this.glPost(F);
     this.roadAudio(F, C, t);
   }
@@ -1922,7 +2006,7 @@ class Component extends DCLogic {
     } else if (o.kind === 'fox') {
       if (o.state === 'trot') {
         const u = (t - o.t0) / 2.2; if (u >= 1) { o.state = 'gone'; return; }
-        const dx = -u * 380 * s, b = Math.abs(Math.sin(u * 30)) * 3; g.globalAlpha = Math.min(1, (1 - u) * 3); g.save(); g.translate(x + dx, by - b); g.drawImage(sp.trot.cv, -sp.trot.ax, -sp.trot.ay, sp.trot.w, sp.trot.h); g.restore(); g.globalAlpha = 1; return;
+        const dx = -u * 380 * s, b = Math.abs(Math.sin(u * 30)) * 3; g.globalAlpha = Math.min(1, (1 - u) * 3); g.save(); g.translate(x + dx, by - b); g.scale(-1, 1); g.drawImage(sp.trot.cv, -sp.trot.ax, -sp.trot.ay, sp.trot.w, sp.trot.h); g.restore(); g.globalAlpha = 1; return;
       }
       const tilt = o.state === 'tilt' ? Math.sin(Math.min(1, (t - o.t0) / 0.3) * Math.PI / 2) * 0.18 : 0;
       if (o.state === 'tilt' && t - o.t0 > 1.4) { o.state = 'trot'; o.t0 = t; }
@@ -2300,7 +2384,7 @@ void main() {
     try {
       const ctx = A.ctx, t0 = ctx.currentTime, out = dir === 'out', dur = out ? 2.9 : 2.4, lp = ctx.createBiquadFilter(), am = ctx.createGain(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
       lp.type = 'lowpass'; lp.frequency.value = 380; lp.Q.value = 2; am.gain.value = 0.6; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(am.gain);
-      const oscs = [['sawtooth', 1, 1], ['square', 1.006, 0.35]].map(([type, mul, vol]) => {
+      const oscs = [['sine', 1, 0], ['sine', 1, 0]].map(([type, mul, vol]) => {
         const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; og.gain.value = vol; o.connect(og); og.connect(lp);
         if (out) { o.frequency.setValueAtTime(34 * mul, t0); o.frequency.setValueAtTime(36 * mul, t0 + 0.75); o.frequency.exponentialRampToValueAtTime(115 * mul, t0 + 2.4); }
         else { o.frequency.setValueAtTime(100 * mul, t0); o.frequency.exponentialRampToValueAtTime(32 * mul, t0 + 2.1); }
@@ -2309,6 +2393,7 @@ void main() {
       if (out) { lfo.frequency.setValueAtTime(11, t0); lfo.frequency.setValueAtTime(11, t0 + 0.75); lfo.frequency.exponentialRampToValueAtTime(34, t0 + 2.4); }
       else { lfo.frequency.setValueAtTime(30, t0); lfo.frequency.exponentialRampToValueAtTime(10, t0 + 2.1); }
       lp.connect(am); am.connect(g); g.connect(A.master);
+      { const n = this.noise(0, 0, out ? 140 : 260, 0.7, 0, true); if (n) { n.g.gain.setValueAtTime(0.0001, t0); n.g.gain.exponentialRampToValueAtTime(0.03, t0 + 0.4); n.g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); n.f.frequency.setValueAtTime(out ? 140 : 260, t0); n.f.frequency.exponentialRampToValueAtTime(out ? 280 : 120, t0 + dur); setTimeout(() => { try { n.src.stop(); } catch (e) {} }, (dur + 0.2) * 1000); } }
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.1); g.gain.setValueAtTime(0.07, t0 + dur - 0.9); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       for (const o of oscs.concat(lfo)) { o.start(t0); o.stop(t0 + dur + 0.1); }
       if (out) [[0.3, 71], [0.48, 71]].forEach(([at, n]) => setTimeout(() => { if (!this.state.sound) return; this.voice(this.hz(n), 0.16, 0.02, 'square', 0.25, null, 0.01, -0.5); this.voice(this.hz(n + 4), 0.16, 0.014, 'square', 0.25, null, 0.01, -0.5); }, at * 1000));
@@ -2323,17 +2408,12 @@ void main() {
     const ctx = A.ctx, now = ctx.currentTime;
     try {
       if (!this.roadSnd) {
-        const lp = ctx.createBiquadFilter(), am = ctx.createGain(), g = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
-        lp.type = 'lowpass'; lp.frequency.value = 340; lp.Q.value = 1.5; am.gain.value = 0.6; lg.gain.value = 0.4; lfo.frequency.value = 10; lfo.connect(lg); lg.connect(am.gain);
-        const oscs = [['sawtooth', 1, 1], ['square', 1.007, 0.3]].map(([type, mul, vol]) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = 30 * mul; og.gain.value = vol; o.connect(og); og.connect(lp); o.start(); o.mul = mul; return o; });
-        lp.connect(am); am.connect(g); g.gain.value = 0; g.connect(A.master); lfo.start();
-        this.roadSnd = { oscs, lfo, g, lp, gravel: this.noise(0, 0, 900, 0.6, 0, true), creek: this.noise(0, 0, 2200, 0.5, 0, true), fire: this.noise(0, 0, 1400, 0.9, 0, true) };
+        // no pitched engine note: a soft, pitchless rumble of tyres, so nothing drones under the music
+        this.roadSnd = { hum: this.noise(0, 0, 160, 0.6, 0, true), gravel: this.noise(0, 0, 900, 0.6, 0, true), creek: this.noise(0, 0, 2200, 0.5, 0, true), fire: this.noise(0, 0, 1400, 0.9, 0, true) };
         if (ctx.createStereoPanner) for (const k of ['creek', 'fire']) { const n = this.roadSnd[k]; if (!n) continue; const p = ctx.createStereoPanner(); n.g.disconnect(); n.g.connect(p); p.connect(A.master); n.p = p; }
       }
       const R = this.roadSnd, u = Math.max(0, Math.min(1.2, F.v / F.cruise)), idle = C.mode === 'leaving' && C.t > 0.8 ? 1 : u;
-      for (const o of R.oscs) o.frequency.setTargetAtTime((30 + idle * 34) * o.mul, now, 0.25);
-      R.lfo.frequency.setTargetAtTime(10 + idle * 20, now, 0.25); R.lp.frequency.setTargetAtTime(300 + idle * 220, now, 0.3);
-      R.g.gain.setTargetAtTime(0.03 + idle * 0.025, now, 0.2);
+      if (R.hum) { R.hum.g.gain.setTargetAtTime(0.012 + idle * 0.022, now, 0.3); R.hum.f.frequency.setTargetAtTime(140 + idle * 120, now, 0.4); }
       if (R.gravel) R.gravel.g.gain.setTargetAtTime(u * 0.022, now, 0.2);
       let creek = 0, cp = 0, fire = 0, fp = 0;
       for (const o of F.objs) {
@@ -2349,7 +2429,7 @@ void main() {
   }
   stopRoadAudio() {
     const R = this.roadSnd; if (!R) return; this.roadSnd = null;
-    try { const A = this.audio, now = A.ctx.currentTime; R.g.gain.setTargetAtTime(0, now, 0.2); for (const o of R.oscs.concat(R.lfo)) o.stop(now + 1); for (const k of ['gravel', 'creek', 'fire']) if (R[k]) { R[k].g.gain.setTargetAtTime(0, now, 0.2); R[k].src.stop(now + 1); } } catch (e) {}
+    try { const A = this.audio, now = A.ctx.currentTime; for (const k of ['hum', 'gravel', 'creek', 'fire']) if (R[k]) { R[k].g.gain.setTargetAtTime(0, now, 0.2); R[k].src.stop(now + 1); } } catch (e) {}
   }
   honk(p) { for (const [at, n] of [[0, 71], [0.18, 71]]) setTimeout(() => { if (!this.state.sound) return; this.voice(this.hz(n), 0.15, 0.022, 'square', 0.25, null, 0.01, p); this.voice(this.hz(n + 4), 0.15, 0.016, 'square', 0.25, null, 0.01, p); }, at * 1000); }
   forestSfx(kind, arg) {
