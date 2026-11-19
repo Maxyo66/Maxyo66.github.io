@@ -1370,30 +1370,22 @@ class Component extends DCLogic {
   // ---- the sky: a thundercloud parked over the meadow pulls you up to the Storm Throne,
   // a dithered 3D palace (assets/sky-realm.js, loaded with three.js the first time you go)
   thunderHit(S, x, y) { const T = S.thunder; return !!T && (this.state.scene || 'meadow') === 'meadow' && x > T.x - 2 && x < T.x + T.w + 2 && y > T.y - 2 && y < T.y + T.h + 6; }
-  thunderSprite() {
-    if (this.tcSpr) return this.tcSpr;
-    const Wc = 46, Hc = 21, base = 17, B = this.BAYER;
-    const puffs = [[8, 13, 6], [16, 9, 7.5], [25, 7, 8.5], [34, 9.5, 7], [40, 13, 5.5], [21, 13, 6], [30, 13, 6]];
-    const mk = (lit, body, under) => {
-      const cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc; const g = cv.getContext('2d');
-      for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
-        let best = -1, ny = 0, nx = 0;
-        for (const [cx, cy, r] of puffs) { const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), v = 1 - d / r; if (v > best) { best = v; ny = (y + 0.5 - cy) / r; nx = (x + 0.5 - cx) / r; } }
-        if (best < 0 || y > base + (x > 6 && x < 40 ? 1 : 0)) continue;
-        const th = (B[(y & 3) * 4 + (x & 3)] + 0.5) / 16, light = -ny * 0.8 - nx * 0.35;
-        g.fillStyle = y >= base - 1 || (y > base - 4 && th > 0.45) ? under : light > 0.35 + th * 0.3 ? lit : body; g.fillRect(x, y, 1, 1);
-      }
-      return cv;
-    };
-    return (this.tcSpr = { dim: mk('#a3a9b8', '#5c6274', '#2a2e3a'), lit: mk('#fff4c8', '#d4d0c4', '#7d7a70') });
+  // The thundercloud is painted exactly like the drifting clouds (same soft dithered blobs
+  // and palette) so it blends into the sky; only its lightning flicker gives it away.
+  thunderSprite(pal) {
+    if (this.tcSpr && this.tcSpr.pal === pal) return this.tcSpr;
+    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const shape = this.tcShape || (this.tcShape = this.makeCloud(rnd, 46, 21));
+    const warm = Object.assign({}, pal, { hi: '#fff4c8', deep: this.mix(pal.deep, '#f5c22b', 0.35) });
+    return (this.tcSpr = { pal, dim: this.cloudCanvas(shape, pal), lit: this.cloudCanvas(shape, warm) });
   }
   drawThunderCloud(g, S, t, px) {
     const T = S.thunder; if (!T) return;
-    const spr = this.thunderSprite(), hover = this.cloudHover && (this.state.scene || 'meadow') === 'meadow';
+    const spr = this.thunderSprite(this.PALS[this.palKey()] || this.PALS.abyss), hover = this.cloudHover && (this.state.scene || 'meadow') === 'meadow';
     // a flicker of lightning inside it every few seconds says "click me"; hovering keeps it crackling
     const w = (t + 2) % 6, flick = hover ? Math.sin(t * 23) > 0.55 : (w < 0.09 || (w > 0.2 && w < 0.26)) || t - (T.zap || -9) < 0.5;
     const bob = Math.round(Math.sin(t * 0.8) * 1) - (hover ? 1 : 0), x0 = T.x, y0 = T.y + bob;
-    g.globalAlpha = 0.95; g.drawImage(flick ? spr.lit : spr.dim, x0, y0);
+    g.globalAlpha = flick ? 0.8 : 0.55; g.drawImage(flick ? spr.lit : spr.dim, x0, y0);
     if (flick) {
       // a tiny gold bolt forks out of the bottom
       let bx = x0 + 14 + ((Math.floor(t * 7) * 7) % 16), by = y0 + T.h - 3;
