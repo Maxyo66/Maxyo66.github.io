@@ -673,6 +673,11 @@ const onWheel = e=>{ if (!active) return; e.preventDefault(); cam.dist=Math.max(
 canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointermove', onMove);
 canvas.addEventListener('pointerup', onUp); canvas.addEventListener('pointercancel', onCancel);
 canvas.addEventListener('wheel', onWheel, {passive:false});
+// iOS Safari can still claim two-finger gestures for page zoom; keep them on the canvas while the sky is up
+const stopTouch = e=>{ if (active && e.cancelable) e.preventDefault(); };
+const stopGesture = e=>{ if (active) e.preventDefault(); };
+canvas.addEventListener('touchstart', stopTouch, {passive:false}); canvas.addEventListener('touchmove', stopTouch, {passive:false});
+canvas.addEventListener('gesturestart', stopGesture); canvas.addEventListener('gesturechange', stopGesture);
 canvas.style.cursor = 'grab'; canvas.style.touchAction = 'none';
 
 function frame(dt){
@@ -695,7 +700,7 @@ return {
   stop(){ active=false; down=null; pinch=null; pts.clear(); stopPad(); if (droneStop) droneStop(); },
   drop(){ if (active) W.drop(); },
   setRotate(on){ autoRot=!!on; cam.idle=9; },
-  destroy(){ this.stop(); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onCancel); canvas.removeEventListener('wheel', onWheel);
+  destroy(){ this.stop(); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerup', onUp); canvas.removeEventListener('pointercancel', onCancel); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('touchstart', stopTouch); canvas.removeEventListener('touchmove', stopTouch); canvas.removeEventListener('gesturestart', stopGesture); canvas.removeEventListener('gesturechange', stopGesture);
     try{ renderer.dispose(); rt.dispose(); renderer.forceContextLoss(); }catch(_){} }
 };
 } };
