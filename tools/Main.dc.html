@@ -1511,25 +1511,47 @@ class Component extends DCLogic {
     yield;
 
     // ---- the car, painted: body, windows, stripe, surfboard; wheels are drawn live
+    // Same method as the trees: a clear silhouette first, then loose strokes inside that follow
+    // the body's curves, broken colour, a moonlit rim along the roof, and no hard outline.
     const k = F.carW / 130, [ccv, cg] = mk(F.carW + 4, 78 * k + 4, 2, 2); cg.scale(k, k);
-    const body = night('#c9564a', 0.2), bodyL = night('#e0705e', 0.15), bodyD = night('#7a2f2a', 0.2), cream = night('#f1e3c4', 0.25);
+    const body = night('#c25a4c', 0.3), bodyL = hm(night('#e07a62', 0.2), pal.hi, 0.12), bodyD = night('#6e2e2c', 0.25), cream = night('#efe0c0', 0.3), glass = night('#1d2b3a', 0.15);
+    const cst = (pts, w, cols, a, ex) => stroke(cg, pts, Object.assign({ w, cols, a, nb: Math.max(4, Math.round(w * 1.3)), step: 3, chunk: 2, jit: 0.28, splay: 0.6 }, ex || {}));
     const bodyPath = () => { cg.beginPath(); cg.moveTo(4, 60); cg.lineTo(4, 44); cg.quadraticCurveTo(5, 35, 16, 34); cg.lineTo(36, 32); cg.lineTo(48, 14); cg.quadraticCurveTo(50, 12, 54, 12); cg.lineTo(114, 12); cg.quadraticCurveTo(124, 13, 125, 24); cg.lineTo(127, 58); cg.quadraticCurveTo(127, 62, 122, 62); cg.lineTo(8, 62); cg.quadraticCurveTo(4, 62, 4, 60); cg.closePath(); };
-    for (const sd of [-1, 1]) stroke(cg, [[sd < 0 ? 36 : 84, 8], [sd < 0 ? 40 : 88, 13]], { w: 3, cols: ['#2a2f33'], a: 1, nb: 3, step: 1 });
-    stroke(cg, [[30, 7], [76, 4], [124, 7]], { w: 7, cols: [night('#4aa3b8', 0.2), night('#9fe0ea', 0.2)], a: 1, nb: 9, step: 4, load: 3, edge: night('#d8f4f8', 0.2) });
-    cg.save(); bodyPath(); cg.clip(); cg.fillStyle = body; cg.fill();
-    for (let y = 12; y < 64; y += 4) stroke(cg, [[0, y + R(-1, 1)], [65, y + R(-1.5, 1.5)], [130, y + R(-1, 1)]], { w: 6, cols: y < 32 ? [bodyL, body] : [body, hm(body, bodyD, 0.3)], a: 0.85, nb: 9, step: 6, chunk: 3, load: 2 });
-    stroke(cg, [[0, 46], [130, 46]], { w: 6, cols: [cream], a: 0.95, nb: 8, step: 5, load: 3 });
-    stroke(cg, [[0, 59], [130, 59]], { w: 6, cols: [bodyD], a: 0.9, nb: 6, step: 5, load: 3 });
-    cg.fillStyle = night('#1d2b3a', 0.2);
+    // roof rack and surfboard: two quick strokes
+    for (const x of [38, 86]) cst([[x, 7], [x + 3, 13]], 3, [hm('#2a2f33', pal.bg, 0.2)], 0.9);
+    cst([[26, 8], [52, 3], [92, 3], [128, 8]], 8, [night('#4aa3b8', 0.25), night('#7cc8d4', 0.25), hm(night('#4aa3b8', 0.25), (F.ACC || [pal.hi])[2], 0.3)], 0.95, { load: 2.5, edge: hm(night('#d8f4f8', 0.2), pal.hi, 0.3) });
+    cg.save(); bodyPath(); cg.fillStyle = body; cg.fill(); cg.clip();
+    // body: long sweeps that bow with the panels, light on top, darker toward the sills
+    for (let y = 10; y < 66; y += 5) { const u = (y - 10) / 56, c = u < 0.35 ? [bodyL, body] : u > 0.8 ? [bodyD, hm(body, bodyD, 0.5)] : [body, hm(body, bodyD, 0.25), hm(body, (F.ACC || [pal.hi])[2], 0.18)]; cst([[R(-10, 4), y + R(-2, 2)], [R(40, 60), y - 2 - (1 - u) * 2 + R(-1.5, 1.5)], [R(126, 140), y + R(-2, 2)]], R(7, 10), c, 0.75, { load: R(1, 2.5) }); }
+    // cream stripe, then a few strokes across it so it is not a ruled line
+    cst([[-4, 46 + R(-1, 1)], [64, 45], [134, 46 + R(-1, 1)]], 7, [cream, hm(cream, body, 0.2)], 0.9, { load: 3 });
+    for (let x = 6; x < 128; x += 22) cst([[x, 42], [x + 14, 50]], 3, [hm(cream, body, 0.5)], 0.35);
+    // windows: dark glass with a smear of the sky reflected across it
+    cg.fillStyle = glass;
     cg.beginPath(); cg.moveTo(41, 31); cg.lineTo(51, 17); cg.lineTo(74, 17); cg.lineTo(74, 31); cg.closePath(); cg.fill();
     cg.beginPath(); cg.moveTo(80, 31); cg.lineTo(80, 17); cg.lineTo(110, 17); cg.quadraticCurveTo(118, 18, 119, 26); cg.lineTo(119, 31); cg.closePath(); cg.fill();
-    for (const gx of [52, 88]) stroke(cg, [[gx, 29], [gx + 9, 19]], { w: 3, cols: [hm(pal.hi, '#ffffff', 0.3)], a: 0.5, nb: 3, step: 2 });
-    for (const wx of [32, 100]) { cg.fillStyle = hm(bodyD, '#000000', 0.5); cg.beginPath(); cg.arc(wx, 62, 15, Math.PI, 0); cg.fill(); }
-    stroke(cg, [[56, 13], [90, 13], [113, 13]], { w: 3, cols: [hm(pal.hi, bodyL, 0.4)], a: 0.55, nb: 4, step: 4 });
+    cst([[44, 28], [62, 21], [74, 19]], 5, [hm(glass, pal.mid, 0.4), hm(glass, pal.hi, 0.25)], 0.55);
+    cst([[82, 29], [100, 21], [118, 20]], 5, [hm(glass, pal.mid, 0.4), hm(glass, pal.hi, 0.25)], 0.55);
+    for (const gx of [54, 92]) cst([[gx, 30], [gx + 10, 18]], 3, [hm(pal.hi, '#ffffff', 0.35)], 0.5);
+    cst([[77, 14], [77.5, 62]], 3, [bodyD], 0.6); cst([[40, 34], [40, 60]], 2, [bodyD], 0.35);
+    // wheel arches, brushed dark
+    for (const wx of [32, 100]) { cg.fillStyle = hm(bodyD, '#000000', 0.55); cg.beginPath(); cg.arc(wx, 63, 15.5, Math.PI, 0); cg.fill(); cst([[wx - 17, 60], [wx - 12, 48], [wx, 45], [wx + 12, 48], [wx + 17, 60]], 3, [bodyD], 0.6); }
     cg.restore();
-    bodyPath(); cg.globalAlpha = 0.55; cg.strokeStyle = bodyD; cg.lineWidth = 2; cg.stroke(); cg.globalAlpha = 1;
-    cg.fillStyle = '#ffe9a8'; cg.beginPath(); cg.arc(8, 41, 3.5, 0, Math.PI * 2); cg.fill(); cg.fillStyle = '#ff5a4a'; cg.fillRect(124, 28, 3, 6);
-    F.car = { cv: ccv, k, w: F.carW + 4, h: 78 * k + 4, wheels: [32, 100] };
+    // moonlit rim along the roof and bonnet, a dry stroke of shadow along the sill
+    cst([[50, 13], [84, 12], [116, 13], [124, 22]], 3.5, [hm(bodyL, pal.hi, 0.4), hm(pal.hi, '#ffffff', 0.2)], 0.75, { load: 1.4 });
+    cst([[6, 37], [18, 34], [36, 33]], 3, [hm(bodyL, pal.hi, 0.35)], 0.6);
+    cst([[6, 61], [64, 62], [124, 61]], 4, [hm(bodyD, '#000000', 0.4)], 0.7, { load: 1.2 });
+    // lamps as soft dabs of colour
+    cst([[6, 41], [10, 41]], 6, ['#ffe9a8', '#fff4d0'], 1); cst([[125, 28], [125, 34]], 4, ['#ff5a4a', '#ff8a6a'], 1);
+    // a painted wheel, spun live
+    { const wr = 13 * k + 1, [wcv, wg] = mk(wr * 2 + 6, wr * 2 + 6, wr + 3, wr + 3), wst = (pts, w, cols, a) => this.gouache(wg, pts, { rnd, w, cols, a, nb: Math.max(3, Math.round(w)), step: 2, chunk: 2, jit: 0.25 });
+      wg.fillStyle = '#14181b'; wg.beginPath(); wg.arc(0, 0, wr * 0.95, 0, Math.PI * 2); wg.fill();
+      for (let q = 0; q < 3; q++) { const pts = [], a0 = R(0, 6.3); for (let i = 0; i <= 14; i++) { const a = a0 + (i / 14) * 5.5; pts.push([Math.cos(a) * wr * 0.8, Math.sin(a) * wr * 0.8]); } wst(pts, wr * 0.32, ['#1e2327', '#2b3136'], 0.85); }
+      for (const a of [0.3, 0.3 + Math.PI / 2, 0.3 + Math.PI, 0.3 + Math.PI * 1.5]) wst([[Math.cos(a) * wr * 0.15, Math.sin(a) * wr * 0.15], [Math.cos(a + 0.15) * wr * 0.55, Math.sin(a + 0.15) * wr * 0.55]], Math.max(2, wr * 0.16), [hm('#8a949a', pal.bg, 0.25), hm('#b8c0c4', pal.hi, 0.2)], 0.85);
+      wst([[-wr * 0.12, 0], [wr * 0.12, 0]], wr * 0.3, [hm('#c8d0d4', pal.hi, 0.2)], 0.9);
+      { const pts = []; for (let i = 0; i <= 8; i++) { const a = 3.6 + i * 0.12; pts.push([Math.cos(a) * wr * 0.92, Math.sin(a) * wr * 0.92]); } wst(pts, 2, [hm(pal.hi, '#ffffff', 0.2)], 0.45); }
+      F.wheel = { cv: wcv, r: wr + 3 }; }
+    F.car = { cv: ccv, k, w: F.carW + 4, h: 78 * k + 4, wheels: [32, 100] }; yield* this.painterly(F, ccv, 0.5);
 
     // ---- a paper texture laid over the whole frame
     const gcv = document.createElement('canvas'); gcv.width = gcv.height = 160; const gg2 = gcv.getContext('2d'), img = gg2.createImageData(160, 160);
@@ -1547,15 +1569,17 @@ class Component extends DCLogic {
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 110) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
     F.ready = true; yield;
     // ---- everything else, painted while you drive
-    F.lib.sets.owl = yield* this.paintTree(F, rnd, { h: H * 0.98, tw: 40 * s + 8, near: true, owl: true });
-    F.lib.sets.deer = this.paintDeer(F, rnd); yield;
-    F.lib.sets.campfire = this.paintCampfire(F, rnd); yield;
-    F.lib.sets.bridge = yield* this.paintBridge(F, rnd);
-    F.lib.sets.cabin = yield* this.paintCabin(F, rnd);
-    F.lib.sets.lanterns = this.paintLanterns(F, rnd); yield;
-    F.lib.sets.mailbox = this.paintMailbox(F, rnd); yield;
-    F.lib.sets.ring = this.paintRing(F, rnd); yield;
-    F.lib.sets.fox = this.paintFox(F, rnd); yield;
+    // set pieces: each is painted, then given the same loose painterly pass before it can appear
+    const P = (cv, k) => this.painterly(F, cv, k);
+    { const o = yield* this.paintTree(F, rnd, { h: H * 0.98, tw: 40 * s + 8, near: true, owl: true }); yield* P(o.owl.cv, 0.6); F.lib.sets.owl = o; }
+    { const o = this.paintDeer(F, rnd); for (const k of ['graze', 'alert', 'leap']) yield* P(o[k].cv); F.lib.sets.deer = o; }
+    { const o = this.paintCampfire(F, rnd); yield* P(o.cv); F.lib.sets.campfire = o; }
+    { const o = yield* this.paintBridge(F, rnd); yield* P(o.cv); yield* P(o.front.cv); F.lib.sets.bridge = o; }
+    { const o = yield* this.paintCabin(F, rnd); yield* P(o.cv); F.lib.sets.cabin = o; }
+    { const o = this.paintLanterns(F, rnd); yield* P(o.cv); for (const l of o.sprites) yield* P(l.cv, 0.5); F.lib.sets.lanterns = o; }
+    { const o = this.paintMailbox(F, rnd); yield* P(o.cv); F.lib.sets.mailbox = o; }
+    { const o = this.paintRing(F, rnd); yield* P(o.cv, 0.6); F.lib.sets.ring = o; }
+    { const o = this.paintFox(F, rnd); for (const k of ['sit', 'trot']) yield* P(o[k].cv); F.lib.sets.fox = o; }
     for (let i = 0; i < 4; i++) F.lib.near.push(yield* this.paintTree(F, rnd, { h: H * R(0.9, 1.04), tw: R(24, 46) * s + 8, near: true }));
     for (let i = 0; i < 3; i++) F.lib.mid.push(yield* this.paintTree(F, rnd, { h: H * R(0.45, 0.62), tw: R(10, 20) * s + 5, near: false }));
     for (let i = 0; i < 3; i++) { F.lib.ferns.push(this.paintFern(F, rnd, R(60, 120) * s + 20)); F.lib.tufts.push(this.paintTuft(F, rnd)); yield; }
@@ -1827,6 +1851,26 @@ class Component extends DCLogic {
     }
     return { cv, w, h, ax: w / 2, ay: h - ry - 8, caps };
   }
+  // A loose painterly pass over a finished sprite, after Litwinowicz's impressionist strokes:
+  // short brush strokes take their colour from the picture underneath, run along its edges
+  // (across the brightness gradient), and stay inside the silhouette, so every object picks up
+  // the same brushwork as the trees and the sky.
+  *painterly(F, cv, amt) {
+    const W0 = cv.width, H0 = cv.height; if (W0 < 4 || H0 < 4) return;
+    const g = cv.getContext('2d'), src = g.getImageData(0, 0, W0, H0).data, d = F.d, s = F.s;
+    const lum = (x, y) => { const i = (Math.max(0, Math.min(H0 - 1, y)) * W0 + Math.max(0, Math.min(W0 - 1, x))) * 4; return src[i + 3] < 30 ? -1 : src[i] * 0.3 + src[i + 1] * 0.59 + src[i + 2] * 0.11; };
+    let t0 = performance.now(); const n = Math.round(((W0 * H0) / (60 * d * d)) * (amt || 1)), hx = (v) => ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2);
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop';
+    for (let k = 0; k < n; k++) {
+      const x = Math.floor(Math.random() * W0), y = Math.floor(Math.random() * H0), i = (y * W0 + x) * 4; if (src[i + 3] < 200) continue;
+      const r = 3 * d, l0 = lum(x - r, y), l1 = lum(x + r, y), l2 = lum(x, y - r), l3 = lum(x, y + r);
+      const gx = (l1 < 0 ? src[i] : l1) - (l0 < 0 ? src[i] : l0), gy = (l3 < 0 ? src[i] : l3) - (l2 < 0 ? src[i] : l2), ang = Math.hypot(gx, gy) > 8 ? Math.atan2(gy, gx) + Math.PI / 2 : (Math.random() - 0.5) * 0.6;
+      const j = (Math.random() - 0.5) * 34, col = '#' + hx(src[i] + j) + hx(src[i + 1] + j) + hx(src[i + 2] + j), len = (6 + Math.random() * 12) * d * Math.max(0.7, s), w = (2.5 + Math.random() * 3.5) * d * Math.max(0.7, s), c = Math.cos(ang), sn = Math.sin(ang);
+      this.gouache(g, [[x - (c * len) / 2, y - (sn * len) / 2], [x + (c * len) / 2 + sn * len * 0.12, y + (sn * len) / 2 - c * len * 0.12]], { rnd: Math.random, w, cols: [col], a: 0.85, nb: 4, step: Math.max(1.5, len / 4), chunk: 2, jit: 0.12, splay: 0.4 });
+      if (performance.now() - t0 > 6) { g.restore(); yield; t0 = performance.now(); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; }
+    }
+    g.restore();
+  }
   newLeaf(F, x, y, snow, shake) {
     return { x, y, snow, shake, i: Math.floor(Math.random() * (F.leafSpr.length || 1)), rot: Math.random() * 6, vr: (Math.random() - 0.5) * 3, sp: 0.6 + Math.random() * 0.8, ph: Math.random() * 6, vx: shake ? (Math.random() - 0.5) * 60 : 0 };
   }
@@ -1839,7 +1883,7 @@ class Component extends DCLogic {
       F.lanes = { mid: { k: 0.55, next: start(0.55) }, near: { k: 1, next: start(1), setAt: start(1) + W * 0.9 }, fern: { k: 1, next: start(1) }, fg: { k: 1.7, next: start(1.7) + W * 1.5 } };
       F.setOrder = []; F.treeN = 0;
     }
-    const L = F.lanes, edge = (lane) => F.carS + F.dist * lane.k - lane.next > -160 * s - 200;
+    const L = F.lanes, edge = (lane) => F.carS + F.dist * lane.k - lane.next > -(F.pad = 470 * s + 170);
     const put = (lane, o, w, gap) => { o.p = lane.next + w / 2; o.k = lane.k; o.w = w; lane.next += w + gap; F.objs.push(o); return o; };
     let guard = 0;
     while (edge(L.mid) && guard++ < 40) { const lib = F.lib.mid; if (!lib.length) break; const sp = lib[Math.floor(rnd() * lib.length)]; put(L.mid, { kind: 'tree', z: 'mid', spr: sp, flip: rnd() < 0.5, ang: 0, av: 0, shiver: 0, ph: R(0, 6) }, sp.tw * 2, R(40, 200) * s); }
@@ -1942,7 +1986,7 @@ class Component extends DCLogic {
     this.updateRoadCar(F, C, dt);
     F.v += (F.vt - F.v) * Math.min(1, dt * (F.vt > F.v ? 0.7 : 1.8)); F.dist += F.v * dt;
     this.roadSpawn(F);
-    F.objs = F.objs.filter((o) => { const x = this.objX(F, o); return x - o.w / 2 < W + 260 * s + 200 && !(o.kind === 'deer' && o.state === 'gone') && !(o.kind === 'fox' && o.state === 'gone'); });
+    F.objs = F.objs.filter((o) => { const x = this.objX(F, o); return x - o.w / 2 < W + (F.pad || 600) && !(o.kind === 'deer' && o.state === 'gone') && !(o.kind === 'fox' && o.state === 'gone'); });
     const gust = Math.sin(t * 0.31) * Math.sin(t * 0.13 + 1);
     for (const o of F.objs) if (o.kind === 'tree') {
       o.av += (-o.ang * 10 - o.av * 0.8) * dt; o.ang += o.av * dt; o.shiver *= Math.pow(0.2, dt);
@@ -1967,7 +2011,7 @@ class Component extends DCLogic {
     // behind the road: bridges' streams, trees, and the set pieces on the far verge
     for (const o of F.objs) if (o.z === 'bridge') { const x = this.objX(F, o), sp = o.spr; g.drawImage(sp.cv, x - sp.ax, sp.top, sp.w, sp.h); this.drawCreek(g, F, o, x, t); }
     for (const o of F.objs) if (o.z === 'back') {
-      const x = this.objX(F, o); if (x < -o.w || x > W + o.w) continue;
+      const x = this.objX(F, o); if (x < -(F.pad || 600) || x > W + (F.pad || 600)) continue;
       if (o.kind === 'tree') {
         g.globalAlpha = 0.35; g.fillStyle = '#000'; g.beginPath(); g.ellipse(x, F.baseNear + 3, o.spr.tw * 1.6, 5 * s + 2, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
         this.drawTree(g, F, o, x, F.baseNear, t);
@@ -1978,7 +2022,7 @@ class Component extends DCLogic {
     this.drawRoadCar(g, F, C, t, dt);
     for (const o of F.objs) if (o.z === 'bridge') { const x = this.objX(F, o), f = o.spr.front; g.drawImage(f.cv, x - f.ax, F.RY1 + 6 - f.ay, f.w, f.h); }
     for (const o of F.objs) if (o.z === 'front') {
-      const x = this.objX(F, o); if (x < -o.w || x > W + o.w) continue;
+      const x = this.objX(F, o); if (x < -(F.pad || 600) || x > W + (F.pad || 600)) continue;
       if (o.kind === 'fern') {
         const sp = o.spr;
         if (live && !F.brush && Math.abs(M.x - x) < sp.L * 0.9 && M.y > H - sp.L * 1.2) { o.bv += (x >= M.x ? 1 : -1) * (1 - Math.abs(M.x - x) / (sp.L * 0.9)) * 0.6 + (M.vx || 0) * 0.004; if (Math.abs(M.vx || 0) > 2 && t - o.lastR > 0.35) { o.lastR = t; this.sfx('rustle', (x / W) * 1.6 - 0.8); } }
@@ -2042,11 +2086,8 @@ class Component extends DCLogic {
     g.drawImage(Ck.cv, bx, by, Ck.w, Ck.h);
     const rot = -(F.dist + (C.sx - F.carS) * (fl ? -1 : 1)) / (12 * k);
     for (const wx of Ck.wheels) {
-      const cx = bx + 2 + wx * k, cy = -16 * k, r = 12 * k;
-      g.fillStyle = '#121518'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#2b3035'; g.lineWidth = 2.5 * k; g.beginPath(); g.arc(cx, cy, r * 0.75, 0, Math.PI * 2); g.stroke();
-      g.strokeStyle = '#8a949a'; g.lineWidth = 2 * k; for (const a0 of [0, Math.PI / 2]) { g.beginPath(); g.moveTo(cx - Math.cos(rot + a0) * r * 0.6, cy - Math.sin(rot + a0) * r * 0.6); g.lineTo(cx + Math.cos(rot + a0) * r * 0.6, cy + Math.sin(rot + a0) * r * 0.6); g.stroke(); }
-      g.fillStyle = '#b8c0c4'; g.beginPath(); g.arc(cx, cy, r * 0.22, 0, Math.PI * 2); g.fill();
+      const cx = bx + 2 + wx * k, cy = -16 * k, Wl = F.wheel;
+      g.save(); g.translate(cx, cy); g.rotate(rot); g.drawImage(Wl.cv, -Wl.r, -Wl.r, Wl.r * 2, Wl.r * 2); g.restore();
     }
     g.globalCompositeOperation = 'lighter';
     g.drawImage(this.softGlow('#ffe9a8'), hx - 22 * k, hy - 22 * k, 44 * k, 44 * k);
