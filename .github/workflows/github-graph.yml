@@ -1,0 +1,24 @@
+# Keeps a same-site copy of the GitHub contribution graph data, so the portfolio
+# still shows the graph when the live API is slow, rate-limited or blocked.
+name: Refresh GitHub graph
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch contributions
+        run: |
+          curl -fsS --retry 3 "https://github-contributions-api.jogruber.de/v4/Maxyo66?y=last" -o /tmp/gh.json
+          node -e "const j=require('/tmp/gh.json'); if(!Array.isArray(j.contributions)||!j.contributions.length) process.exit(1); j.updated=new Date().toISOString().slice(0,10); require('fs').writeFileSync('assets/github-contrib.json', JSON.stringify(j));"
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add assets/github-contrib.json
+          git diff --cached --quiet || (git commit -m "Refresh GitHub graph data" && git push)

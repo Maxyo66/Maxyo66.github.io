@@ -16,18 +16,24 @@ function syncAudio(){
   if (!a){ AU.on=false; return; }
   if (AU.ctx !== a.ctx){
     const ctx=a.ctx, master=ctx.createGain(); master.gain.value=.8; master.connect(a.out);
-    const conv=ctx.createConvolver(), len=ctx.sampleRate*3.2, ir=ctx.createBuffer(2,len,ctx.sampleRate);
-    for (let ch=0; ch<2; ch++){ const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6); }
-    conv.buffer=ir; const send=ctx.createGain(); send.gain.value=.55; send.connect(conv); conv.connect(master);
+    const send=ctx.createGain(); send.gain.value=.55;
+    // phones share the site's reverb instead of running a second big convolver, which starved the audio thread
+    if (a.lite && a.rev) send.connect(a.rev);
+    else {
+      const conv=ctx.createConvolver(), len=ctx.sampleRate*3.2, ir=ctx.createBuffer(2,len,ctx.sampleRate);
+      for (let ch=0; ch<2; ch++){ const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6); }
+      conv.buffer=ir; send.connect(conv); conv.connect(master);
+    }
     const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), nd=nb.getChannelData(0); for (let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
-    Object.assign(AU,{ctx,master,send,noise:nb}); padStop=null; droneStop=null;
+    Object.assign(AU,{ctx,master,send,noise:nb,lite:!!a.lite}); padStop=null; droneStop=null;
   }
   AU.on=true;
 }
 function out(node, wet=0.5){ node.connect(AU.master); if (wet>0){ const g=AU.ctx.createGain(); g.gain.value=wet; node.connect(g); g.connect(AU.send);} }
 function tone(f,{type='sine',dur=1.5,gain=0.15,attack=0.005,at=0,wet=0.5,glide=null,vib=0}={}){
-  if (!AU.on) return; const c=AU.ctx, t=c.currentTime+at;
+  if (!AU.on || (AU.lite && AU.live>=20)) return; const c=AU.ctx, t=c.currentTime+at;
   const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,t);
+  AU.live=(AU.live||0)+1; o.onended=()=>{ AU.live--; o.disconnect(); };
   if (glide) glide.forEach(([ff,tt])=>o.frequency.exponentialRampToValueAtTime(ff,t+tt));
   if (vib){ const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.5; lg.gain.value=vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t+dur+.1); }
   g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain,t+attack); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
@@ -55,7 +61,7 @@ function choir(root, g=.05){
     const f1=c.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=650; f1.Q.value=3;
     const f2=c.createBiquadFilter(); f2.type='bandpass'; f2.frequency.value=1100; f2.Q.value=4;
     f1.connect(bus); f2.connect(bus); out(bus,.9);
-    for (const det of [-7,0,7]){ const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=root*m; o.detune.value=det+rand(-3,3); o.connect(f1); o.connect(f2); o.start(t); o.stop(t+6.2); }
+    for (const det of (AU.lite ? [0] : [-7,0,7])){ const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=root*m; o.detune.value=det+rand(-3,3); o.connect(f1); o.connect(f2); o.start(t); o.stop(t+6.2); }
   });
 }
 let padStop = null, padWind = null, droneStop = null;
