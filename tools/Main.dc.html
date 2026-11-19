@@ -865,6 +865,9 @@ class Component extends DCLogic {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       let v = 0; for (const [bx, by, br] of blobs) v = Math.max(v, 1 - Math.hypot((x - bx) / 1.7, y - by) / br);
       if (y > h * 0.72) v *= 0.55;
+      // fade everything inside a soft ellipse so no puff gets clipped square at the sprite's edge
+      const ex = (x + 0.5 - w / 2) / (w / 2), ey = (y + 0.5 - h * 0.55) / (h * 0.5);
+      v = Math.min(v, (1 - Math.hypot(ex, ey)) * 3);
       if (v > 0) cells.push([x, y, v]);
     }
     return { w, h, cells };
@@ -1374,8 +1377,18 @@ class Component extends DCLogic {
   // and palette) so it blends into the sky; only its lightning flicker gives it away.
   thunderSprite(pal) {
     if (this.tcSpr && this.tcSpr.pal === pal) return this.tcSpr;
-    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    const shape = this.tcShape || (this.tcShape = this.makeCloud(rnd, 46, 21));
+    // round puffs that all sit inside the sprite, so no edge gets cut off square
+    const shape = this.tcShape || (this.tcShape = (() => {
+      const w = 46, h = 21, cells = [], puffs = [[8, 14, 4.5], [14, 11.5, 6], [21, 8.5, 7.5], [28.5, 7.5, 7.5], [35, 10.5, 6], [40, 14, 4.5], [18, 15, 5], [26, 15.5, 5], [33, 15, 4.5]];
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let v = 0; for (const [cx, cy, r] of puffs) v = Math.max(v, 1 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r);
+        // keep the whole silhouette inside a soft ellipse so the underside curves too
+        const ex = (x + 0.5 - 23) / 23, ey = (y + 0.5 - 12) / 9, e = (1 - Math.hypot(ex, ey)) * 4;
+        v = Math.min(v * 1.25, e, 1);
+        if (v > 0) cells.push([x, y, v]);
+      }
+      return { w, h, cells };
+    })());
     const warm = Object.assign({}, pal, { hi: '#fff4c8', deep: this.mix(pal.deep, '#f5c22b', 0.35) });
     return (this.tcSpr = { pal, dim: this.cloudCanvas(shape, pal), lit: this.cloudCanvas(shape, warm) });
   }
