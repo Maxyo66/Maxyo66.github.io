@@ -1352,24 +1352,41 @@ class Component extends DCLogic {
     g.globalAlpha = 1;
   }
 
-  prepForest(vw, vh, budget, needReady) {
-    const pal = this.PALS[this.palKey()] || this.PALS.abyss, key = vw + 'x' + vh + this.palKey() + this.seasonKey();
-    if (!this.forest || this.forest.key !== key) {
-      const old = this.forest, s = Math.max(0.5, Math.min(1.15, vw / 1300)), d = Math.max(1, Math.min(1.5, window.devicePixelRatio || 1));
-      const F = { key, W: vw, H: vh, d, s, pal, FS: this.FOREST_SEASON[this.seasonKey()] || this.FOREST_SEASON.summer, ready: false, done: false };
-      F.RY0 = Math.round(vh * 0.79); F.RY1 = Math.round(vh * 0.905); F.baseNear = Math.round(vh * 0.787); F.baseMid = Math.round(vh * 0.69);
-      F.carW = 118 * s + 18; F.carY = Math.round(vh * 0.888); F.carS = vw * 0.6; F.cruise = vw * 0.08 + 50;
-      F.TW = Math.ceil(Math.max(vw, 900) * 1.3);
-      F.mouse = { x: -999, y: -999, vx: 0, t: -9 }; F.d0 = 0; F.dist = old && old.W === vw ? old.dist : 0; F.v = old ? old.v : 0; F.vt = old ? old.vt : 0;
-      F.lib = { near: [], mid: [], ferns: [], tufts: [], sets: {} };
-      F.objs = []; F.parts = { leaves: [], shaken: [], sparks: [], spores: [], rips: [], smoke: [], puffs: [] };
-      F.gen = this.paintForest(F); this.forest = F;
-      if (old && old.air) { F.air = old.air; F.airG = old.airG; }
-    }
-    const F = this.forest; if (F.done) return F;
-    const t0 = performance.now();
-    while ((needReady && !F.ready) || performance.now() - t0 < budget) { const r = F.gen.next(); if (r.done) { F.done = true; F.ready = true; break; } }
+  newForest(vw, vh, key, pal, old) {
+    const s = Math.max(0.5, Math.min(1.15, vw / 1300)), d = Math.max(1, Math.min(1.5, window.devicePixelRatio || 1));
+    const F = { key, W: vw, H: vh, d, s, pal, FS: this.FOREST_SEASON[this.seasonKey()] || this.FOREST_SEASON.summer, ready: false, done: false };
+    F.RY0 = Math.round(vh * 0.79); F.RY1 = Math.round(vh * 0.905); F.baseNear = Math.round(vh * 0.787); F.baseMid = Math.round(vh * 0.69);
+    F.carW = 118 * s + 18; F.carY = Math.round(vh * 0.888); F.carS = vw * 0.6; F.cruise = vw * 0.08 + 50;
+    F.TW = Math.ceil(Math.max(vw, 900) * 1.3);
+    F.mouse = { x: -999, y: -999, vx: 0, t: -9 }; F.d0 = 0; F.dist = old && old.W === vw ? old.dist : 0; F.v = old ? old.v : 0; F.vt = old ? old.vt : 0;
+    F.lib = { near: [], mid: [], ferns: [], tufts: [], sets: {} };
+    F.objs = []; F.parts = { leaves: [], shaken: [], sparks: [], spores: [], rips: [], smoke: [], puffs: [] };
+    F.gen = this.paintForest(F);
     return F;
+  }
+  // Switching season while you drive repaints the new forest a few milliseconds per frame
+  // behind the scenes, keeps showing the old one meanwhile, then crossfades, so the drive
+  // never stalls. A new window size, or arriving from the meadow, paints it in one go.
+  prepForest(vw, vh, budget, needReady) {
+    const pal = this.PALS[this.palKey()] || this.PALS.abyss, key = vw + 'x' + vh + this.palKey() + this.seasonKey(), cur = this.forest;
+    if (cur && cur.key !== key && cur.ready && cur.W === vw && cur.H === vh && this.state.scene === 'forest' && budget < 100) {
+      let N = this.nextForest; if (!N || N.key !== key) N = this.nextForest = this.newForest(vw, vh, key, pal, cur);
+      const t0 = performance.now(); while (!N.ready && performance.now() - t0 < 6) { const r = N.gen.next(); if (r.done) { N.done = N.ready = true; } }
+      if (!N.ready) { this.paintMore(cur, 0); return cur; }
+      N.dist = cur.dist; N.v = cur.v; N.vt = cur.vt; N.mouse = cur.mouse; if (cur.air) { N.air = cur.air; N.airG = cur.airG; N.airDirty = cur.airDirty; N.lastPaint = cur.lastPaint; }
+      if (this.forCv) { const sn = document.createElement('canvas'); sn.width = this.forCv.width; sn.height = this.forCv.height; sn.getContext('2d').drawImage(this.forCv, 0, 0); N.fadeFrom = sn; N.fadeT = performance.now(); }
+      this.forest = N; this.nextForest = null; return N;
+    }
+    if (!cur || cur.key !== key) {
+      const F = this.newForest(vw, vh, key, pal, cur); this.nextForest = null;
+      if (cur && cur.air) { F.air = cur.air; F.airG = cur.airG; }
+      this.forest = F;
+    }
+    const F = this.forest; this.paintMore(F, budget, needReady); return F;
+  }
+  paintMore(F, budget, needReady) {
+    if (F.done) return; const t0 = performance.now();
+    while ((needReady && !F.ready) || performance.now() - t0 < budget) { const r = F.gen.next(); if (r.done) { F.done = true; F.ready = true; break; } }
   }
 
   // Paints everything once into cached canvases: the sky, tiling hills and forest rows,
@@ -1991,6 +2008,7 @@ class Component extends DCLogic {
       g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(F.air, 0, 0); g.setTransform(d, 0, 0, d, 0, 0);
     }
     g.globalAlpha = 1;
+    if (F.fadeFrom) { const u = (performance.now() - F.fadeT) / 900; if (u >= 1) F.fadeFrom = null; else { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1 - u * u * (3 - 2 * u); g.drawImage(F.fadeFrom, 0, 0); g.globalAlpha = 1; g.setTransform(d, 0, 0, d, 0, 0); } }
     this.roadAudio(F, C, t);
   }
 
