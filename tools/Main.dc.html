@@ -98,7 +98,35 @@ main.text-off { opacity: 0; filter: blur(6px); transform: translateY(10px) } mai
 .peek-btn { transform: translate(-50%, calc(100% + 22px - 14px)); transition: transform 0.35s cubic-bezier(.2,1.3,.4,1), opacity 0.3s; opacity: 0.75 }
 .peek-zone:hover .peek-btn, .peek-btn:focus-visible { transform: translate(-50%, 0); opacity: 1 }
 @media (prefers-reduced-motion: reduce) { .peek-btn { transition: opacity 0.3s } }
-@media (max-width: 560px) { .surf-lbl { max-width: calc(100% - 160px); line-height: 1.5 } .for-back { top: 108px !important } .for-look { top: 150px !important } }
+/* Phones: one tidy header (status line, then four equal buttons), a smaller Resurface
+   bubble, cards that fit the screen, and the scene buttons lined up as a toolbar. */
+.lg-short { display: none }
+@media (max-width: 700px) {
+  .hdr { padding: 8px 12px !important; row-gap: 7px !important }
+  .hdr-stat { width: 100%; flex-wrap: nowrap !important; justify-content: space-between; gap: 8px !important; font-size: 11px; white-space: nowrap }
+  .hdr-stat .hdr-dw { display: none }
+  .hdr-btns { width: 100%; display: grid !important; grid-template-columns: 1.1fr 1fr 1fr 0.9fr; gap: 6px !important }
+  .hdr-btns > button { min-height: 30px !important; padding: 0 2px !important; font-size: 11px; letter-spacing: 0.04em; white-space: nowrap }
+  .hdr-btns .hdr-more.open { grid-column: 1 / -1; justify-content: flex-start; gap: 6px }
+  .hdr-btns .hdr-more.open > span { margin-left: 0 !important; width: 100% }
+  .lg-long { display: none } .lg-short { display: inline }
+}
+@media (max-width: 560px) {
+  .resurface { width: 62px !important; height: 62px !important; right: 14px !important; bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; font-size: 8px !important; letter-spacing: 0.08em !important }
+  .resurface svg { width: 16px; height: 16px }
+  .hero-name { font-size: 56px !important }
+  main section > h2 { font-size: 40px !important; margin-bottom: 24px !important }
+  main h3[style*="font-size: 54px"] { font-size: 40px !important }
+  article.card { padding: 22px !important; gap: 22px !important }
+  .surf-lbl { top: 14px !important; left: 14px !important; right: 14px; max-width: none !important }
+  .surf-season { top: 40px !important; left: 14px !important; right: auto !important; width: calc((100% - 44px) / 3); padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.08em !important }
+  .surf-ctl { top: 40px !important; right: 14px !important; margin: 0 !important; padding: 0 !important; width: calc((100% - 44px) / 3 * 2 + 8px); flex-wrap: nowrap !important; gap: 8px !important }
+  .surface.scene-sky .surf-ctl, .surface.scene-toSky .surf-ctl, .surface.scene-fromSky .surf-ctl { width: calc(100% - 28px) }
+  .surf-ctl > button { flex: 1 1 0; min-width: 0; padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.08em !important; white-space: nowrap }
+  .for-back, .for-look { top: 82px !important; width: calc((100% - 36px) / 2); padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.06em !important; white-space: nowrap }
+  .for-back { left: 14px !important } .for-look { left: auto !important; right: 14px }
+}
+@media (hover: none) { .surf-ctl.ghost { opacity: 0.5 } }
 @media (hover: none) { .peek-zone { pointer-events: none } .peek-btn { pointer-events: auto; transform: translate(-50%, 0); opacity: 1 } }
 .sc-sky { transform: translateY(-100%); transition: transform 1.3s cubic-bezier(.65,0,.35,1); background: #3f7fb8 }
 .surface.scene-toSky .sc-meadow, .surface.scene-sky .sc-meadow { transform: translateY(100%) }
@@ -136,15 +164,15 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 
 <canvas ref="{{canvasRef}}" aria-hidden="true" style="position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block"></canvas>
 
-<header ref="{{hdrRef}}" style="position: fixed; top: 0; left: 0; right: 0; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 28px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--panel); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,0.25)">
-<div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+<header class="hdr" ref="{{hdrRef}}" style="position: fixed; top: 0; left: 0; right: 0; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 28px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; background: var(--panel); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,0.25)">
+<div class="hdr-stat" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
 <a href="#surface" style="text-decoration: none; font-weight: 700; color: var(--hi)">MAXYO66</a>
-<span style="color: var(--dim)">depth</span>
+<span class="hdr-dw" style="color: var(--dim)">depth</span>
 <span style="color: var(--accent); font-weight: 700; min-width: 76px">{{depthLabel}}</span>
 <span style="color: var(--dim)">{{zoneName}}</span>
 </div>
-<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
-<button class="{{logCls}}" onClick="{{toggleLog}}" aria-expanded="{{logOpenStr}}" aria-controls="specimen-log" style="font: inherit; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer">Specimens <span style="color: var(--accent); font-weight: 700">{{logCount}}</span></button>
+<div class="hdr-btns" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+<button class="{{logCls}}" onClick="{{toggleLog}}" aria-expanded="{{logOpenStr}}" aria-controls="specimen-log" style="font: inherit; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer"><span class="lg-long">Specimens </span><span class="lg-short">Log </span><span style="color: var(--accent); font-weight: 700">{{logCount}}</span></button>
 <button onClick="{{toggleText}}" aria-pressed="{{textHiddenStr}}" title="Hide the page text so you can see the ocean and find creatures" style="font: inherit; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer">{{textLabel}}</button>
 <button onClick="{{toggleSound}}" aria-pressed="{{soundStr}}" style="font: inherit; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer">Sound {{soundLabel}}</button>
 <button class="hdr-opt" onClick="{{toggleMore}}" aria-expanded="{{moreStr}}" style="font: inherit; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer">{{moreLabel}}</button>
@@ -299,7 +327,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </div></sc-if>
 <sc-if value="{{forestUi}}"><button class="for-look" onClick="{{cycleLook}}" title="Painting style" style="position: absolute; top: 88px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Look: {{lookLabel}} ↻</button></sc-if>
 <sc-if value="{{forestUi}}"><button class="for-back" onClick="{{turnBack}}" style="position: absolute; top: 46px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">↻ Back to the meadow</button></sc-if>
-<sc-if value="{{groundUi}}"><button onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
+<sc-if value="{{groundUi}}"><button class="surf-season" onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
 <div class="peek-zone"><button class="peek-btn" onClick="{{closeSurface}}" style="position: absolute; left: 50%; bottom: 22px; min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer">Dive back ↓</button></div></sc-if>
 <div class="surf-ctl {{surfCtlCls}}" style="position: absolute; top: {{surfCtlTop}}px; right: 24px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 6px; margin: -6px">
 <sc-if value="{{skyOn}}"><button onClick="{{skyRotate}}" aria-pressed="{{skyRotStr}}" title="Slowly turn the camera around the palace" style="min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Rotate: {{skyRotLabel}}</button></sc-if>
@@ -323,7 +351,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section id="twilight" style="padding: 120px 6vw; box-sizing: border-box; max-width: 1240px">
 <p style="pointer-events: auto; margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hi)" aria-label="[02] Twilight zone · 200 m · Shipped">{{lbl.twilight}}</p>
 <h2 class="{{wipe.twilight}}" style="pointer-events: auto; margin: 0 0 40px; font-size: 64px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">The ocean you’re swimming through right now.</h2>
-<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px; padding: 40px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
+<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 40px; padding: 40px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
 <div style="display: flex; flex-direction: column; gap: 18px">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">Specimen No. 001 · Live on itch.io</p>
 <h3 style="margin: 0; font-family: 'Silkscreen', monospace; font-size: 54px; line-height: 1; font-weight: 700; letter-spacing: 0.02em">Abyssal</h3>
@@ -344,7 +372,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section id="midnight" style="padding: 120px 6vw; box-sizing: border-box; max-width: 1240px">
 <p style="pointer-events: auto; margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hi)" aria-label="[03] Midnight zone · 1,000 m · In development">{{lbl.midnight}}</p>
 <h2 class="{{wipe.midnight}}" style="pointer-events: auto; margin: 0 0 40px; font-size: 64px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">Stuff I’m working on right now.</h2>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 24px">
 
 <article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
 <video src="/_blob/54d802b04cb4308c57575115aa846066" poster="/_blob/0e08af7f51748a923bb57a7db17f3736" autoplay muted loop playsinline preload="metadata" aria-label="BLAME! diorama turntable: the camera orbits a pixel-art megastructure section as a lone gunman fires a beam through the wall" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; border-bottom: 1px solid var(--line); background: #000"></video>
@@ -412,7 +440,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 
 <div style="display: flex; flex-direction: column; gap: 24px">
 
-<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
+<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
 <div style="display: flex; flex-direction: column; gap: 12px">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">01 · Process</p>
 <h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">Me plus an AI crew</h3>
@@ -427,7 +455,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </ul>
 </article>
 
-<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
+<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
 <div style="display: flex; flex-direction: column; gap: 12px">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">02 · Tools</p>
 <h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">Things I built to build things</h3>
@@ -449,7 +477,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </div>
 </article>
 
-<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
+<article class="card" style="pointer-events: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 32px; padding: 36px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(6px)">
 <div style="display: flex; flex-direction: column; gap: 12px">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">03 · Library</p>
 <h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">The Resource Hub</h3>
@@ -2783,6 +2811,7 @@ class Component extends DCLogic {
     if (h.tree) { this.shakeTree(h.tree, x < this.objX(F, h.tree) ? 1 : -1, pan, y); return; }
     if (h.set) { this.useSet(h.set, x, y, pan); return; }
     if (h.water) { F.parts.rips.push({ x, y, age: 0 }); this.sfx('skip', pan); return; }
+    if (e.pointerType === 'touch') return;  // painting needs right-drag to smudge, so phones just play with the scene
     this.startBrush(x, y);
     try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
   };
@@ -4147,6 +4176,38 @@ void main() {
       for (let k = 0; k < 1; k++) this.deep.crabs.push({ x: v.x + R(-60, 60), home: v.x, ph: R(0, 6), dir: Math.random() < 0.5 ? -1 : 1, sp: R(6, 12), pause: R(0, 3) });
     }
     if (!this.deep.crabs.length && this.vents && this.vents[0]) this.deep.crabs.push({ x: this.vents[0].x + 50, home: this.vents[0].x, ph: 0, dir: 1, sp: 8, pause: 1 });  // the yeti crab always has a home
+    this.laneDeep(vw);
+  }
+
+  // Every floor walker gets its own stretch of seabed and turns round (after a pause) at
+  // its ends, so nothing paces on the spot, piles up or walks through another animal.
+  // That matters most on phones, where two vents, a crab and an isopod share ~400 px.
+  laneDeep(vw) {
+    const D = this.deep, R = (a, b) => a + Math.random() * (b - a), CR = 46, IS = 48;  // half-lengths, claw/antenna tip included
+    const crabs = D.crabs.slice().sort((a, b) => a.home - b.home);
+    crabs.forEach((c, i) => {
+      const span = vw < 700 ? 55 : 80;
+      c.lo = Math.max(CR + 6, c.home - span); c.hi = Math.min(vw - CR - 6, c.home + span);
+      const prev = crabs[i - 1];
+      if (prev && prev.hi + CR > c.lo - CR) { const mid = (prev.home + c.home) / 2; prev.hi = Math.min(prev.hi, mid - CR - 4); c.lo = Math.max(c.lo, mid + CR + 4); }
+    });
+    for (const c of crabs) { if (c.hi < c.lo) c.lo = c.hi = (c.lo + c.hi) / 2; c.x = Math.min(c.hi, Math.max(c.lo, c.x)); }
+    const gaps = (withVents) => {
+      const blocks = crabs.map((c) => [c.lo - CR, c.hi + CR]);
+      if (withVents) for (const v of this.vents || []) blocks.push([v.x - 24, v.x + 24]);
+      blocks.sort((a, b) => a[0] - b[0]);
+      const out = []; let at = 0;
+      for (const [a, b] of blocks) { if (a > at) out.push([at, a]); at = Math.max(at, b); }
+      if (at < vw) out.push([at, vw]);
+      return out.filter(([a, b]) => b - a >= IS * 2 + 24).sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
+    };
+    let free = gaps(true); if (free.length < D.isopods.length) free = gaps(false);
+    for (const p of D.isopods) {
+      const g = free.shift();
+      if (g) { p.lo = g[0] + IS + 4; p.hi = g[1] - IS - 4; p.x = R(p.lo, p.hi); }
+      else { p.lo = p.hi = p.x; }  // no room left anywhere: it just sits and twitches
+      p.pause = R(0, 2);
+    }
   }
 
   updateDeep(dt, vw, vh) {
@@ -4158,21 +4219,15 @@ void main() {
     }
     const g = D.gulper; g.ph += dt * 1.4; g.x += g.dir * 16 * dt;
     if (g.x < -g.L || g.x > vw + g.L) { g.dir = -g.dir; g.y = vh * (0.2 + Math.random() * 0.3); }
-    for (const p of D.isopods) {
-      p.ph += dt * 6; p.x += p.dir * 5 * dt;
-      const ahead = p.x + p.dir * 50;
-      const blocked = (this.vents || []).some((v) => Math.abs(v.x - ahead) < 40) || D.tripods.some((f) => Math.abs(f.x - ahead) < 30) || D.isopods.some((o) => o !== p && Math.abs(o.x - ahead) < 40);
-      if (blocked || p.x < 40 || p.x > vw - 40) p.dir = -p.dir;
-    }
-    for (const c of D.crabs) {
-      // Walk, pause, turn: they wander the open floor but drift back toward their vent.
-      if (c.pause > 0) { c.pause -= dt; c.ph += dt * 1.2; continue; }
-      c.ph += dt * 7; c.x += c.dir * c.sp * dt;
-      const away = c.x - c.home;
-      if (Math.random() < dt * 0.25) { c.pause = 0.8 + Math.random() * 2.5; c.dir = Math.random() < 0.5 + Math.sign(away) * Math.min(0.4, Math.abs(away) / 400) ? -1 : 1; }
-      if (c.x < 20) c.dir = 1; if (c.x > vw - 20) c.dir = -1;
-      if (D.crabs.some((o) => o !== c && Math.abs(o.x - (c.x + c.dir * 20)) < 22) || D.isopods.some((o) => Math.abs(o.x - (c.x + c.dir * 30)) < 30)) { c.dir = -c.dir; c.pause = 0.6; }
-    }
+    const walk = (o, sp) => {
+      if (o.pause > 0) { o.pause -= dt; if (o.pause <= 0 && o.turn) { o.dir = -o.dir; o.turn = false; } return false; }
+      o.x += o.dir * sp * dt;
+      if (o.x <= o.lo || o.x >= o.hi) { o.x = Math.max(o.lo, Math.min(o.hi, o.x)); o.pause = 0.8 + Math.random() * 2.2; o.turn = (o.x <= o.lo) === (o.dir < 0); }
+      else if (Math.random() < dt * 0.12) { o.pause = 0.8 + Math.random() * 2.4; o.turn = Math.random() < 0.35; }
+      return true;
+    };
+    for (const p of D.isopods) p.ph += dt * (walk(p, 5) ? 6 : 0.6);
+    for (const c of D.crabs) c.ph += dt * (walk(c, c.sp) ? 7 : 1.2);
     for (const f of D.tripods) f.ph += dt * 0.6;
   }
 
