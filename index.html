@@ -1197,14 +1197,27 @@ class Component extends DCLogic {
     cst([[6, 61], [64, 62], [124, 61]], 4, [hm(bodyD, '#000000', 0.4)], 0.7, { load: 1.2 });
     // lamps as soft dabs of colour
     cst([[6, 41], [10, 41]], 6, ['#ffe9a8', '#fff4d0'], 1); cst([[125, 28], [125, 34]], 4, ['#ff5a4a', '#ff8a6a'], 1);
-    // a painted wheel, spun live
-    { const wr = 13 * k + 1, [wcv, wg] = mk(wr * 2 + 6, wr * 2 + 6, wr + 3, wr + 3), wst = (pts, w, cols, a) => this.gouache(wg, pts, { rnd, w, cols, a, nb: Math.max(3, Math.round(w)), step: 2, chunk: 2, jit: 0.25 });
-      wg.fillStyle = '#14181b'; wg.beginPath(); wg.arc(0, 0, wr * 0.95, 0, Math.PI * 2); wg.fill();
-      for (let q = 0; q < 3; q++) { const pts = [], a0 = R(0, 6.3); for (let i = 0; i <= 14; i++) { const a = a0 + (i / 14) * 5.5; pts.push([Math.cos(a) * wr * 0.8, Math.sin(a) * wr * 0.8]); } wst(pts, wr * 0.32, ['#1e2327', '#2b3136'], 0.85); }
-      for (const a of [0.3, 0.3 + Math.PI / 2, 0.3 + Math.PI, 0.3 + Math.PI * 1.5]) wst([[Math.cos(a) * wr * 0.15, Math.sin(a) * wr * 0.15], [Math.cos(a + 0.15) * wr * 0.55, Math.sin(a + 0.15) * wr * 0.55]], Math.max(2, wr * 0.16), [hm('#8a949a', pal.bg, 0.25), hm('#b8c0c4', pal.hi, 0.2)], 0.85);
-      wst([[-wr * 0.12, 0], [wr * 0.12, 0]], wr * 0.3, [hm('#c8d0d4', pal.hi, 0.2)], 0.9);
-      { const pts = []; for (let i = 0; i <= 8; i++) { const a = 3.6 + i * 0.12; pts.push([Math.cos(a) * wr * 0.92, Math.sin(a) * wr * 0.92]); } wst(pts, 2, [hm(pal.hi, '#ffffff', 0.2)], 0.45); }
-      F.wheel = { cv: wcv, r: wr + 3 }; }
+    // A painted wheel: the spinning part (tyre and hubcap, with uneven bristle edges so it isn't a
+    // crisp disc) and a still overlay for the moonlight on top and the shade underneath, so the light stays put as it turns.
+    { const wr = 13 * k + 1, sz = wr * 2 + 8, [wcv, wg] = mk(sz, sz, sz / 2, sz / 2), [lcv, lg] = mk(sz, sz, sz / 2, sz / 2);
+      const wst = (gg, pts, w, cols, a, ex) => this.gouache(gg, pts, Object.assign({ rnd, w, cols, a, nb: Math.max(3, Math.round(w)), step: 2, chunk: 2, jit: 0.25 }, ex || {}));
+      const ring = (gg, r0, a0, span, n) => { const pts = []; for (let i = 0; i <= n; i++) { const a = a0 + (i / n) * span; pts.push([Math.cos(a) * r0, Math.sin(a) * r0]); } return pts; };
+      const tyre = hm('#2a2a2c', pal.bg, 0.3), tyreD = hm('#141518', pal.bg, 0.2), tyreL = hm(hm('#4a4c50', pal.bg, 0.3), pal.hi, 0.1), cap = hm('#7e868a', pal.bg, 0.4), capD = hm('#4a5054', pal.bg, 0.4), capL = hm(hm('#aab2b6', pal.bg, 0.3), pal.hi, 0.2);
+      wg.fillStyle = tyre; wg.beginPath(); wg.arc(0, 0, wr * 0.86, 0, Math.PI * 2); wg.fill();
+      // tyre: overlapping arcs of rubber, the outermost ones ragged so the edge reads as paint
+      for (let q = 0; q < 5; q++) wst(wg, ring(wg, wr * R(0.68, 0.9), R(0, 6.3), R(2.5, 5), 14), wr * R(0.22, 0.34), [tyre, tyreD, tyreL], 0.85);
+      for (let q = 0; q < 8; q++) { const a = (q / 8) * Math.PI * 2 + R(-0.2, 0.2); wst(wg, [[Math.cos(a) * wr * 0.72, Math.sin(a) * wr * 0.72], [Math.cos(a + 0.1) * wr * 1.0, Math.sin(a + 0.1) * wr * 1.0]], wr * 0.18, [tyreD, tyre], 0.6); }   // tread
+      // hubcap: a dull steel dish with a few dabs for its bolts, nothing bright enough to flicker as it spins
+      wg.fillStyle = capD; wg.beginPath(); wg.arc(0, 0, wr * 0.48, 0, Math.PI * 2); wg.fill();
+      for (let q = 0; q < 3; q++) wst(wg, ring(wg, wr * R(0.2, 0.4), R(0, 6.3), R(2, 4), 10), wr * 0.16, [cap, capD], 0.8);
+      for (let q = 0; q < 5; q++) { const a = (q / 5) * Math.PI * 2; wg.fillStyle = hm(capD, '#000000', 0.35); wg.beginPath(); wg.arc(Math.cos(a) * wr * 0.28, Math.sin(a) * wr * 0.28, Math.max(0.8, wr * 0.05), 0, Math.PI * 2); wg.fill(); }
+      wst(wg, [[-wr * 0.08, 0], [wr * 0.08, 0]], wr * 0.18, [cap, capL], 0.8);
+      // still light: a moonlit arc along the top left and shade along the bottom
+      wst(lg, ring(lg, wr * 0.86, 3.5, 1.6, 10), Math.max(1.6, wr * 0.13), [tyreL, hm(tyreL, pal.hi, 0.3)], 0.55, { nb: 3 });
+      wst(lg, ring(lg, wr * 0.42, 3.6, 1.3, 8), Math.max(1.2, wr * 0.08), [capL], 0.5, { nb: 2 });
+      wst(lg, ring(lg, wr * 0.8, 0.3, 2.4, 10), wr * 0.3, [hm(tyreD, '#000000', 0.4)], 0.35, { nb: 4 });
+      yield* this.painterly(F, wcv, 0.4);
+      F.wheel = { cv: wcv, light: lcv, r: sz / 2 }; }
     F.car = { cv: ccv, k, w: F.carW + 4, h: 78 * k + 4, wheels: [32, 100] }; yield* this.painterly(F, ccv, 0.5);
 
     // ---- a paper texture laid over the whole frame
@@ -1863,7 +1876,7 @@ class Component extends DCLogic {
     const rot = -(F.dist + (C.sx - F.carS) * (fl ? -1 : 1)) / (12 * k);
     for (const wx of Ck.wheels) {
       const cx = bx + 2 + wx * k, cy = -16 * k, Wl = F.wheel;
-      g.save(); g.translate(cx, cy); g.rotate(rot); g.drawImage(Wl.cv, -Wl.r, -Wl.r, Wl.r * 2, Wl.r * 2); g.restore();
+      g.save(); g.translate(cx, cy); g.rotate(rot); g.drawImage(Wl.cv, -Wl.r, -Wl.r, Wl.r * 2, Wl.r * 2); g.restore(); if (Wl.light) g.drawImage(Wl.light, cx - Wl.r, cy - Wl.r, Wl.r * 2, Wl.r * 2);
     }
     g.globalCompositeOperation = 'lighter';
     g.drawImage(this.softGlow('#ffe9a8'), hx - 22 * k, hy - 22 * k, 44 * k, 44 * k);
