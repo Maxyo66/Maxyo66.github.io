@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maximum Bandwidth</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Maximum Bandwidth, No. 01: a 90s magazine you can flip through, tear up and read with 3-D specs. It is also Max's web design portfolio.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Narrow:ital,wght@0,400;0,600;0,700;1,400&family=Bowlby+One&family=Courier+Prime:wght@400;700&family=Gochi+Hand&display=swap">
+<style>
+/* Layout: a magazine lying on a desk. One spread in the middle, a pocket for torn-out things at the bottom. */
+:root{
+  --desk:#23302f; --desk-2:#1a2423;
+  --paper:#f2ead6; --paper-2:#e6dcc3; --kraft:#c49a62; --kraft-2:#a87e47;
+  --ink:#1b1a17; --ink-2:#4a463d;
+  --cyan:#00a0c6; --magenta:#e4007c; --yellow:#ffd400;
+  --pen:#d0161b; --lens-red:#ff1f3d; --lens-cyan:#13c6f0;
+  --ui:#f2ead6; --ui-dim:#a9b3ae;
+  --f-mast:"Bowlby One","Arial Black",Impact,sans-serif;
+  --f-head:"Anton",Impact,"Arial Narrow",sans-serif;
+  --f-body:"Archivo Narrow","Arial Narrow",Arial,sans-serif;
+  --f-type:"Courier Prime","Courier New",monospace;
+  --f-pen:"Gochi Hand","Comic Sans MS",cursive;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0; background:var(--desk); color:var(--ui); font-family:var(--f-body);
+  background-image:
+    radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.07), transparent 60%),
+    repeating-linear-gradient(93deg, rgba(0,0,0,.08) 0 2px, transparent 2px 9px),
+    linear-gradient(var(--desk), var(--desk-2));
+  overflow-x:hidden;
+}
+.app{min-height:100%; display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding-block:10px 96px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px));}
+
+/* top bar */
+.bar{position:relative; z-index:31; width:100%; max-width:1180px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.bar .brand{font-family:var(--f-mast); font-size:15px; letter-spacing:.02em; color:var(--ui)}
+.bar .brand span{color:var(--yellow)}
+.ctrls{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.btn{font:700 13px/1 var(--f-type); color:var(--ink); background:var(--paper); border:2px solid var(--ink); box-shadow:3px 3px 0 var(--ink);
+  padding:8px 11px; cursor:pointer; text-transform:uppercase; letter-spacing:.04em}
+.btn:hover{background:var(--yellow)}
+.btn:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.btn:focus-visible{outline:3px solid var(--cyan); outline-offset:2px}
+.btn[aria-pressed="false"]{background:var(--paper-2); color:var(--ink-2)}
+.folio-ind{font:700 13px var(--f-type); color:var(--ui-dim); min-width:9ch; text-align:center; font-variant-numeric:tabular-nums}
+.hint{font:400 13px var(--f-type); color:var(--ui-dim); text-align:center; max-width:60ch}
+.hint b{color:var(--yellow); font-weight:700}
+
+/* the book */
+.stage{width:min(100%, calc((100dvh - 190px) * 1.5), 1180px); position:relative}
+#book{margin:0 auto}
+.page{background:var(--paper); color:var(--ink); overflow:hidden; container-type:size; position:relative;
+  font-family:var(--f-body); line-height:1.28}
+.page > *{font-size:2.9cqw}
+.page::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:5; opacity:.5; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .3 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+.inner{position:absolute; inset:5cqw 5.5cqw 7cqw; display:flex; flex-direction:column; gap:2.2cqw}
+.folio{position:absolute; bottom:2.6cqw; left:5.5cqw; right:5.5cqw; display:flex; justify-content:space-between; font:700 1.9cqw var(--f-type); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); border-top:.25cqw solid var(--ink); padding-top:1cqw}
+.kicker{font:700 2.2cqw var(--f-type); letter-spacing:.18em; text-transform:uppercase; background:var(--ink); color:var(--paper); align-self:flex-start; padding:.6cqw 1.6cqw}
+.hl{font-family:var(--f-head); font-weight:400; text-transform:uppercase; line-height:.92; letter-spacing:.005em; margin:0; text-wrap:balance; transition:text-shadow .6s}
+.deck{font-size:3.4cqw; line-height:1.2; font-weight:600; margin:0; text-wrap:balance}
+.cols{columns:2; column-gap:3.5cqw; margin:0; text-align:justify; hyphens:auto}
+.cols p{margin:0 0 1.4cqw}
+.cols p:first-child::first-letter{font-family:var(--f-mast); float:left; font-size:8.6cqw; line-height:.8; padding:.6cqw 1cqw 0 0; color:var(--magenta)}
+p{margin:0}
+.pic{position:relative; margin:0; border:.5cqw solid var(--ink); background:var(--ink)}
+.pic img{display:block; width:100%; height:100%; object-fit:cover; object-position:left center; filter:saturate(1.15) contrast(1.05)}
+.pic::after{content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.35;
+  background:radial-gradient(circle, #000 32%, transparent 36%) 0 0/1.1cqw 1.1cqw}
+.cap{font:400 1.9cqw/1.3 var(--f-type); color:var(--ink-2)}
+.cap b{color:var(--ink)}
+.pull{font:400 5.2cqw/1 var(--f-head); text-transform:uppercase; color:var(--magenta); border-block:.5cqw solid var(--ink); padding:1.6cqw 0; margin:0; text-wrap:balance}
+.box{border:.4cqw solid var(--ink); padding:2cqw 2.4cqw; background:var(--paper-2)}
+.box h4{margin:0 0 1cqw; font:400 3.2cqw var(--f-head); text-transform:uppercase; letter-spacing:.02em}
+.box ul{margin:0; padding-left:3cqw}
+.small{font-size:2.3cqw}
+.fine{font:400 1.6cqw/1.3 var(--f-type); color:var(--ink-2)}
+a{color:inherit}
+.page a{color:var(--magenta); font-weight:700}
+
+/* decoder boxes: the secret is printed in pale cyan under red and cyan scribbles */
+.decoder{position:relative; padding:1.4cqw 2cqw; font:700 2.6cqw/1.15 var(--f-type); text-transform:uppercase; letter-spacing:.06em; text-align:center;
+  color:rgba(0,160,198,.42); border:.3cqw dashed var(--ink-2); overflow:hidden; transition:color .8s}
+.decoder::before{content:""; position:absolute; inset:0; transition:opacity .8s; opacity:1;
+  background:
+    repeating-linear-gradient(37deg, rgba(228,30,50,.55) 0 .35cqw, transparent .35cqw 1.1cqw),
+    repeating-linear-gradient(-51deg, rgba(0,160,198,.35) 0 .25cqw, transparent .25cqw .9cqw),
+    repeating-linear-gradient(80deg, rgba(228,30,50,.4) 0 .2cqw, transparent .2cqw 1.6cqw)}
+.decoder span{position:relative}
+.decoder::after{content:"3-D SPECS REQUIRED"; position:absolute; right:.6cqw; bottom:.2cqw; font:700 1.2cqw var(--f-type); color:var(--ink-2); letter-spacing:.1em}
+body.specs .decoder{color:#06233a}
+body.specs .decoder::before{opacity:.07}
+body.specs .hl{text-shadow:-.45cqw 0 rgba(255,31,61,.8), .45cqw 0 rgba(19,198,240,.8)}
+
+/* red pen layer */
+.pen{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:8; overflow:visible; opacity:0; transition:opacity .3s}
+body.specs .pen{opacity:1}
+.pen path{fill:none; stroke:var(--pen); stroke-width:.55; stroke-linecap:round; stroke-linejoin:round}
+.pen text{fill:var(--pen); font-family:var(--f-pen); font-size:3.5px}
+
+/* COVER */
+.cover{background:var(--yellow)}
+.cover .inner{inset:3.5cqw 4cqw 4cqw; gap:1.4cqw}
+.cover .tag{font:700 2cqw var(--f-type); letter-spacing:.14em; text-transform:uppercase; display:flex; justify-content:space-between}
+.mast{font-family:var(--f-mast); font-size:15.2cqw; line-height:.82; margin:0; color:var(--ink); letter-spacing:-.02em}
+.mast em{display:block; font-style:normal; font-family:var(--f-head); font-size:15cqw; color:var(--magenta); letter-spacing:.06em; -webkit-text-stroke:.35cqw var(--ink); text-shadow:.9cqw .9cqw 0 var(--cyan); transform:scaleY(.86); transform-origin:top left; margin-top:.6cqw}
+.cover .art{position:relative; flex:1; min-height:0}
+.cover .art .pic{position:absolute; inset:2cqw 1cqw 8cqw 33cqw; transform:rotate(3deg); box-shadow:1.4cqw 1.4cqw 0 var(--ink)}
+.coverlines{position:absolute; left:0; top:0; width:30cqw; display:flex; flex-direction:column; gap:2.4cqw; z-index:2}
+.cl{font:400 2.4cqw/1.08 var(--f-body); font-weight:700; text-transform:uppercase}
+.cl b{display:block; font:400 5.4cqw/.9 var(--f-head); color:var(--ink)}
+.cl.m b{color:var(--magenta)}
+.cl.c b{color:var(--cyan); -webkit-text-stroke:.12cqw var(--ink)}
+.burst{position:absolute; right:-2cqw; bottom:3cqw; width:27cqw; aspect-ratio:1; z-index:3; display:grid; place-items:center; text-align:center;
+  font:400 3.4cqw/.95 var(--f-head); text-transform:uppercase; color:var(--ink); transform:rotate(-12deg);
+  background:var(--cyan); clip-path:polygon(50% 0,58% 14%,73% 4%,74% 21%,91% 17%,84% 32%,100% 38%,88% 50%,100% 62%,84% 68%,91% 83%,74% 79%,73% 96%,58% 86%,50% 100%,42% 86%,27% 96%,26% 79%,9% 83%,16% 68%,0 62%,12% 50%,0 38%,16% 32%,9% 17%,26% 21%,27% 4%,42% 14%)}
+.burst big{font-size:6.6cqw; color:var(--yellow); -webkit-text-stroke:.2cqw var(--ink); display:block}
+.coverfoot{display:flex; justify-content:space-between; align-items:flex-end; gap:2cqw}
+.upc{background:#fff; padding:1cqw 1.4cqw .6cqw; border:.3cqw solid var(--ink); display:flex; flex-direction:column; align-items:center; gap:.3cqw}
+.upc i{display:block; width:20cqw; height:7cqw; background:repeating-linear-gradient(90deg,#000 0 .3cqw,#fff .3cqw .55cqw,#000 .55cqw 1.2cqw,#fff 1.2cqw 1.4cqw,#000 1.4cqw 1.6cqw,#fff 1.6cqw 2.2cqw)}
+.upc small{font:700 1.5cqw var(--f-type)}
+.cover .decoder{flex:1; font-size:2.2cqw}
+
+/* AD: learn html */
+.ad-html{background:#101060; color:#fff}
+.ad-html .inner{align-items:center; text-align:center; gap:2.4cqw}
+.ad-html .hl{font-size:11cqw; color:var(--yellow); text-shadow:.8cqw .8cqw 0 var(--magenta)}
+.ad-html .hl small{display:block; font-size:5cqw; color:#fff; text-shadow:none}
+.vhs{width:34cqw; aspect-ratio:3/4.4; background:linear-gradient(160deg,#ff2d95,#7a00ff 60%,#00d0ff); border:.6cqw solid #000; box-shadow:2cqw 2cqw 0 #000; transform:rotate(-4deg);
+  display:flex; flex-direction:column; justify-content:space-between; padding:3cqw; text-align:left}
+.vhs b{font:400 6.4cqw/.9 var(--f-mast); color:#fff; -webkit-text-stroke:.2cqw #000}
+.vhs code{font:700 2.6cqw var(--f-type); background:#000; color:#0f0; padding:.6cqw 1cqw; align-self:flex-start}
+.ticks{list-style:none; margin:0; padding:0; font:700 3cqw var(--f-type); display:flex; flex-wrap:wrap; gap:1cqw 3cqw; justify-content:center}
+.ticks li::before{content:"✓ "; color:var(--yellow)}
+.ad-html .price{font:400 4.4cqw var(--f-head); background:var(--yellow); color:#000; padding:1cqw 3cqw; transform:rotate(-2deg)}
+.ad-html .fine{color:#b9b9ff}
+.ad-html .decoder{background:#fff; width:80%}
+
+/* contents */
+.toc{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; border-top:.5cqw solid var(--ink)}
+.toc li{display:grid; grid-template-columns:7cqw 1fr; gap:2cqw; padding:.7cqw 0; border-bottom:.2cqw solid var(--ink-2); align-items:baseline}
+.toc b{font:400 5cqw var(--f-head); color:var(--magenta)}
+.toc span{font-weight:700; font-size:2.8cqw}
+.toc span i{font-weight:400; display:block; font-size:2.3cqw}
+.letter{font-family:var(--f-type); font-size:2.2cqw; line-height:1.35; display:flex; flex-direction:column; gap:1cqw}
+.sig{font:400 5cqw var(--f-pen); color:var(--ink); transform:rotate(-3deg); display:inline-block}
+
+/* feature spread */
+.f-open .hl{font-size:13cqw}
+.f-open .pic{height:42cqw}
+.f-cont .grid{display:grid; grid-template-columns:1fr 1fr; gap:3cqw; min-height:0}
+.f-cont .pic{height:24cqw}
+
+/* tear-out */
+.p-tear .crystal{display:flex; gap:3cqw; align-items:center}
+.gem{width:16cqw; aspect-ratio:1; flex:none; background:conic-gradient(from 30deg,#9ff,#f9f,#ff9,#9ff,#f9f,#ff9,#9ff); clip-path:polygon(50% 0,100% 35%,80% 100%,20% 100%,0 35%); filter:drop-shadow(0 0 0 #000)}
+.p-tear .hl{font-size:7.6cqw}
+.behind{position:absolute; left:6cqw; right:4cqw; bottom:9cqw; height:60%; border:.4cqw dashed var(--ink-2); display:grid; place-items:center; text-align:center; padding:4cqw; font:400 4.4cqw/1.1 var(--f-pen); color:var(--ink-2)}
+.tearcard{position:absolute; left:5cqw; right:0; bottom:8cqw; height:62%; z-index:6; cursor:grab; touch-action:none; user-select:none}
+.tearcard .card{position:absolute; inset:0 4.5cqw 0 0; background:#ffe14d; border:.4cqw solid var(--ink); border-right:none; padding:3cqw; display:flex; flex-direction:column; gap:1.6cqw; box-shadow:-.6cqw .8cqw 0 rgba(0,0,0,.25)}
+.tearcard .perf{position:absolute; top:0; bottom:0; right:0; width:4.5cqw; background:#ffe14d; border:.4cqw solid var(--ink); border-left:none;
+  -webkit-mask:radial-gradient(circle at 0 50%, transparent .7cqw, #000 .75cqw) 0 0/100% 2.2cqw repeat-y; mask:radial-gradient(circle at 0 50%, transparent .7cqw, #000 .75cqw) 0 0/100% 2.2cqw repeat-y}
+.tearcard .card h3{margin:0; font:400 6.8cqw/.9 var(--f-mast)}
+.tearcard .card h3 em{font-style:normal; color:var(--magenta)}
+.field{font:700 2.2cqw var(--f-type); text-transform:uppercase; border-bottom:.25cqw solid var(--ink); padding-bottom:.3cqw}
+.chk{font:700 2.4cqw var(--f-type)}
+.chk::before{content:"☑ "; color:var(--magenta)}
+.pull-tab{position:absolute; left:-2cqw; top:42%; background:var(--ink); color:var(--yellow); font:700 1.9cqw var(--f-type); padding:.8cqw 1.4cqw; transform:rotate(-90deg) translateY(-50%); transform-origin:left top; letter-spacing:.1em; white-space:nowrap}
+.tearcard.gone{visibility:hidden}
+.stub{position:absolute; right:0; bottom:8cqw; height:62%; width:3cqw; z-index:5; background:#ffe14d; border-block:.4cqw solid var(--ink); display:none;
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%,40% 97%,0 94%,45% 90%,5% 86%,50% 82%,0 78%,40% 74%,10% 70%,55% 66%,0 62%,40% 58%,5% 54%,45% 50%,0 46%,50% 42%,10% 38%,40% 34%,0 30%,45% 26%,5% 22%,50% 18%,0 14%,40% 10%,5% 6%,45% 3%)}
+.stub.show{display:block}
+
+/* 3-D specs punch-out */
+.p-specs{background:var(--kraft)}
+.p-specs::after{content:""; position:absolute; inset:0; pointer-events:none; opacity:.25; background:repeating-linear-gradient(0deg, transparent 0 .6cqw, rgba(90,50,10,.25) .6cqw .7cqw)}
+.p-specs .hl{font-size:10cqw; color:var(--ink)}
+.p-specs .hl em{font-style:normal; color:var(--lens-red); text-shadow:.6cqw .6cqw 0 var(--lens-cyan)}
+.steps{list-style:none; margin:0; padding:0; display:flex; gap:2cqw; font:700 2.3cqw var(--f-type); text-transform:uppercase}
+.steps li{flex:1; background:var(--paper); border:.3cqw solid var(--ink); padding:1.2cqw; text-align:center}
+.steps b{display:block; font:400 5cqw var(--f-head); color:var(--magenta)}
+.diecut{position:relative; flex:1; min-height:0; display:grid; place-items:center}
+.hole{position:absolute; width:84cqw; height:30cqw; border:.4cqw dashed rgba(0,0,0,.55); border-radius:4cqw; background:var(--kraft-2); box-shadow:inset .8cqw .8cqw 1.6cqw rgba(0,0,0,.45); display:grid; place-items:center; font:400 4cqw var(--f-pen); color:rgba(0,0,0,.55)}
+.glasses{position:absolute; width:84cqw; z-index:6; cursor:grab; touch-action:none; user-select:none}
+.glasses svg{display:block; width:100%; height:auto; filter:drop-shadow(.4cqw .6cqw 0 rgba(0,0,0,.35))}
+.glasses.gone{visibility:hidden}
+.warn{font:700 1.9cqw/1.3 var(--f-type); background:var(--ink); color:var(--yellow); padding:1.2cqw 1.6cqw; text-transform:uppercase}
+
+/* hub + dashboard */
+.p-hub .hl{font-size:9.4cqw}
+.p-hub .pic{height:30cqw}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:1.6cqw; text-align:center}
+.stats div{border:.35cqw solid var(--ink); padding:1.2cqw .6cqw; background:var(--paper-2)}
+.stats b{display:block; font:400 6cqw/1 var(--f-head); color:var(--cyan)}
+.stats span{font:700 1.8cqw var(--f-type); text-transform:uppercase}
+.p-dash .hl{font-size:7.6cqw}
+.p-dash .pic{height:16cqw}
+.rule{border:0; border-top:.5cqw double var(--ink); margin:0}
+
+/* cyber pet ad + classifieds */
+.p-ads{background:var(--paper)}
+.pet{background:var(--magenta); color:#fff; border:.5cqw solid var(--ink); padding:3cqw; display:grid; grid-template-columns:30cqw 1fr; gap:3cqw; align-items:center}
+.egg{width:30cqw; aspect-ratio:4/5; border-radius:50% 50% 46% 46% / 58% 58% 42% 42%; background:radial-gradient(circle at 35% 25%, #fff8, transparent 40%), linear-gradient(#ffe000,#ff9a00); border:.5cqw solid var(--ink); display:grid; place-items:center}
+.lcd{width:58%; aspect-ratio:1; background:#9fb38a; border:.5cqw solid var(--ink); display:grid; grid-template-columns:repeat(8,1fr); padding:1cqw; gap:0}
+.lcd i{display:block; aspect-ratio:1}
+.lcd i.on{background:#1f2a14}
+.pet .hl{font-size:7.8cqw; color:var(--yellow); -webkit-text-stroke:.15cqw var(--ink)}
+.pet p{font-weight:700; font-size:2.6cqw}
+.classy{columns:2; column-gap:2cqw; column-rule:.25cqw solid var(--ink)}
+.classy p{break-inside:avoid; font:400 2.05cqw/1.3 var(--f-type); margin:0 0 1.4cqw}
+.classy b{font-weight:700; text-transform:uppercase}
+.p-ads .section{font:400 5cqw var(--f-head); text-transform:uppercase; border-bottom:.6cqw solid var(--ink)}
+
+/* quiz + contact */
+.quiz ol{margin:0; padding-left:4cqw; display:flex; flex-direction:column; gap:1.4cqw}
+.quiz li{font-weight:700}
+.quiz li span{display:block; font-weight:400; font-family:var(--f-type); font-size:2.2cqw}
+.answers{transform:rotate(180deg); font:400 1.9cqw var(--f-type); color:var(--ink-2); text-align:center}
+.swatches{display:flex; gap:1.2cqw}
+.swatches i{flex:1; height:5cqw; border:.3cqw solid var(--ink)}
+.mail{background:var(--ink); color:var(--paper); padding:3cqw; display:flex; flex-direction:column; gap:1.4cqw}
+.mail h4{margin:0; font:400 6cqw/.95 var(--f-head); text-transform:uppercase; color:var(--yellow)}
+.mail a{color:var(--cyan); font-family:var(--f-type); font-size:2.8cqw}
+
+/* back cover */
+.back{background:#000; color:#fff}
+.back .inner{inset:5cqw; align-items:center; justify-content:center; text-align:center; gap:3cqw}
+.modem{width:64cqw; height:18cqw; border-radius:2cqw; background:linear-gradient(#e9e4d6,#b9b3a1); border:.5cqw solid #555; position:relative; display:flex; align-items:center; justify-content:flex-end; gap:2cqw; padding-right:5cqw; transform:perspective(60cqw) rotateX(18deg)}
+.modem::before{content:"TURBOSURF 56K"; position:absolute; left:4cqw; top:50%; transform:translateY(-50%); font:700 2.6cqw var(--f-type); color:#333}
+.modem i{width:1.8cqw; height:1.8cqw; border-radius:50%; background:#300}
+.modem i.lit{background:#3f3; box-shadow:0 0 1.4cqw #3f3}
+.back .hl{font-size:13cqw; color:var(--lens-cyan)}
+.back .hl small{display:block; font-size:6cqw; color:#fff}
+.back .btn{font-size:2.8cqw}
+.back .fine{color:#999}
+
+/* pocket tray */
+.pocket{position:fixed; left:50%; bottom:max(10px, env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:30; display:flex; align-items:center; gap:10px;
+  background:#3b2a1c; border:2px solid #000; box-shadow:0 6px 0 #000; padding:8px 12px; min-height:62px; border-radius:6px 6px 14px 14px}
+.pocket .lbl{font:700 11px var(--f-type); color:#d9c19b; text-transform:uppercase; letter-spacing:.12em; writing-mode:vertical-rl; transform:rotate(180deg)}
+.slot{width:86px; height:46px; border:2px dashed #7a5b3d; border-radius:4px; display:grid; place-items:center; font:400 11px var(--f-type); color:#8a6c4c; text-align:center; padding:2px; background:none}
+.slot.full{border-style:solid; border-color:#000; cursor:pointer; padding:0; overflow:hidden}
+.slot.full:focus-visible{outline:3px solid var(--cyan)}
+.slot .mini-card{width:100%; height:100%; background:#ffe14d; display:grid; place-items:center; font:400 13px var(--f-mast); color:var(--ink)}
+.slot .mini-specs{width:100%; height:100%; background:var(--kraft); display:grid; place-items:center}
+.slot .mini-specs svg{width:90%}
+.slot.wearing{box-shadow:0 0 0 3px var(--lens-cyan), 0 0 14px var(--lens-red)}
+
+/* flying clones */
+.flyer{position:fixed; z-index:40; pointer-events:none; container-type:size; overflow:visible}
+
+/* specs overlay */
+#specsFrame{position:fixed; inset:0; z-index:25; pointer-events:none; display:none}
+#specsFrame .lens{position:absolute; top:0; bottom:0; width:50%; mix-blend-mode:multiply}
+#specsFrame .l{left:0; background:rgba(255,40,70,.16)}
+#specsFrame .r{right:0; background:rgba(20,200,240,.14)}
+#specsFrame .rim{position:absolute; inset:-30px; border:40px solid var(--kraft); border-radius:120px; box-shadow:inset 0 0 0 4px #000, inset 0 0 40px rgba(0,0,0,.6)}
+#specsFrame .bridge{position:absolute; left:50%; top:-10px; width:90px; height:34px; transform:translateX(-50%); background:var(--kraft); border:4px solid #000; border-top:none; border-radius:0 0 60px 60px}
+#specsFrame .stamp{position:absolute; left:50%; bottom:28px; transform:translateX(-50%); font:700 12px var(--f-type); color:#000; background:var(--kraft); padding:2px 10px; letter-spacing:.2em}
+
+/* modal for the reply card */
+.modal{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.6); display:grid; place-items:center; padding:16px}
+.modal .card{background:#ffe14d; color:var(--ink); border:3px solid #000; box-shadow:8px 8px 0 #000; max-width:440px; width:100%; padding:22px; display:flex; flex-direction:column; gap:12px; transform:rotate(-1.5deg)}
+.modal h3{margin:0; font:400 30px/.9 var(--f-mast)}
+.modal p{font:400 15px/1.4 var(--f-type)}
+.modal a{color:var(--magenta); font:700 15px var(--f-type)}
+.modal .stampbox{align-self:flex-end; border:3px double var(--pen); color:var(--pen); font:700 13px var(--f-type); padding:6px 10px; transform:rotate(8deg); text-transform:uppercase; opacity:0}
+
+@media (max-width:600px){ .bar .brand{font-size:13px} .hint{font-size:12px} .slot{width:70px} }
+@media (prefers-reduced-motion:reduce){ .hl,.decoder,.decoder::before,.pen{transition:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">MAXIMUM <span>BANDWIDTH</span></div>
+    <div class="ctrls">
+      <button class="btn" id="prev" aria-label="Previous page">◀</button>
+      <span class="folio-ind" id="ind">COVER</span>
+      <button class="btn" id="next" aria-label="Next page">▶</button>
+      <button class="btn" id="snd" aria-pressed="true" title="Sound on/off">♪ Sound</button>
+    </div>
+  </header>
+  <p class="hint" id="hint">Drag a page corner to turn it (or use ◀ ▶ and your arrow keys). Some things in here are <b>meant to be torn out</b>.</p>
+
+  <div class="stage"><div id="book">
+
+  <!-- 0: COVER -->
+  <section class="page cover" data-density="hard">
+    <div class="inner">
+      <div class="tag"><span>The magazine for tomorrow's web, today!</span><span>No. 01</span></div>
+      <h1 class="mast hl">MAXIMUM<em>BANDWIDTH</em></h1>
+      <div class="art">
+        <div class="coverlines">
+          <p class="cl m"><b>Exclusive!</b>The portfolio you can scuba dive</p>
+          <p class="cl c"><b>889 links</b>one page. we investigate.</p>
+          <p class="cl"><b>Is your modem lying to you?</b>p.47</p>
+        </div>
+        <figure class="pic"><img src="img/ocean.jpg" alt="Max's portfolio homepage: a dark ocean with sharks, kelp and the name Maxyo66"></figure>
+        <div class="burst"><span>Free inside!<big>3-D</big>specs</span></div>
+      </div>
+      <div class="coverfoot">
+        <div class="decoder"><span>You found one. Six more inside.</span></div>
+        <div class="upc"><i></i><small>$3.95 US · $4.95 CAN · FALL 1997</small></div>
+      </div>
+    </div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",86,99,14,13],["note",40,116,-6,"this starburst took longer|than some whole sites"],["circle",7,72,5,3],["note",3,84,-4,"there is no p.47.|there was never|a p.47."]]'></svg>
+  </section>
+
+  <!-- 1: AD learn html -->
+  <section class="page ad-html">
+    <div class="inner">
+      <p class="fine">Advertisement</p>
+      <h2 class="hl">Learn HTML in 21 days!<small>or your money back*</small></h2>
+      <div class="vhs"><code>&lt;BLINK&gt;</code><b>WEB<br>MASTER<br>2000</b><code>VHS · 3 TAPES</code></div>
+      <ul class="ticks"><li>&lt;blink&gt; tags</li><li>Frames!</li><li>Guestbooks</li><li>Hit counters</li></ul>
+      <p class="price">Only 3 easy payments of $19.95</p>
+      <div class="decoder"><span>Day 22: CSS. Day 23: crying.</span></div>
+      <p class="fine">*Money not back. Allow 6–8 weeks for enlightenment. Not responsible for spinning GIFs.</p>
+    </div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",50,24,33,10],["arrow",80,30,84,40],["note",76,46,8,"try 21 years.|I am still|on day 9."],["under",25,123,75,123]]'></svg>
+  </section>
+
+  <!-- 2: CONTENTS + EDITOR -->
+  <section class="page">
+    <div class="inner">
+      <span class="kicker">In this issue</span>
+      <ol class="toc">
+        <li><b>03</b><span>The portfolio you can scuba dive<i>Cover story. Bring a towel.</i></span></li>
+        <li><b>05</b><span>Subscribe &amp; save 0%<i>Tear-out card. Actually tear it out.</i></span></li>
+        <li><b>06</b><span>Free 3-D specs<i>Punch out, put on, go back to the cover.</i></span></li>
+        <li><b>07</b><span>889 links, one page<i>An investigation into The Hub.</i></span></li>
+        <li><b>08</b><span>Dashboard confidential<i>Plus: README remix.</i></span></li>
+        <li><b>09</b><span>Classifieds<i>Pixels wanted. Semicolons lost.</i></span></li>
+        <li><b>10</b><span>Quiz: which web-safe color are you?<i>Plus how to write to us.</i></span></li>
+      </ol>
+      <span class="kicker">From the editor's desk</span>
+      <div class="letter">
+        <p>Dear reader,</p>
+        <p>This whole magazine is a portfolio. Every feature is a website I designed and built, written up the way the magazines on my floor used to write up gadgets. Turn the pages. Tear things out (we mean it). And when you find the specs, some of what's printed here will start reading differently.</p>
+        <p><span class="sig">Max</span><br>Editor-in-Chief, Florida</p>
+      </div>
+    </div>
+    <div class="folio"><span>Maximum Bandwidth</span><span>Fall 1997 · 02</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["note",56,6,4,"hi. I am the red pen.|yes, I graded my|own homework."],["arrow",62,17,46,32],["circle",22,124,12,4],["note",50,124,-3,"A+ (biased)"]]'></svg>
+  </section>
+
+  <!-- 3: FEATURE open -->
+  <section class="page f-open">
+    <div class="inner">
+      <span class="kicker">Cover story</span>
+      <h2 class="hl">The portfolio you can scuba dive</h2>
+      <p class="deck">A game developer from Florida built his homepage as an ocean. The deeper you scroll, the stranger it gets. We put on a wetsuit.</p>
+      <figure class="pic"><img src="img/ocean.jpg" alt="The Sunlight Zone at 0 meters: sharks swim past kelp and coral behind the name Maxyo66"></figure>
+      <p class="cap"><b>Fig. 1.</b> The Sunlight Zone, 0 m. The depth meter in the top bar counts down as you scroll. Fish not to scale.</p>
+    </div>
+    <div class="folio"><span>03</span><span>Cover story</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",28,76,17,5],["note",8,112,-3,"that is the whole homepage.|yes, it is underwater."],["arrow",25,108,26,83]]'></svg>
+  </section>
+
+  <!-- 4: FEATURE cont -->
+  <section class="page f-cont">
+    <div class="inner">
+      <div class="cols">
+        <p>Most portfolios are a grid of thumbnails. This one is a dive. You start at the surface, where a name floats over kelp and coral, and every project waits further down, filed like a specimen with its own dossier. There is The Living World, a fantasy MMO built for a group of friends, and an anime autobattler, and the strange little tools that made them.</p>
+        <p>Then there's the car. Up in the meadow sits a small pixel car, and clicking it drives you off the page into a painted forest, brushed stroke by stroke, where trees bend from the roots and the paint you smear across the air dries while you watch.</p>
+      </div>
+      <p class="pull">“A portfolio that rewards you for poking it.”</p>
+      <div class="grid">
+        <figure class="pic"><img src="img/forest.jpg" alt="An autumn forest road painted in brush strokes, with a small red car"></figure>
+        <figure class="pic"><img src="img/dossier.jpg" alt="The Living World project dossier on Max's portfolio"></figure>
+      </div>
+      <p class="cap"><b>Fig. 2.</b> Click the car; drive into the forest. <b>Fig. 3.</b> Projects are filed like specimens.</p>
+      <div class="box small"><h4>Spec sheet</h4><ul><li>One design source, built into one HTML page</li><li>Canvas brushwork with a WebGL "painterly" pass</li><li>Sound made in the browser with Web Audio</li><li>A live GitHub contribution graph at the bottom</li></ul></div>
+      <div class="decoder"><span>The car is clickable. It always was.</span></div>
+    </div>
+    <div class="folio"><span>Maximum Bandwidth</span><span>04</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",33,49,30,7],["note",64,46,-4,"I wrote this quote|about myself."],["arrow",62,95,30,72],["note",58,99,-3,"paint dries in|0.35 to 3 s.|I timed it."]]'></svg>
+  </section>
+
+  <!-- 5: TEAR-OUT -->
+  <section class="page p-tear">
+    <div class="inner">
+      <p class="fine">Advertisement</p>
+      <div class="crystal"><div class="gem" aria-hidden="true"></div><div><h2 class="hl">Bandwidth crystals™</h2><p>Sprinkle on your modem for up to <b>0% faster</b> downloads. Works on 14.4, 28.8 and 33.6!</p></div></div>
+    </div>
+    <div class="behind">Somebody already tore out the card.<br>Typical.</div>
+    <div class="tearcard noflip" id="tearcard" role="button" tabindex="0" aria-label="Subscription card. Drag it away from the spine to tear it out, or press Enter.">
+      <div class="card">
+        <h3>Subscribe &amp; save <em>0%</em>!</h3>
+        <p class="chk">Yes! Send me 12 issues of things Max built.</p>
+        <p class="field">Name</p>
+        <p class="field">Address</p>
+        <p class="field">Favorite web-safe color</p>
+        <p class="fine">Business reply mail. No postage necessary if mailed in 1997.</p>
+      </div>
+      <div class="perf"></div>
+      <span class="pull-tab">✂ pull to tear out</span>
+    </div>
+    <div class="stub" id="tearstub"></div>
+    <div class="folio"><span>05</span><span>Insert</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["note",8,30,-3,"nobody has ever mailed one of these.|be the first."],["arrow",60,34,66,44]]'></svg>
+  </section>
+
+  <!-- 6: 3D SPECS -->
+  <section class="page p-specs">
+    <div class="inner">
+      <h2 class="hl">Free <em>3-D</em> specs!</h2>
+      <ol class="steps"><li><b>1</b>Punch out</li><li><b>2</b>Put on</li><li><b>3</b>Back to the cover</li></ol>
+      <div class="diecut">
+        <div class="hole">(your specs went here)</div>
+        <div class="glasses noflip" id="glasses" role="button" tabindex="0" aria-label="Cardboard 3-D glasses. Drag them off the page to punch them out, or press Enter.">
+          <svg viewBox="0 0 300 108" aria-hidden="true">
+            <path d="M8 18 Q8 8 18 8 H282 Q292 8 292 18 V70 Q292 96 266 96 H190 Q172 96 166 76 Q160 60 150 60 Q140 60 134 76 Q128 96 110 96 H34 Q8 96 8 70Z" fill="#f2ead6" stroke="#000" stroke-width="3"/>
+            <rect x="26" y="22" width="102" height="58" rx="10" fill="#ff1f3d" fill-opacity=".85" stroke="#000" stroke-width="3"/>
+            <rect x="172" y="22" width="102" height="58" rx="10" fill="#13c6f0" fill-opacity=".85" stroke="#000" stroke-width="3"/>
+            <text x="150" y="40" text-anchor="middle" font-family="Anton, Impact, sans-serif" font-size="16" fill="#000">3-D</text>
+            <text x="77" y="58" text-anchor="middle" font-family="Courier Prime, monospace" font-size="10" font-weight="700" fill="#fff">L</text>
+            <text x="223" y="58" text-anchor="middle" font-family="Courier Prime, monospace" font-size="10" font-weight="700" fill="#fff">R</text>
+          </svg>
+        </div>
+      </div>
+      <p class="warn">Warning: do not wear while driving into painted forests. Specs reveal hidden ink and the editor's private notes.</p>
+    </div>
+    <div class="folio"><span>Maximum Bandwidth</span><span>06</span></div>
+  </section>
+
+  <!-- 7: HUB -->
+  <section class="page p-hub">
+    <div class="inner">
+      <span class="kicker">Investigation</span>
+      <h2 class="hl">889 links. One page. No database.</h2>
+      <figure class="pic"><img style="object-position:center top" src="img/hub.jpg" alt="The Resource Library: a dark page reading Your next great find, with a search box and category chips"></figure>
+      <div class="cols small">
+        <p>Somewhere in Florida is a library with no building. The Hub holds 889 tools, fonts, effects and design references, every one of them actually gone through, then sorted into a single page you can search before your coffee cools.</p>
+        <p>Readers can save favorites into their own lists, flip the whole thing between styles like “Midnight archive”, and suggest a find of their own. A second tab holds documents you can read right there.</p>
+      </div>
+      <div class="stats"><div><b>889</b><span>Resources</span></div><div><b>1</b><span>HTML file</span></div><div><b>0</b><span>Servers harmed</span></div></div>
+      <div class="decoder"><span>Save a list. It remembers you.</span></div>
+    </div>
+    <div class="folio"><span>07</span><span>Investigation</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",14,14,10,5],["note",52,4,4,"one file. no build step.|loads before you blink."],["arrow",58,10,25,13]]'></svg>
+  </section>
+
+  <!-- 8: DASHBOARD + README -->
+  <section class="page p-dash">
+    <div class="inner">
+      <span class="kicker">Dashboard confidential</span>
+      <h2 class="hl">One page that watches everything</h2>
+      <p class="small">A private stats page that runs as its own tiny Cloudflare Worker, behind a login only the editor gets through. Portfolio visits, itch.io downloads and GitHub traffic sit side by side. Every night at 1 AM it saves a snapshot, because GitHub forgets traffic after 14 days and itch.io only keeps running totals. Cost to run: zero dollars.</p>
+      <hr class="rule">
+      <span class="kicker">README remix</span>
+      <h2 class="hl">Sharks on the profile page</h2>
+      <figure class="pic"><img src="img/banner.jpg" alt="GitHub profile banner: the name Maxyo66 over ASCII sharks drawn in kana characters"></figure>
+      <p class="small">GitHub profiles are usually a list of badges. This one opens with ASCII sharks drawn in kana characters, borrowed from the editor's live-wallpaper ocean, Abyssal. Click them and you dive straight into the portfolio.</p>
+    </div>
+    <div class="folio"><span>Maximum Bandwidth</span><span>08</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["under",6,25,62,25],["note",52,3,4,"sorry, no peeking.|it is private."],["circle",50,66,47,10],["note",56,100,-4,"best use of kana|on a README. probably."],["arrow",60,96,55,77]]'></svg>
+  </section>
+
+  <!-- 9: ADS + CLASSIFIEDS -->
+  <section class="page p-ads">
+    <div class="inner">
+      <div class="pet">
+        <div class="egg"><div class="lcd" id="lcd" aria-hidden="true"></div></div>
+        <div><p class="fine" style="color:#fff">Advertisement</p><h2 class="hl">Cyber-pet 2000</h2><p>Feed it HTML. Watch it grow. Forget it for one weekend and it turns into a 404.</p></div>
+      </div>
+      <p class="section">Classifieds</p>
+      <div class="classy">
+        <p><b>Wanted:</b> pixels. Will trade for vertices. Box 66.</p>
+        <p><b>For sale:</b> one (1) &lt;marquee&gt;. Barely moves. Best offer.</p>
+        <p><b>Lost:</b> semicolon. Answers to “;”. Last seen near line 212. Reward.</p>
+        <p><b>Seeking:</b> friends to test a small fantasy MMO. No global chat. Must find your own skills.</p>
+        <p><b>Free:</b> custom 404 page. You won't find it anyway.</p>
+        <p><b>Hiring?</b> Box MAXYO66 builds websites that move, sound off and occasionally tear. See page 10.</p>
+      </div>
+      <div class="decoder"><span>Box 66 is real. Page 10.</span></div>
+    </div>
+    <div class="folio"><span>09</span><span>Classifieds</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",73,82,24,5],["note",36,104,-3,"this one is not a joke"],["arrow",62,100,70,88]]'></svg>
+  </section>
+
+  <!-- 10: QUIZ + CONTACT -->
+  <section class="page quiz">
+    <div class="inner">
+      <span class="kicker">Quiz</span>
+      <h2 class="hl" style="font-size:8.4cqw">Which web-safe color are you?</h2>
+      <div class="swatches" aria-hidden="true"><i style="background:#ff0099"></i><i style="background:#00ccff"></i><i style="background:#ffcc00"></i><i style="background:#33ff00"></i></div>
+      <ol>
+        <li>Your homepage needs a background. You pick:<span>(a) tiled marble (b) a starfield (c) a slow, deep ocean</span></li>
+        <li>A visitor clicks something by accident. It should:<span>(a) open a new window (b) play a MIDI (c) drive them into a forest</span></li>
+        <li>Your favorite tag is:<span>(a) &lt;blink&gt; (b) &lt;marquee&gt; (c) &lt;canvas&gt;</span></li>
+      </ol>
+      <p class="answers">Mostly (c)? You are #00CCFF. Please write to us.</p>
+      <div class="mail">
+        <h4>Write to the editor</h4>
+        <p class="small">Want a website that people play with instead of scroll past? Letters go here:</p>
+        <a href="https://maxyo66.github.io" target="_blank" rel="noopener">maxyo66.github.io</a>
+        <a href="https://github.com/Maxyo66" target="_blank" rel="noopener">github.com/Maxyo66</a>
+      </div>
+    </div>
+    <div class="folio"><span>Maximum Bandwidth</span><span>10</span></div>
+    <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["circle",50,79,47,14],["note",8,103,-3,"ok, real talk: I am available|for web work. this is the ask."],["arrow",30,99,30,94]]'></svg>
+  </section>
+
+  <!-- 11: BACK COVER -->
+  <section class="page back" data-density="hard">
+    <div class="inner">
+      <p class="fine">Advertisement</p>
+      <h2 class="hl">Hear the future<small>TurboSurf 56K</small></h2>
+      <div class="modem" aria-hidden="true"><i id="led1"></i><i id="led2"></i><i id="led3"></i></div>
+      <button class="btn noflip" id="dial">▶ Hear the modem</button>
+      <div class="decoder" style="background:#fff;width:80%"><span>Thanks for reading. Now go back and tear something.</span></div>
+      <p class="fine">Maximum Bandwidth is a portfolio by Max (Maxyo66). All ads are fake. All websites are real.</p>
+    </div>
+  </section>
+
+  </div></div>
+</div>
+
+<div class="pocket" aria-label="Your pocket: things you tore out">
+  <span class="lbl">Pocket</span>
+  <button class="slot" id="slotCard" disabled>tear-out card</button>
+  <button class="slot" id="slotSpecs" disabled>3-D specs</button>
+</div>
+
+<div id="specsFrame" aria-hidden="true"><div class="lens l"></div><div class="lens r"></div><div class="rim"></div><div class="bridge"></div><div class="stamp">3-D SPECS · MAXIMUM BANDWIDTH</div></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <h3 id="mt">Subscribe &amp; save 0%!</h3>
+    <p>Yes! Send me 12 issues of things Max built. Real mail is slow, so try these instead:</p>
+    <a href="https://maxyo66.github.io" target="_blank" rel="noopener">maxyo66.github.io</a>
+    <a href="https://github.com/Maxyo66" target="_blank" rel="noopener">github.com/Maxyo66</a>
+    <a href="https://maxyo66.itch.io" target="_blank" rel="noopener">maxyo66.itch.io</a>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <button class="btn" id="mailIt">✉ Mail it</button>
+      <span class="stampbox" id="stampbox">Received · 1997</span>
+      <button class="btn" id="closeModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/page-flip.browser.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<script>
+(() => {
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- sound: everything synthesized, no audio files ---------- */
+const S = {
+  ctx: null, on: true, noise: null,
+  init(){
+    if (this.ctx) return this.ctx.state === 'suspended' && this.ctx.resume();
+    const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+    this.ctx = new C();
+    const len = this.ctx.sampleRate * 2, b = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.noise = b;
+    this.master = this.ctx.createGain(); this.master.gain.value = .8; this.master.connect(this.ctx.destination);
+  },
+  ok(){ return this.on && this.ctx && this.ctx.state === 'running'; },
+  burst({t=0, dur=.2, type='bandpass', f=1500, f2, q=1, vol=.4, attack=.01}){
+    const c = this.ctx, now = c.currentTime + t;
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, now); fl.Q.value = q;
+    if (f2) fl.frequency.exponentialRampToValueAtTime(f2, now + dur);
+    const g = c.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(vol, now + attack); g.gain.exponentialRampToValueAtTime(.001, now + dur);
+    s.connect(fl).connect(g).connect(this.master); s.start(now, Math.random() * 1.5); s.stop(now + dur + .05);
+  },
+  tone({t=0, dur=.2, type='sine', f=440, f2, vol=.2, attack=.005}){
+    const c = this.ctx, now = c.currentTime + t;
+    const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, now);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, now + dur);
+    const g = c.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(vol, now + attack); g.gain.exponentialRampToValueAtTime(.001, now + dur);
+    o.connect(g).connect(this.master); o.start(now); o.stop(now + dur + .05);
+  },
+  flip(){ if (!this.ok()) return;
+    this.burst({dur:.42, f:700, f2:3200, q:.7, vol:.32, attack:.08});
+    this.burst({t:.05, dur:.3, type:'highpass', f:4000, vol:.08, attack:.05});
+    this.burst({t:.38, dur:.12, type:'lowpass', f:500, vol:.35});
+  },
+  grain(){ if (!this.ok()) return;
+    this.burst({dur:.03 + Math.random()*.04, type:'highpass', f:1800 + Math.random()*2500, vol:.18 + Math.random()*.2, attack:.002});
+  },
+  rip(){ if (!this.ok()) return;
+    for (let i = 0; i < 16; i++) this.burst({t:i*.022 + Math.random()*.01, dur:.05, type:'bandpass', f:1500 + Math.random()*3000, q:.6, vol:.35, attack:.002});
+    this.burst({dur:.35, type:'highpass', f:2500, vol:.15, attack:.01});
+  },
+  pop(){ if (!this.ok()) return;
+    this.tone({dur:.12, f:180, f2:55, vol:.5});
+    this.burst({dur:.04, type:'highpass', f:3000, vol:.3, attack:.001});
+  },
+  sting(on){ if (!this.ok()) return;
+    const notes = on ? [262, 330, 392, 523, 659] : [523, 392, 262];
+    notes.forEach((f, i) => { this.tone({t:i*.07, dur:.35, type:'sawtooth', f, vol:.07}); this.tone({t:i*.07, dur:.35, type:'square', f:f*1.006, vol:.04}); });
+    if (on) this.burst({t:0, dur:.6, f:300, f2:5000, q:2, vol:.18, attack:.2});
+  },
+  stamp(){ if (!this.ok()) return; this.tone({dur:.15, f:120, f2:40, vol:.6}); this.burst({dur:.08, type:'lowpass', f:900, vol:.5, attack:.001}); },
+  modem(leds){ if (!this.ok()) return 0;
+    const dtmf = [[697,1209],[770,1336],[852,1477],[697,1336],[941,1336],[770,1209],[852,1336]];
+    let t = .1;
+    this.tone({t:0, dur:.1, f:350, vol:.05}); // off-hook click
+    dtmf.forEach(([a,b]) => { this.tone({t, dur:.1, f:a, vol:.1}); this.tone({t, dur:.1, f:b, vol:.1}); t += .14; });
+    t += .5;
+    this.tone({t, dur:1.1, f:2100, vol:.08, attack:.02}); t += 1.15;
+    for (let i = 0; i < 6; i++) { this.tone({t:t+i*.11, dur:.1, type:'square', f:i%2?1200:2400, vol:.035}); }
+    t += .7;
+    this.burst({t, dur:1.4, type:'bandpass', f:1800, q:.4, vol:.22, attack:.05});
+    this.tone({t, dur:1.4, type:'triangle', f:980, f2:1650, vol:.05});
+    this.burst({t:t+1.3, dur:1.1, type:'highpass', f:3000, vol:.18, attack:.05});
+    return (t + 2.4) * 1000;
+  }
+};
+const sndBtn = document.getElementById('snd');
+sndBtn.onclick = () => { S.on = !S.on; sndBtn.setAttribute('aria-pressed', S.on); sndBtn.textContent = S.on ? '♪ Sound' : '♪ Muted'; S.init(); };
+['pointerdown','keydown'].forEach(t => addEventListener(t, () => S.init(), {capture:true}));
+
+/* ---------- red pen marks, generated from simple data so they look hand-drawn ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const rnd = (a) => (Math.random() - .5) * a;
+function circlePath(cx, cy, rx, ry){
+  let d = '', n = 30, start = Math.random() * 6.28, turns = 1.12;
+  for (let i = 0; i <= n; i++) {
+    const a = start + (i / n) * 6.283 * turns, k = 1 + rnd(.06) + i/n*.05;
+    d += (i ? 'L' : 'M') + (cx + Math.cos(a)*rx*k).toFixed(2) + ' ' + (cy + Math.sin(a)*ry*k).toFixed(2);
+  }
+  return d;
+}
+function arrowPath(x1, y1, x2, y2){
+  const mx = (x1+x2)/2 + (y2-y1)*.18, my = (y1+y2)/2 - (x2-x1)*.18;
+  const ang = Math.atan2(y2 - my, x2 - mx), h = 2.6;
+  return `M${x1} ${y1} Q${mx.toFixed(2)} ${my.toFixed(2)} ${x2} ${y2} M${(x2 - h*Math.cos(ang-.5)).toFixed(2)} ${(y2 - h*Math.sin(ang-.5)).toFixed(2)} L${x2} ${y2} L${(x2 - h*Math.cos(ang+.5)).toFixed(2)} ${(y2 - h*Math.sin(ang+.5)).toFixed(2)}`;
+}
+function underPath(x1, y, x2){
+  return `M${x1} ${y} Q${(x1+x2)/2} ${y+1.2} ${x2} ${y-.4} M${x1+3} ${y+1.6} Q${(x1+x2)/2} ${y+2.4} ${x2-4} ${y+1.2}`;
+}
+document.querySelectorAll('svg.pen').forEach(svg => {
+  let marks = []; try { marks = JSON.parse(svg.dataset.marks || '[]'); } catch(e) {}
+  marks.forEach(m => {
+    const [kind, ...a] = m;
+    if (kind === 'note') {
+      const [x, y, rot, text] = a; if (!text) return;
+      const gEl = document.createElementNS(NS, 'g'), t = document.createElementNS(NS, 'text');
+      gEl.setAttribute('transform', `translate(${x} ${y}) rotate(${rot})`); gEl.appendChild(t);
+      text.split('|').forEach((line, i) => { const s = document.createElementNS(NS, 'tspan'); s.setAttribute('x', 0); s.setAttribute('dy', i ? 4 : 0); s.textContent = line; t.appendChild(s); });
+      svg.appendChild(gEl); return;
+    }
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', kind === 'circle' ? circlePath(...a) : kind === 'arrow' ? arrowPath(...a) : underPath(...a));
+    svg.appendChild(p);
+  });
+});
+function drawPens(pages){
+  pages.forEach(pg => {
+    const svg = pg && pg.querySelector('svg.pen'); if (!svg || svg.dataset.drawn) return;
+    svg.dataset.drawn = 1;
+    const paths = svg.querySelectorAll('path'), texts = svg.querySelectorAll('text');
+    paths.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
+    texts.forEach(t => t.style.opacity = 0);
+    if (reduce) { paths.forEach(p => p.style.strokeDashoffset = 0); texts.forEach(t => t.style.opacity = 1); return; }
+    const tl = gsap.timeline({delay:.25});
+    paths.forEach(p => tl.to(p, {strokeDashoffset:0, duration:.45, ease:'power1.inOut', onStart:() => S.ok() && S.burst({dur:.4, type:'highpass', f:5200, vol:.05, attack:.05})}, '>-0.1'));
+    texts.forEach(t => tl.fromTo(t, {opacity:0}, {opacity:1, duration:.35}, '<.1'));
+  });
+}
+function resetPens(){ document.querySelectorAll('svg.pen').forEach(s => delete s.dataset.drawn); }
+
+/* ---------- the book ---------- */
+const pagesEls = [...document.querySelectorAll('#book .page')];
+const pf = new St.PageFlip(document.getElementById('book'), {
+  width: 480, height: 640, size: 'stretch', minWidth: 260, maxWidth: 600, minHeight: 347, maxHeight: 800,
+  showCover: true, maxShadowOpacity: .55, mobileScrollSupport: false, flippingTime: reduce ? 300 : 850,
+  usePortrait: true, autoSize: true, disableFlipByClick: true, showPageCorners: true
+});
+pf.loadFromHTML(pagesEls);
+
+// keep page flips from starting when you grab something on a page
+document.querySelectorAll('.noflip, a, button').forEach(el => ['mousedown','touchstart'].forEach(t => el.addEventListener(t, e => e.stopPropagation(), {passive:true})));
+
+const ind = document.getElementById('ind');
+function visiblePages(){
+  const i = pf.getCurrentPageIndex(), portrait = pf.getOrientation() === 'portrait';
+  if (portrait || i === 0) return [i];
+  const L = i % 2 ? i : i - 1; return [L, L + 1].filter(n => n < pagesEls.length);
+}
+function update(){
+  const v = visiblePages(), n = pagesEls.length - 1;
+  ind.textContent = v[0] === 0 ? 'COVER' : v[0] === n ? 'BACK' : 'PG ' + v.map(x => String(x).padStart(2,'0')).join('–');
+  if (document.body.classList.contains('specs')) drawPens(v.map(x => pagesEls[x]));
+}
+pf.on('flip', update);
+pf.on('changeOrientation', update);
+pf.on('changeState', e => { if (e.data === 'flipping') S.flip(); });
+document.getElementById('prev').onclick = () => pf.flipPrev();
+document.getElementById('next').onclick = () => pf.flipNext();
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  if (e.key === 'ArrowRight') pf.flipNext(); else if (e.key === 'ArrowLeft') pf.flipPrev();
+  else if (e.key === 'Escape') closeModal();
+});
+
+/* ---------- tear-out and punch-out ---------- */
+function makeDetachable(el, {threshold = .32, grainEvery = 7, onDetach}){
+  let sx = 0, sy = 0, dragging = false, lastGrain = 0, done = false;
+  const pageW = () => el.closest('.page').getBoundingClientRect().width;
+  el.addEventListener('pointerdown', e => {
+    if (done) return; dragging = true; sx = e.clientX; sy = e.clientY; lastGrain = 0;
+    el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy, dist = Math.hypot(dx, dy), prog = dist / (pageW() * threshold);
+    gsap.set(el, {x: dx * .85, y: dy * .85, rotation: dx * .03 + dy * .02});
+    if (dist - lastGrain > grainEvery) { lastGrain = dist; S.grain(); }
+    if (prog >= 1) { dragging = false; done = true; onDetach(el); }
+  });
+  const end = () => { if (!dragging) return; dragging = false; el.style.cursor = ''; gsap.to(el, {x:0, y:0, rotation:0, duration:.6, ease:'elastic.out(1,.5)'}); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !done) { e.preventDefault(); done = true; onDetach(el); } });
+}
+function flyToSlot(el, slot, after){
+  const r = el.getBoundingClientRect(), s = slot.getBoundingClientRect(), pr = el.closest('.page').getBoundingClientRect();
+  // the wrapper copies the page's size so the clone's page-relative units keep working off the page
+  const wrap = document.createElement('div'); wrap.className = 'flyer';
+  Object.assign(wrap.style, {left: pr.left + 'px', top: pr.top + 'px', width: pr.width + 'px', height: pr.height + 'px'});
+  const clone = el.cloneNode(true); clone.removeAttribute('id');
+  Object.assign(clone.style, {position: 'absolute', left: (r.left - pr.left) + 'px', top: (r.top - pr.top) + 'px', right: 'auto', bottom: 'auto', width: r.width + 'px', height: r.height + 'px', transform: 'none', margin: 0});
+  wrap.appendChild(clone); document.body.appendChild(wrap);
+  el.classList.add('gone'); gsap.set(el, {x:0, y:0, rotation:0});
+  const sc = Math.min(s.width / r.width, s.height / r.height);
+  gsap.timeline({onComplete: () => { wrap.remove(); after(); }})
+    .to(clone, {y: -40, rotation: -8, duration: reduce ? .01 : .25, ease: 'power2.out'})
+    .to(clone, {x: s.left + s.width/2 - (r.left + r.width/2), y: s.top + s.height/2 - (r.top + r.height/2), scale: sc, rotation: 4, duration: reduce ? .01 : .7, ease: 'power3.in'});
+}
+const slotCard = document.getElementById('slotCard'), slotSpecs = document.getElementById('slotSpecs');
+makeDetachable(document.getElementById('tearcard'), {threshold: .3, onDetach(el){
+  S.rip(); document.getElementById('tearstub').classList.add('show');
+  flyToSlot(el, slotCard, () => { slotCard.disabled = false; slotCard.classList.add('full'); slotCard.innerHTML = '<span class="mini-card">SUBSCRIBE!</span>'; slotCard.setAttribute('aria-label', 'Open the subscription card'); S.stamp(); });
+}});
+const specsSVG = document.querySelector('#glasses svg').outerHTML;
+makeDetachable(document.getElementById('glasses'), {threshold: .22, grainEvery: 14, onDetach(el){
+  S.pop();
+  flyToSlot(el, slotSpecs, () => { slotSpecs.disabled = false; slotSpecs.classList.add('full'); slotSpecs.innerHTML = '<span class="mini-specs">' + specsSVG + '</span>'; slotSpecs.setAttribute('aria-label', 'Put on the 3-D specs'); S.stamp(); pulse(slotSpecs); });
+}});
+function pulse(el){ if (!reduce) gsap.fromTo(el, {scale:1}, {scale:1.15, yoyo:true, repeat:5, duration:.25}); }
+
+/* ---------- wearing the specs ---------- */
+const frame = document.getElementById('specsFrame');
+let wearing = false;
+slotSpecs.onclick = () => {
+  wearing = !wearing; S.sting(wearing);
+  slotSpecs.classList.toggle('wearing', wearing);
+  slotSpecs.setAttribute('aria-label', wearing ? 'Take off the 3-D specs' : 'Put on the 3-D specs');
+  if (wearing) {
+    frame.style.display = 'block';
+    gsap.fromTo(frame, {y: '-100%'}, {y: 0, duration: reduce ? .01 : .55, ease: 'bounce.out'});
+    document.body.classList.add('specs'); resetPens(); drawPens(visiblePages().map(x => pagesEls[x]));
+    document.getElementById('hint').innerHTML = 'Specs on. Hidden ink and the editor\'s red pen are showing. <b>Flip back to the cover</b> and look around.';
+  } else {
+    gsap.to(frame, {y: '-100%', duration: reduce ? .01 : .35, ease: 'power2.in', onComplete: () => frame.style.display = 'none'});
+    document.body.classList.remove('specs');
+  }
+};
+
+/* ---------- reply card modal ---------- */
+const modal = document.getElementById('modal');
+slotCard.onclick = () => { modal.hidden = false; gsap.fromTo(modal.querySelector('.card'), {scale:.7, rotation:-8}, {scale:1, rotation:-1.5, duration:.4, ease:'back.out(2)'}); document.getElementById('closeModal').focus(); };
+function closeModal(){ if (!modal.hidden) { modal.hidden = true; slotCard.focus(); } }
+document.getElementById('closeModal').onclick = closeModal;
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+document.getElementById('mailIt').onclick = () => { S.stamp(); gsap.fromTo('#stampbox', {opacity:0, scale:2.4}, {opacity:1, scale:1, duration:.3, ease:'power4.in'}); };
+
+/* ---------- cyber pet LCD ---------- */
+const lcd = document.getElementById('lcd');
+const frames = ['0011110001111110110110111111111101111110001001000100001000000000','0000000000111100011111101101101111111111011111100010010001000010'];
+for (let i = 0; i < 64; i++) lcd.appendChild(document.createElement('i'));
+let fi = 0;
+const drawPet = () => { [...lcd.children].forEach((c, i) => c.classList.toggle('on', frames[fi][i] === '1')); fi ^= 1; };
+drawPet(); if (!reduce) setInterval(drawPet, 600);
+
+/* ---------- modem ---------- */
+const leds = ['led1','led2','led3'].map(id => document.getElementById(id));
+document.getElementById('dial').onclick = () => {
+  S.init(); setTimeout(() => {
+    const ms = S.modem() || 4000;
+    const iv = setInterval(() => leds.forEach(l => l.classList.toggle('lit', Math.random() > .4)), 90);
+    setTimeout(() => { clearInterval(iv); leds.forEach(l => l.classList.add('lit')); }, ms);
+  }, 30);
+};
+
+update();
+})();
+</script>
+</body>
+</html>
