@@ -26,6 +26,8 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+.app, .pocket, #specsFrame{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none}
+img, svg{-webkit-user-drag:none; user-drag:none}
 [hidden]{display:none!important}
 html,body{height:100%}
 body{
@@ -661,13 +663,58 @@ const S = {
     const g = c.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(vol, now + attack); g.gain.exponentialRampToValueAtTime(.001, now + dur);
     o.connect(g).connect(this.master); o.start(now); o.stop(now + dur + .05);
   },
-  flip(release){ if (!this.ok()) return;
-    // a whoosh as the sheet sweeps over, a papery hiss, and a soft slap when it lands
-    if (!release) this.burst({dur:.5, f:600, f2:2600, q:.6, vol:.3, attack:.12});
-    this.burst({t:.04, dur:.4, type:'highpass', f:3500, vol:.07, attack:.08});
-    this.burst({t:release ? .3 : .55, dur:.14, type:'lowpass', f:450, vol:.4});
+  // Paper sounds use soft pink noise with slow envelopes, so there are no sharp clicks or metallic ringing.
+  paperBuf(){
+    if (this.pink) return this.pink;
+    const c = this.ctx, len = c.sampleRate * 2, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < len; i++) { // Paul Kellet's pink-noise filter
+      const w = Math.random() * 2 - 1;
+      b0 = .99886*b0 + w*.0555179; b1 = .99332*b1 + w*.0750759; b2 = .969*b2 + w*.153852;
+      b3 = .8665*b3 + w*.3104856; b4 = .55*b4 + w*.5329522; b5 = -.7616*b5 - w*.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w*.5362) * .11; b6 = w * .115926;
+    }
+    return (this.pink = b);
   },
-  slide(){ if (!this.ok()) return; this.burst({dur:.35, f:900, f2:1800, q:.5, vol:.14, attack:.08}); },
+  swish({t = 0, dur = .5, vol = .3, lo = 900, hi = 3000, end = 800, flutter = 14}){
+    const c = this.ctx, now = c.currentTime + t;
+    const src = c.createBufferSource(); src.buffer = this.paperBuf();
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 160; hp.Q.value = .5;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .4;
+    lp.frequency.setValueAtTime(lo, now); lp.frequency.linearRampToValueAtTime(hi, now + dur * .45); lp.frequency.linearRampToValueAtTime(end, now + dur);
+    const g = c.createGain(); g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + dur * .4); g.gain.linearRampToValueAtTime(vol * .5, now + dur * .75); g.gain.linearRampToValueAtTime(0, now + dur);
+    // a gentle wobble in loudness reads as the sheet riffling through the air
+    const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = flutter; lg.gain.value = vol * .25;
+    lfo.connect(lg).connect(g.gain);
+    src.connect(hp).connect(lp).connect(g).connect(this.master);
+    src.start(now, Math.random()); src.stop(now + dur + .05); lfo.start(now); lfo.stop(now + dur + .05);
+  },
+  flap(t, vol){
+    const c = this.ctx, now = c.currentTime + t;
+    const src = c.createBufferSource(); src.buffer = this.paperBuf();
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = .3;
+    const g = c.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(vol, now + .025); g.gain.exponentialRampToValueAtTime(.001, now + .22);
+    src.connect(lp).connect(g).connect(this.master); src.start(now, Math.random()); src.stop(now + .3);
+  },
+  flip(release){ if (!this.ok()) return;
+    if (release) { this.swish({dur:.42, vol:.22, lo:1400, hi:2600, end:700}); this.flap(.34, .32); }
+    else { this.swish({dur:.75, vol:.32, lo:700, hi:2800, end:700}); this.flap(.7, .36); }
+  },
+  slide(){ if (!this.ok()) return; this.swish({dur:.38, vol:.14, lo:900, hi:1800, end:700, flutter:9}); },
+  // a continuous soft rustle while you hold a page, louder the faster you move it
+  rustleStart(){ if (!this.ok() || this.rustle) return;
+    const c = this.ctx, src = c.createBufferSource(); src.buffer = this.paperBuf(); src.loop = true;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 250;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; lp.Q.value = .3;
+    const g = c.createGain(); g.gain.value = 0;
+    src.connect(hp).connect(lp).connect(g).connect(this.master); src.start();
+    this.rustle = {src, g, lp};
+  },
+  rustleSpeed(v){ if (!this.rustle) return; const c = this.ctx, k = Math.min(1, Math.abs(v) / 2.2);
+    this.rustle.g.gain.setTargetAtTime(k * .2, c.currentTime, .06); this.rustle.lp.frequency.setTargetAtTime(1200 + k * 2200, c.currentTime, .08); },
+  rustleStop(){ if (!this.rustle) return; const r = this.rustle, c = this.ctx; this.rustle = null;
+    r.g.gain.setTargetAtTime(0, c.currentTime, .05); r.src.stop(c.currentTime + .4); },
   grain(scale = 1){ if (!this.ok()) return;
     this.burst({dur:.03 + Math.random()*.04, type:'highpass', f:1800 + Math.random()*2500, vol:(.18 + Math.random()*.2) * scale, attack:.002});
   },
@@ -703,6 +750,10 @@ const S = {
 const sndBtn = document.getElementById('snd');
 sndBtn.onclick = () => { S.on = !S.on; sndBtn.setAttribute('aria-pressed', S.on); sndBtn.textContent = S.on ? '♪ Sound' : '♪ Muted'; S.init(); };
 ['pointerdown','keydown'].forEach(t => addEventListener(t, () => S.init(), {capture:true}));
+// pictures and text on the pages are paper, not files: no dragging them off, no highlighting
+addEventListener('dragstart', e => e.preventDefault());
+addEventListener('selectstart', e => { if (!e.target.closest || !e.target.closest('.modal, input')) e.preventDefault(); });
+document.querySelectorAll('img').forEach(i => i.draggable = false);
 
 /* ---------- red pen marks, generated from simple data so they look hand-drawn ---------- */
 const NS = 'http://www.w3.org/2000/svg';
@@ -871,7 +922,7 @@ addEventListener('pointermove', e => {
       else if (dir === 'prev' && drag.x0 < spine && flipped > 0) leaf = flipped - 1;
       else { drag = null; return; }
     }
-    drag.active = true; drag.dir = dir; drag.leaf = leaf; S.grain();
+    drag.active = true; drag.dir = dir; drag.leaf = leaf; S.rustleStart();
     [leaf - 1, leaf, leaf + 1].forEach(k => leaves[k] && (leaves[k].style.visibility = 'visible'));
     leaves[leaf].style.zIndex = 100;
     try { bookEl.setPointerCapture(e.pointerId); } catch (_) {}
@@ -882,11 +933,11 @@ addEventListener('pointermove', e => {
   const edge0 = drag.dir === 'next' ? spine + pw : spine - pw;
   const c = Math.max(-1, Math.min(1, (edge0 + dx - spine) / pw));
   angle[drag.leaf] = Math.acos(c) * 180 / Math.PI; paintLeaf(drag.leaf); castShadow(drag.leaf);
-  if (Math.random() < .25) S.grain(.35);
+  const h = drag.hist, hn = h.length; if (hn > 1) S.rustleSpeed((h[hn-1][0] - h[hn-2][0]) / Math.max(1, h[hn-1][1] - h[hn-2][1]));
 });
 function endDrag(e){
   if (!drag || e.pointerId !== drag.id) return;
-  const d = drag; drag = null;
+  const d = drag; drag = null; S.rustleStop();
   if (!d.active) { // a tap: the outer 14% of a page turns it
     const r = bookEl.getBoundingClientRect(), spine = r.left + pw, x = e.clientX;
     if (Math.abs(e.clientX - d.x0) > 6 || Math.abs(e.clientY - d.y0) > 6) return;
