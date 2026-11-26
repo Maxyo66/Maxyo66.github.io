@@ -198,7 +198,12 @@ body.specs .pen{opacity:1}
 .chk{font:700 2.4cqw var(--f-type)}
 .chk::before{content:"☑ "; color:var(--magenta)}
 .pull-tab{position:absolute; left:-2cqw; top:42%; background:var(--ink); color:var(--yellow); font:700 1.9cqw var(--f-type); padding:.8cqw 1.4cqw; transform:rotate(-90deg) translateY(-50%); transform-origin:left top; letter-spacing:.1em; white-space:nowrap}
-.tearcard.gone{visibility:hidden}
+.tearcard .card{transform-origin:100% 100%}
+.tearcard .card.gone{visibility:hidden}
+.tearcard .card::after{content:""; position:absolute; right:-.9cqw; top:-.4cqw; width:1cqw; height:var(--tear); background:#fff6c4;
+  clip-path:polygon(0 0,100% 0,40% 4%,100% 8%,30% 12%,90% 16%,20% 21%,100% 25%,35% 29%,85% 33%,25% 38%,100% 42%,40% 46%,90% 50%,20% 54%,100% 58%,30% 63%,85% 67%,25% 71%,100% 75%,40% 79%,90% 83%,20% 88%,100% 92%,35% 96%,0 100%)}
+.tearcard.torn{cursor:default}
+.tearcard.torn .pull-tab{display:none}
 .stub{position:absolute; right:0; bottom:8cqw; height:62%; width:3cqw; z-index:5; background:#ffe14d; border-block:.4cqw solid var(--ink); display:none;
   clip-path:polygon(0 0,100% 0,100% 100%,0 100%,40% 97%,0 94%,45% 90%,5% 86%,50% 82%,0 78%,40% 74%,10% 70%,55% 66%,0 62%,40% 58%,5% 54%,45% 50%,0 46%,50% 42%,10% 38%,40% 34%,0 30%,45% 26%,5% 22%,50% 18%,0 14%,40% 10%,5% 6%,45% 3%)}
 .stub.show{display:block}
@@ -458,7 +463,6 @@ body.specs .pen{opacity:1}
       <div class="perf"></div>
       <span class="pull-tab">✂ pull to tear out</span>
     </div>
-    <div class="stub" id="tearstub"></div>
     <div class="folio"><span>05</span><span>Insert</span></div>
     <svg class="pen" viewBox="0 0 100 133.3" data-marks='[["note",8,30,-3,"nobody has ever mailed one of these.|be the first."],["arrow",60,34,66,44]]'></svg>
   </section>
@@ -718,9 +722,31 @@ const S = {
   grain(scale = 1){ if (!this.ok()) return;
     this.burst({dur:.03 + Math.random()*.04, type:'highpass', f:1800 + Math.random()*2500, vol:(.18 + Math.random()*.2) * scale, attack:.002});
   },
-  rip(){ if (!this.ok()) return;
-    for (let i = 0; i < 16; i++) this.burst({t:i*.022 + Math.random()*.01, dur:.05, type:'bandpass', f:1500 + Math.random()*3000, q:.6, vol:.35, attack:.002});
-    this.burst({dur:.35, type:'highpass', f:2500, vol:.15, attack:.01});
+  // one perforation tab giving way: a tiny, dry paper snap, each slightly different
+  snap(heavy){ if (!this.ok()) return;
+    const c = this.ctx, now = c.currentTime;
+    const src = c.createBufferSource(); src.buffer = this.paperBuf();
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = .9;
+    bp.frequency.value = heavy ? 700 + Math.random() * 600 : 1700 + Math.random() * 2600;
+    const g = c.createGain(), v = heavy ? .55 : .22 + Math.random() * .22, d = heavy ? .05 : .01 + Math.random() * .02;
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(v, now + .0015); g.gain.exponentialRampToValueAtTime(.001, now + d);
+    src.connect(bp).connect(g).connect(this.master); src.start(now, Math.random() * 1.5); src.stop(now + d + .03);
+    if (Math.random() < .35 || heavy) this.flap(0, heavy ? .25 : .06);
+  },
+  // the soft fibrous hiss under the snaps while paper is tearing
+  fiberStart(){ if (!this.ok() || this.fiber) return;
+    const c = this.ctx, src = c.createBufferSource(); src.buffer = this.paperBuf(); src.loop = true;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1100;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200; lp.Q.value = .3;
+    const g = c.createGain(); g.gain.value = 0;
+    src.connect(hp).connect(lp).connect(g).connect(this.master); src.start(); this.fiber = {src, g};
+  },
+  fiberLevel(k){ if (this.fiber) this.fiber.g.gain.setTargetAtTime(Math.min(1, k) * .09, this.ctx.currentTime, .04); },
+  fiberStop(){ if (!this.fiber) return; const f = this.fiber, c = this.ctx; this.fiber = null;
+    f.g.gain.setTargetAtTime(0, c.currentTime, .06); f.src.stop(c.currentTime + .5); },
+  rip(){ if (!this.ok()) return; // the last few tabs letting go at once, then the card flaps free
+    for (let i = 0; i < 5; i++) setTimeout(() => this.snap(), i * 18);
+    this.swish({t:.08, dur:.35, vol:.2, lo:1500, hi:3200, end:900, flutter:20});
   },
   pop(){ if (!this.ok()) return;
     this.tone({dur:.12, f:180, f2:55, vol:.5});
@@ -979,23 +1005,40 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(siz
 sizeBook();
 
 /* ---------- tear-out and punch-out ---------- */
-function makeDetachable(el, {threshold = .32, grainEvery = 7, onDetach}){
-  let sx = 0, sy = 0, dragging = false, lastGrain = 0, done = false;
-  const pageW = () => el.closest('.page').getBoundingClientRect().width;
+// Tearing works tab by tab. Pulling sets how far the tear should have run; the tear itself
+// advances no faster than one tab every few milliseconds, so every tab gets its own snap.
+// Let go halfway and the paper stays half torn, like the real thing.
+function makeTearable(el, {tabs = 24, pull = 1, minGap = 24, heavy = false, onProgress, onDetach}){
+  let p = 0, target = 0, base = 0, sx = 0, sy = 0, dragging = false, done = false, raf = 0, lastTab = 0, lastT = 0;
+  const size = () => el.getBoundingClientRect().height * pull;
+  function tick(now){
+    raf = 0; if (done) return;
+    const torn = Math.floor(p * tabs + 1e-6);
+    if (target > p && now - lastT >= minGap) {
+      const gap = 1 / tabs, step = Math.min(target - p, gap);
+      p = Math.min(1, p + step); lastT = now;
+      const t2 = Math.floor(p * tabs + 1e-6);
+      if (t2 > torn) S.snap(heavy);
+      S.fiberLevel((target - p) * 6 + .4);
+      onProgress(p, dragging);
+      if (p >= 1) { done = true; dragging = false; S.fiberStop(); onDetach(el); return; }
+    }
+    if (target > p || dragging) raf = requestAnimationFrame(tick); else S.fiberLevel(0);
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
   el.addEventListener('pointerdown', e => {
-    if (done) return; dragging = true; sx = e.clientX; sy = e.clientY; lastGrain = 0;
-    el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; e.preventDefault();
+    if (done) return; dragging = true; sx = e.clientX; sy = e.clientY; base = target;
+    el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; e.preventDefault(); S.fiberStart(); kick();
   });
   el.addEventListener('pointermove', e => {
     if (!dragging) return;
-    const dx = e.clientX - sx, dy = e.clientY - sy, dist = Math.hypot(dx, dy), prog = dist / (pageW() * threshold);
-    gsap.set(el, {x: dx * .85, y: dy * .85, rotation: dx * .03 + dy * .02});
-    if (dist - lastGrain > grainEvery) { lastGrain = dist; S.grain(); }
-    if (prog >= 1) { dragging = false; done = true; onDetach(el); }
+    const dist = Math.hypot(e.clientX - sx, e.clientY - sy);
+    target = Math.min(1, Math.max(target, base + dist / size()));
+    kick();
   });
-  const end = () => { if (!dragging) return; dragging = false; el.style.cursor = ''; gsap.to(el, {x:0, y:0, rotation:0, duration:.6, ease:'elastic.out(1,.5)'}); };
+  const end = () => { if (!dragging) return; dragging = false; el.style.cursor = ''; onProgress(p, false); if (!done) setTimeout(() => S.fiberStop(), 250); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-  el.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !done) { e.preventDefault(); done = true; onDetach(el); } });
+  el.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !done) { e.preventDefault(); S.fiberStart(); target = 1; kick(); } });
 }
 function flyToSlot(el, slot, after){
   const r = el.getBoundingClientRect(), s = slot.getBoundingClientRect(), pr = el.closest('.page').getBoundingClientRect();
@@ -1012,15 +1055,24 @@ function flyToSlot(el, slot, after){
     .to(clone, {x: s.left + s.width/2 - (r.left + r.width/2), y: s.top + s.height/2 - (r.top + r.height/2), scale: sc, rotation: 4, duration: reduce ? .01 : .7, ease: 'power3.in'});
 }
 const slotCard = document.getElementById('slotCard'), slotSpecs = document.getElementById('slotSpecs');
-makeDetachable(document.getElementById('tearcard'), {threshold: .3, onDetach(el){
-  S.rip(); document.getElementById('tearstub').classList.add('show');
-  flyToSlot(el, slotCard, () => { slotCard.disabled = false; slotCard.classList.add('full'); slotCard.innerHTML = '<span class="mini-card">SUBSCRIBE!</span>'; slotCard.setAttribute('aria-label', 'Open the subscription card'); S.stamp(); });
-}});
-const specsSVG = document.querySelector('#glasses svg').outerHTML;
-makeDetachable(document.getElementById('glasses'), {threshold: .22, grainEvery: 14, onDetach(el){
-  S.pop();
-  flyToSlot(el, slotSpecs, () => { slotSpecs.disabled = false; slotSpecs.classList.add('full'); slotSpecs.innerHTML = '<span class="mini-specs">' + specsSVG + '</span>'; slotSpecs.setAttribute('aria-label', 'Put on the 3-D specs'); S.stamp(); pulse(slotSpecs); });
-}});
+const tearEl = document.getElementById('tearcard'), cardEl = tearEl.querySelector('.card');
+makeTearable(tearEl, {tabs: 26, pull: .8, minGap: 22,
+  onProgress(p, held){ // the card peels away from the top, hinged where it's still attached
+    tearEl.style.setProperty('--tear', (p * 100).toFixed(1) + '%');
+    gsap.to(cardEl, {rotation: -p * 7 - (held ? 1 : 0), x: -p * 6, duration: held ? .12 : .5, ease: held ? 'power1.out' : 'elastic.out(1,.6)'});
+  },
+  onDetach(){
+    S.rip();
+    flyToSlot(cardEl, slotCard, () => { slotCard.disabled = false; slotCard.classList.add('full'); slotCard.innerHTML = '<span class="mini-card">SUBSCRIBE!</span>'; slotCard.setAttribute('aria-label', 'Open the subscription card'); S.stamp(); });
+    tearEl.classList.add('torn');
+  }});
+const specsSVG = document.querySelector('#glasses svg').outerHTML, glassEl = document.getElementById('glasses');
+makeTearable(glassEl, {tabs: 6, pull: 1.6, minGap: 70, heavy: true,
+  onProgress(p, held){ gsap.to(glassEl, {y: -p * 10, rotation: (p * 4) * (held ? 1 : .6), scale: 1 + p * .03, duration: .2, ease: 'power2.out'}); },
+  onDetach(el){
+    S.pop();
+    flyToSlot(el, slotSpecs, () => { slotSpecs.disabled = false; slotSpecs.classList.add('full'); slotSpecs.innerHTML = '<span class="mini-specs">' + specsSVG + '</span>'; slotSpecs.setAttribute('aria-label', 'Put on the 3-D specs'); S.stamp(); pulse(slotSpecs); });
+  }});
 function pulse(el){ if (!reduce) gsap.fromTo(el, {scale:1}, {scale:1.15, yoyo:true, repeat:5, duration:.25}); }
 
 /* ---------- wearing the specs ---------- */
