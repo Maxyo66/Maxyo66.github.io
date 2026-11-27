@@ -300,6 +300,7 @@ body.specs .pen{opacity:1}
 
 /* flying clones */
 .flyer{position:fixed; z-index:40; pointer-events:none; container-type:size; overflow:visible}
+.slot.ready{box-shadow:0 0 0 3px var(--yellow), 0 0 16px var(--yellow); transition:box-shadow .2s}
 
 /* specs overlay */
 #specsFrame{position:fixed; inset:0; z-index:25; pointer-events:none; display:none}
@@ -861,7 +862,9 @@ let flipped = 0, side = 'R', portrait = false, pw = 400, busy = false;
 const angle = new Array(L).fill(0); // degrees each leaf is turned, 0..180
 
 function sizeBook(){
-  const availW = stageEl.parentElement.clientWidth, availH = Math.max(320, innerHeight - 190);
+  // clientWidth includes the page's side padding, so take it off (otherwise phones lose ~32px off the right edge)
+  const par = stageEl.parentElement, cs = getComputedStyle(par);
+  const availW = par.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), availH = Math.max(320, innerHeight - 190);
   portrait = availW < 640;
   pw = Math.floor(portrait ? Math.min(availW, availH * .75) : Math.min(availW / 2, availH * .75, 590));
   document.documentElement.style.setProperty('--pw', pw + 'px');
@@ -1016,69 +1019,113 @@ sizeBook();
 // advances no faster than one tab every few milliseconds, so every tab gets its own snap.
 // Let go halfway and the paper stays half torn, like the real thing.
 function makeTearable(el, {tabs = 24, pull = 1, minGap = 24, heavy = false, onProgress, onDetach}){
-  let p = 0, target = 0, base = 0, sx = 0, sy = 0, dragging = false, done = false, raf = 0, lastTab = 0, lastT = 0;
+  // p moves a perforation tab at a time (each tab is a snap sound); what you see (vis) glides
+  // after it every frame, and the paper leans toward your finger (ox/oy) while you pull.
+  let p = 0, vis = 0, target = 0, base = 0, sx = 0, sy = 0, dx = 0, dy = 0, ox = 0, oy = 0;
+  let dragging = false, done = false, raf = 0, lastT = 0, lastEv = null;
   const size = () => el.getBoundingClientRect().height * pull;
   function tick(now){
     raf = 0; if (done) return;
     const torn = Math.floor(p * tabs + 1e-6);
     if (target > p && now - lastT >= minGap) {
-      const gap = 1 / tabs, step = Math.min(target - p, gap);
-      p = Math.min(1, p + step); lastT = now;
-      const t2 = Math.floor(p * tabs + 1e-6);
-      if (t2 > torn) S.snap(heavy);
+      p = Math.min(1, p + Math.min(target - p, 1 / tabs)); lastT = now;
+      if (Math.floor(p * tabs + 1e-6) > torn) S.snap(heavy);
       S.fiberLevel((target - p) * 6 + .4);
-      onProgress(p, dragging);
-      if (p >= 1) { done = true; dragging = false; S.fiberStop(); onDetach(el); return; }
     }
-    if (target > p || dragging) raf = requestAnimationFrame(tick); else S.fiberLevel(0);
+    const k = reduce ? 1 : .3;
+    vis += (p - vis) * k;
+    ox += ((dragging ? dx : 0) - ox) * k; oy += ((dragging ? dy : 0) - oy) * k;
+    onProgress(vis, dragging, ox, oy);
+    if (p >= 1 && vis > .97) { done = true; S.fiberStop(); onDetach(el, dragging ? lastEv : null); dragging = false; return; }
+    if (target > p || dragging || Math.abs(p - vis) > .002 || Math.abs(ox) + Math.abs(oy) > .3) raf = requestAnimationFrame(tick); else S.fiberLevel(0);
   }
   const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
   el.addEventListener('pointerdown', e => {
-    if (done) return; dragging = true; sx = e.clientX; sy = e.clientY; base = target;
+    if (done) return; dragging = true; sx = e.clientX; sy = e.clientY; dx = dy = 0; base = target; lastEv = e;
     el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; e.preventDefault(); S.fiberStart(); kick();
   });
   el.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    const dist = Math.hypot(e.clientX - sx, e.clientY - sy);
-    target = Math.min(1, Math.max(target, base + dist / size()));
+    if (!dragging) return; lastEv = e;
+    dx = e.clientX - sx; dy = e.clientY - sy;
+    target = Math.min(1, Math.max(target, base + Math.hypot(dx, dy) / size()));
     kick();
   });
-  const end = () => { if (!dragging) return; dragging = false; el.style.cursor = ''; onProgress(p, false); if (!done) setTimeout(() => S.fiberStop(), 250); };
+  const end = () => { if (!dragging) return; dragging = false; el.style.cursor = ''; kick(); if (!done) setTimeout(() => S.fiberStop(), 250); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !done) { e.preventDefault(); S.fiberStart(); target = 1; kick(); } });
 }
-function flyToSlot(el, slot, after){
-  const r = el.getBoundingClientRect(), s = slot.getBoundingClientRect(), pr = el.closest('.page').getBoundingClientRect();
+// a copy of the torn piece, lifted off the page into a fixed layer
+function lift(el){
+  const r = el.getBoundingClientRect(), pr = el.closest('.page').getBoundingClientRect();
   // the wrapper copies the page's size so the clone's page-relative units keep working off the page
   const wrap = document.createElement('div'); wrap.className = 'flyer';
   Object.assign(wrap.style, {left: pr.left + 'px', top: pr.top + 'px', width: pr.width + 'px', height: pr.height + 'px'});
   const clone = el.cloneNode(true); clone.removeAttribute('id');
-  Object.assign(clone.style, {position: 'absolute', left: (r.left - pr.left) + 'px', top: (r.top - pr.top) + 'px', right: 'auto', bottom: 'auto', width: r.width + 'px', height: r.height + 'px', transform: 'none', margin: 0});
-  wrap.appendChild(clone); document.body.appendChild(wrap);
+  // start exactly where the page drew it (same tilt), so nothing jumps when the copy takes over
+  const tf = gsap.getProperty(el, 'rotation') || 0, tx = gsap.getProperty(el, 'x') || 0, ty = gsap.getProperty(el, 'y') || 0, el0 = el.style.transform;
+  el.style.transform = 'none'; const r0 = el.getBoundingClientRect(); el.style.transform = el0;
+  Object.assign(clone.style, {position: 'absolute', left: (r0.left - pr.left) + 'px', top: (r0.top - pr.top) + 'px', right: 'auto', bottom: 'auto', width: r0.width + 'px', height: r0.height + 'px', transform: 'none', margin: 0});
+  // the card's look comes from '.tearcard .card' rules, so it travels inside a bare copy of its holder
+  let host = wrap;
+  if (el.parentElement.classList.contains('tearcard')) {
+    host = el.parentElement.cloneNode(false); host.removeAttribute('id'); host.removeAttribute('role'); host.removeAttribute('tabindex');
+    Object.assign(host.style, {position: 'absolute', inset: 0, left: 0, right: 0, top: 0, bottom: 0, width: 'auto', height: 'auto', cursor: 'default'});
+    wrap.appendChild(host);
+  }
+  host.appendChild(clone); document.body.appendChild(wrap);
+  gsap.set(clone, {x: tx, y: ty, rotation: tf});
   el.classList.add('gone'); gsap.set(el, {x:0, y:0, rotation:0});
-  const sc = Math.min(s.width / r.width, s.height / r.height);
+  return {wrap, clone, r: r0};
+}
+function sendToSlot(f, slot, after, quick){
+  const {wrap, clone, r} = f, s = slot.getBoundingClientRect(), sc = Math.min(s.width / r.width, s.height / r.height);
+  slot.classList.remove('ready');
   gsap.timeline({onComplete: () => { wrap.remove(); after(); }})
-    .to(clone, {y: -40, rotation: -8, duration: reduce ? .01 : .25, ease: 'power2.out'})
-    .to(clone, {x: s.left + s.width/2 - (r.left + r.width/2), y: s.top + s.height/2 - (r.top + r.height/2), scale: sc, rotation: 4, duration: reduce ? .01 : .7, ease: 'power3.in'});
+    .to(clone, {x: s.left + s.width/2 - (r.left + r.width/2), y: s.top + s.height/2 - (r.top + r.height/2), scale: sc, rotation: 4, duration: reduce ? .01 : quick ? .45 : .7, ease: quick ? 'power2.inOut' : 'power3.in'});
+}
+function flyToSlot(el, slot, after){
+  const f = lift(el);
+  gsap.to(f.clone, {y: '-=40', rotation: -8, duration: reduce ? .01 : .25, ease: 'power2.out', onComplete: () => sendToSlot(f, slot, after)});
+}
+// Torn free while your finger is still down: the piece stays in your hand and follows it,
+// leaning as you move, until you let go; then it drops into the pocket.
+function carryToSlot(el, slot, ev, after){
+  if (!ev || reduce) return flyToSlot(el, slot, after);
+  const f = lift(el), c = f.clone, x0 = ev.clientX - (gsap.getProperty(c, 'x') || 0), y0 = ev.clientY - (gsap.getProperty(c, 'y') || 0), id = ev.pointerId;
+  let lx = ev.clientX, lt = performance.now(), lean = gsap.getProperty(c, 'rotation') || 0;
+  slot.classList.add('ready');
+  gsap.to(c, {scale: 1.06, duration: .2, ease: 'power2.out'});
+  const move = e => {
+    if (e.pointerId !== id) return;
+    const now = performance.now(), vx = (e.clientX - lx) / Math.max(8, now - lt); lx = e.clientX; lt = now;
+    lean += (Math.max(-14, Math.min(14, vx * 9)) - lean) * .35;
+    gsap.set(c, {x: e.clientX - x0, y: e.clientY - y0, rotation: lean});
+  };
+  const drop = e => {
+    if (e.pointerId !== id) return;
+    removeEventListener('pointermove', move); removeEventListener('pointerup', drop); removeEventListener('pointercancel', drop);
+    sendToSlot(f, slot, after, true);
+  };
+  addEventListener('pointermove', move); addEventListener('pointerup', drop); addEventListener('pointercancel', drop);
 }
 const slotCard = document.getElementById('slotCard'), slotSpecs = document.getElementById('slotSpecs');
 const tearEl = document.getElementById('tearcard'), cardEl = tearEl.querySelector('.card');
 makeTearable(tearEl, {tabs: 26, pull: .8, minGap: 22,
-  onProgress(p, held){ // the card peels away from the top, hinged where it's still attached
+  onProgress(p, held, ox, oy){ // the card peels away from the top, hinged where it's still attached
     tearEl.style.setProperty('--tear', (p * 100).toFixed(1) + '%');
-    gsap.to(cardEl, {rotation: -p * 7 - (held ? 1 : 0), x: -p * 6, duration: held ? .12 : .5, ease: held ? 'power1.out' : 'elastic.out(1,.6)'});
+    gsap.set(cardEl, {rotation: -p * 7 - (held ? 1 : 0) + ox * .02 * p, x: -p * 6 + ox * .18 * p, y: oy * .12 * p});
   },
-  onDetach(){
+  onDetach(_, ev){
     S.rip();
-    flyToSlot(cardEl, slotCard, () => { slotCard.disabled = false; slotCard.classList.add('full'); slotCard.innerHTML = '<span class="mini-card">SUBSCRIBE!</span>'; slotCard.setAttribute('aria-label', 'Open the subscription card'); S.stamp(); });
+    carryToSlot(cardEl, slotCard, ev, () => { slotCard.disabled = false; slotCard.classList.add('full'); slotCard.innerHTML = '<span class="mini-card">SUBSCRIBE!</span>'; slotCard.setAttribute('aria-label', 'Open the subscription card'); S.stamp(); });
     tearEl.classList.add('torn');
   }});
 const specsSVG = document.querySelector('#glasses svg').outerHTML, glassEl = document.getElementById('glasses');
 makeTearable(glassEl, {tabs: 6, pull: 1.6, minGap: 70, heavy: true,
-  onProgress(p, held){ gsap.to(glassEl, {y: -p * 10, rotation: (p * 4) * (held ? 1 : .6), scale: 1 + p * .03, duration: .2, ease: 'power2.out'}); },
-  onDetach(el){
+  onProgress(p, held, ox, oy){ gsap.set(glassEl, {x: ox * .1 * p, y: -p * 10 + oy * .15 * p, rotation: (p * 4) * (held ? 1 : .6), scale: 1 + p * .03}); },
+  onDetach(el, ev){
     S.pop();
-    flyToSlot(el, slotSpecs, () => { slotSpecs.disabled = false; slotSpecs.classList.add('full'); slotSpecs.innerHTML = '<span class="mini-specs">' + specsSVG + '</span>'; slotSpecs.setAttribute('aria-label', 'Put on the 3-D specs'); S.stamp(); pulse(slotSpecs); });
+    carryToSlot(el, slotSpecs, ev, () => { slotSpecs.disabled = false; slotSpecs.classList.add('full'); slotSpecs.innerHTML = '<span class="mini-specs">' + specsSVG + '</span>'; slotSpecs.setAttribute('aria-label', 'Put on the 3-D specs'); S.stamp(); pulse(slotSpecs); });
   }});
 function pulse(el){ if (!reduce) gsap.fromTo(el, {scale:1}, {scale:1.15, yoyo:true, repeat:5, duration:.25}); }
 
