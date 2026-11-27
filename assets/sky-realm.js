@@ -189,6 +189,26 @@ function buildStorm(){
   const sea=[]; for (let i=0;i<70;i++){ const c=cloud(cloudM,6,rand(3,6),rand(1.6,3)); const a=rand(0,TAU), r=rand(14,90);
     c.position.set(Math.cos(a)*r, rand(-6,-2.5), Math.sin(a)*r); c.rotation.y=rand(0,TAU); c.userData.ph=rand(0,TAU); S.add(c); sea.push(c); }
   const storm=[]; for (let i=0;i<26;i++){ const c=cloud(dark,8,rand(5,9),rand(2.5,4)); const a=rand(0,TAU), r=rand(30,90); c.position.set(Math.cos(a)*r, rand(14,28), Math.sin(a)*r); c.lookAt(0,c.position.y,0); c.userData.y=c.position.y; S.add(c); storm.push(c); }
+  // Clouds that sit between the camera and the arena fade out (like the dragon does), so the
+  // boss fight is never hidden behind one. Each cloud gets its own material to fade on its own.
+  const CLR = new THREE.Vector3(), CAMF = new THREE.Vector3(), ARENA = [new THREE.Vector3(0,3,0), new THREE.Vector3(0,11,0)];
+  [...sea, ...storm].forEach(c=>{ const m=c.children[0].material.clone(); c.children.forEach(k=>k.material=m);
+    let ext=0; c.children.forEach(k=>{ ext=Math.max(ext, k.position.length()+k.scale.x); }); c.userData.ext=ext; c.userData.m=m; c.userData.fade=1; });
+  function clearView(list, dt){
+    for (const c of list){
+      let block=false;
+      for (const A of ARENA){
+        CAMF.copy(A).sub(camera.position); const D=CAMF.length(); CAMF.multiplyScalar(1/D);
+        CLR.copy(c.position).sub(camera.position); const along=CLR.dot(CAMF);
+        if (CLR.length() < c.userData.ext+4) { block=true; break; }
+        if (along>-c.userData.ext && along<D){ const perp=CLR.addScaledVector(CAMF,-along).length(); if (perp < c.userData.ext+2+along*.12){ block=true; break; } }
+      }
+      const f=c.userData.fade += ((block?0:1)-c.userData.fade)*Math.min(1,dt*5), m=c.userData.m, see=f<.98;
+      // only see-through while fading, so resting clouds draw exactly as before
+      if (m.transparent!==see){ m.transparent=see; m.depthWrite=!see; m.needsUpdate=true; }
+      m.opacity=see?f:1; c.visible=f>.04;
+    }
+  }
   // arena
   const plat = new THREE.Mesh(new THREE.CylinderGeometry(10,7,2.2,28), stone); plat.position.y=-1.1; S.add(plat); pickable(plat,'floor'); pick.push(plat);
   const under = new THREE.Mesh(new THREE.ConeGeometry(7,8,20), dark); under.rotation.x=Math.PI; under.position.y=-6.2; S.add(under);
@@ -606,6 +626,7 @@ function buildStorm(){
       post.uniforms.bias.value = -.06 + (1-dk)*.02;
       if (padWind && AU.on && Math.random()<dt*2) padWind.gain.setTargetAtTime(.02+dk*.2,AU.ctx.currentTime,.8);
       sea.forEach(c=>{ c.position.y += Math.sin(t*.4+c.userData.ph)*.003; c.rotation.y += dt*.01; });
+      clearView(dk>.02 ? storm : [], dt); clearView(sea, dt);
 
       // ---- crown
       if (st==='day' || st==='gather' || st==='clear'){ crown.position.y = CROWN_HOME.y+Math.sin(t*1.3)*.25; }

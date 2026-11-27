@@ -167,6 +167,8 @@ html.ui-ghost .hdr { box-shadow: none }
   .for-back { left: 14px !important; width: auto !important; padding: 0 14px !important }
 }
 @media (hover: none) { .peek-zone { pointer-events: none } .peek-btn { pointer-events: auto; transform: translate(-50%, 0); opacity: 1 } }
+/* Phones: the panels are ~85% opaque, so a live backdrop blur over the animated ocean bought almost nothing visible but cost a full blur pass every frame. The text hide/show keeps its fade and lift, minus a blur of the whole page. */
+@media (hover: none) and (pointer: coarse) { .hdr, .card { -webkit-backdrop-filter: none !important; backdrop-filter: none !important } main.text-off { filter: none } }
 .sc-sky { transform: translateY(-100%); transition: transform 1.3s cubic-bezier(.65,0,.35,1); background: #3f7fb8 }
 .surface.scene-toSky .sc-meadow, .surface.scene-sky .sc-meadow { transform: translateY(100%) }
 .surface.scene-toSky .sc-sky, .surface.scene-sky .sc-sky { transform: none }
@@ -2537,8 +2539,10 @@ class Component extends DCLogic {
   // the tree is drawn in thin horizontal strips; each strip shifts by an amount that grows
   // with height, so the trunk bends from the roots instead of swinging like a stiff pole
   bendX(o, u, t) { return (o.ang + o.wind) * o.spr.h * u * u + o.shiver * Math.sin(t * 17 + u * 9 + o.ph) * u * u * u * 6; }
+  // A bending tree is drawn as horizontal strips, each nudged by the bend at its height.
+  // Phones and the light path use strips twice as tall: half the draw calls, same sway.
   drawTree(g, F, o, x, base, t) {
-    const sp = o.spr, d = F.d, still = Math.abs(o.ang + o.wind) * sp.h < 0.35 && o.shiver < 0.02, strip = (sp.near ? 6 : 10) * (o.shiver > 0.05 || Math.abs(o.ang) * sp.h > 4 ? 1 : 3);
+    const sp = o.spr, d = F.d, still = Math.abs(o.ang + o.wind) * sp.h < 0.35 && o.shiver < 0.02, strip = (sp.near ? 6 : 10) * (o.shiver > 0.05 || Math.abs(o.ang) * sp.h > 4 ? 1 : 3) * (this.coarse || this.lowPower ? 2 : 1);
     g.save(); g.translate(x, base); if (o.flip) g.scale(-1, 1);
     if (still) g.drawImage(sp.cv, -sp.ax, -sp.ay, sp.cw, sp.ch);
     else for (let y0 = 0; y0 < sp.ch; y0 += strip) {
@@ -3421,7 +3425,8 @@ void main() {
     if (!this.solidFade || A >= 0.99) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * A; return { c: ctx, a: A, a0 }; }
     const cv = ctx.canvas, T = this.fadeCv || (this.fadeCv = document.createElement('canvas'));
     if (T.width !== cv.width || T.height !== cv.height) { T.width = cv.width; T.height = cv.height; }
-    const tc = T.getContext('2d'); tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalCompositeOperation = 'source-over'; tc.globalAlpha = 1; tc.clearRect(0, 0, T.width, T.height);
+    // read back every frame while something fades, so keep it a CPU canvas (no GPU readback stall)
+    const tc = T.getContext('2d', { willReadFrequently: true }); tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalCompositeOperation = 'source-over'; tc.globalAlpha = 1; tc.clearRect(0, 0, T.width, T.height);
     tc.setTransform(ctx.getTransform());
     return { c: tc, a: 1, A, solid: true };
   }
@@ -3753,6 +3758,7 @@ void main() {
     };
     window.addEventListener('scroll', this.onScroll, { passive: true });
     this.reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     // Section reveals: when a section scrolls into view, its depth label decodes
     // from hiragana into the real text and its heading wipes in.
     this.setState({ armed: !this.reduce });
@@ -3768,7 +3774,19 @@ void main() {
       }, { threshold: 0.15 });
       setTimeout(() => this.ZONES.forEach((z) => { const el = document.getElementById(z.id); if (el) this.io.observe(el); }), 50);
     }
+    // ?fps in the address bar shows a small frame meter, for checking a phone by hand
+    if (/[?&]fps\b/.test(location.search || '')) {
+      const el = this.fpsEl = document.createElement('div');
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;padding:4px 8px;font:600 11px/1.3 "JetBrains Mono",monospace;color:#d8e7e7;background:rgba(0,0,0,.7);border-radius:4px;pointer-events:none;white-space:pre';
+      document.body.appendChild(el); this.fpsN = 0; this.fpsW = 0; this.fpsT = performance.now();
+    }
     this.raf = requestAnimationFrame(this.tick);
+  }
+  fpsCount(work) {
+    this.fpsN++; this.fpsW = Math.max(this.fpsW, work);
+    const now = performance.now(); if (now - this.fpsT < 1000) return;
+    this.fpsEl.textContent = Math.round(this.fpsN * 1000 / (now - this.fpsT)) + ' fps · ' + (this.wk || 0).toFixed(1) + ' ms avg · ' + this.fpsW.toFixed(0) + ' ms worst\n' + (this.lowPower ? 'light' : 'full') + ' quality' + (this.slowDz ? ' · dossier open' : '');
+    this.fpsN = 0; this.fpsW = 0; this.fpsT = now;
   }
   componentWillUnmount() {
     if (this.io) this.io.disconnect();
@@ -5087,25 +5105,53 @@ void main() {
     const sc = this.scratch;
     if (sc.width !== w || sc.height !== h) { sc.width = w; sc.height = h; }
     const m = sc.getContext('2d');
+    // The soft outline comes from painting the mask at half size and scaling it up
+    // with smoothing. A canvas blur filter here cost ~450 ms a frame on phones.
+    if (!this.scratchLo) this.scratchLo = document.createElement('canvas');
+    const lo = this.scratchLo, lw = Math.ceil(w / 2), lh = Math.ceil(h / 2);
+    if (lo.width !== lw || lo.height !== lh) { lo.width = lw; lo.height = lh; }
+    const l = lo.getContext('2d');
+    l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, lw, lh);
+    l.setTransform(dpr / 2, 0, 0, dpr / 2, 0, 0); paint(l);
     m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over'; m.clearRect(0, 0, w, h);
-    m.setTransform(dpr, 0, 0, dpr, 0, 0); m.filter = 'blur(0.8px)'; paint(m); m.filter = 'none';
-    m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-in'; m.drawImage(field, 0, 0);
+    m.imageSmoothingEnabled = true; m.drawImage(lo, 0, 0, w, h);
+    m.globalCompositeOperation = 'source-in'; m.drawImage(field, 0, 0);
     m.globalCompositeOperation = 'source-over';
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.drawImage(sc, 0, 0); ctx.restore();
   }
 
   tick = (now) => {
     this.raf = requestAnimationFrame(this.tick);
+    this.drew = false; const t0 = performance.now();
+    this.drawFrame(now);
+    if (this.drew) this.pace(performance.now() - t0);
+  };
+  // Quality follows the phone: frames that keep arriving late (ft) drop to the light
+  // path (30 fps, chunkier dither), and if the light path then runs with lots of room
+  // to spare for a few seconds, full quality comes back. It gives up flipping after a
+  // few tries so a borderline phone settles instead of see-sawing.
+  pace(work) {
+    this.wk = this.wk == null ? work : this.wk * 0.9 + work * 0.1;
+    if (this.fpsEl) this.fpsCount(work);
+    if (this.lowPower && !this.slowDz && this.wk < 7 && (this.lpFlips || 0) < 3) {
+      if ((this.fastN = (this.fastN || 0) + 1) > 120) { this.lowPower = false; this.ft = 16; this.fastN = 0; this.lpFlips = (this.lpFlips || 0) + 1; }
+    } else this.fastN = 0;
+  }
+  drawFrame(now) {
     const cv = this.cv; if (!cv) return;
     const mode = this.modeKey();
     if (document.hidden) { this.last = 0; return; }
     this.ghostTick(now);
-    if (now - this.last < (this.lowPower ? 31 : 15)) return;
+    // On a phone the dossier covers nearly the whole screen, so the ocean behind it
+    // only needs ~20 fps; that leaves the phone free to scroll the dossier smoothly.
+    const slowDz = this.slowDz = !!(this.coarse && this.state.dz && !this.state.surface);
+    if (now - this.last < (slowDz ? 48 : this.lowPower ? 31 : 15)) return;
+    this.drew = true;
     const dt = this.last ? Math.min(0.1, (now - this.last) / 1000) : 0.016;
     this.last = now;
     if (!this.reduce) this.time += dt;
-    this.ft = (this.ft || 16) * 0.95 + (dt * 1000) * 0.05;
-    if (!this.lowPower && this.time > 4 && this.ft > 30) { this.lowPower = true; this.snow.length = 60; }
+    if (!slowDz) this.ft = (this.ft || 16) * 0.95 + (dt * 1000) * 0.05;
+    if (!this.lowPower && this.time > 4 && this.ft > 30) { this.lowPower = true; if (this.snow.length > 60) this.snow.length = 60; }
 
     const vw = window.innerWidth || 1440, vh = window.innerHeight || 900;
     const dep = this.readDepth();
@@ -5154,7 +5200,7 @@ void main() {
       this.drawWater(ctx, vw, vh, this.prog, pal);
       for (const sh of sorted) this.fillShark(ctx, sh, sh._P.body, this.rgba(pal.mid, 0.6));
     }
-  };
+  }
 
   // Keeps the tag riding alongside the creature it names, clamped on screen.
   placeTag() {
