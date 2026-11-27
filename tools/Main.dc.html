@@ -148,6 +148,9 @@ html.ui-ghost .hdr { box-shadow: none }
   .hdr-btns .hdr-more.open > span { margin-left: 0 !important; width: 100% }
   .lg-long { display: none } .lg-short { display: inline }
 }
+.hire-grid { grid-template-columns: 1fr }
+@media (min-width: 720px) { .hire-grid { grid-template-columns: 1.15fr 1fr } }
+@media (max-width: 560px) { .hire { padding: 22px !important } .hire h3 { font-size: 28px !important } }
 @media (max-width: 560px) {
   .resurface { width: 62px !important; height: 62px !important; right: 14px !important; bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; font-size: 8px !important; letter-spacing: 0.08em !important }
   .resurface svg { width: 16px; height: 16px }
@@ -380,6 +383,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <div style="pointer-events: auto; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px">
 <a href="#twilight" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: var(--hi); color: var(--bg); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Start the dive ↓</a>
 <a href="#hadal" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--panel)">Contact</a>
+<a href="#hire" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--hi); color: var(--hi); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Hire me</a>
 </div>
 </section>
 
@@ -565,6 +569,37 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <a href="mailto:abyssalsharksgame@gmail.com" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; background: var(--hi); color: var(--bg); text-decoration: none; font-weight: 700">abyssalsharksgame@gmail.com</a>
 <a href="https://x.com/Maxyo66" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">X / @Maxyo66</a>
 <a href="https://maxyo66.itch.io" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">itch.io / maxyo66</a>
+</div>
+<div id="hire" class="hire" style="pointer-events: auto; scroll-margin-top: 110px; margin-top: 56px; max-width: 860px; display: flex; flex-direction: column; gap: 18px; padding: 32px; border: 1px solid var(--line); background: var(--panel)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">Hire me</p>
+<h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">I build websites too</h3>
+<p style="margin: 0; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dim)">If you want a portfolio or a small site that doesn’t look like a template, I can make you one, built by hand like this page.</p>
+<div class="hire-grid" style="display: grid; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--hi); background: var(--bg)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hi)">Starter site</p>
+<p style="margin: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--dim)">from</span><span style="font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.03em">$100</span></p>
+<ul style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.45">
+<li>One page, designed and built for you</li>
+<li>One round of edits after you see it</li>
+<li>Free hosting set up, plus your own domain if you have one</li>
+<li>Looks right on phones</li>
+</ul>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--line); background: var(--bg)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim)">Extras</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: var(--dim)">Priced on top of the starter. I’ll give you a quote before I start.</p>
+<ul style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.45">
+<li>More pages</li>
+<li>Custom animation or interactive bits</li>
+<li>A contact or sign-up form</li>
+<li>More rounds of edits</li>
+</ul>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px">
+<a href="mailto:abyssalsharksgame@gmail.com?subject=Website%20build&amp;body=Hi%20Max!%20I%E2%80%99d%20like%20a%20site.%0A%0AWhat%20it%E2%80%99s%20for%3A%20%0ASites%20I%20like%3A%20%0AWhen%20I%20need%20it%3A%20" style="display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; background: var(--hi); color: var(--bg); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Ask about a site</a>
+<span style="font-size: 14px; line-height: 1.45; color: var(--dim)">Tell me what it’s for, a few sites you like, and when you need it.</span>
+</div>
 </div>
 <sc-if value="{{ghOn}}" hint-placeholder-val="{{true}}">
 <div class="gh" style="pointer-events: auto; margin-top: 56px; width: fit-content; max-width: 100%; font-family: 'JetBrains Mono', monospace">
