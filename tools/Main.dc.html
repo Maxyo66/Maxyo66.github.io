@@ -150,6 +150,7 @@ html.ui-ghost .hdr { box-shadow: none }
 .hire-grid { grid-template-columns: 1fr }
 @media (min-width: 720px) { .hire-grid { grid-template-columns: 1.15fr 1fr } }
 @media (max-width: 560px) { .hire { padding: 22px !important } .hire h3 { font-size: 28px !important } }
+@media (max-width: 560px) { .examples { padding: 18px !important } .examples h3 { font-size: 28px !important } .examples article.card { padding: 0 !important; gap: 0 !important } .examples article.card > div { padding: 18px !important } }
 @media (max-width: 560px) {
   .resurface { width: 62px !important; height: 62px !important; right: 14px !important; bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; font-size: 8px !important; letter-spacing: 0.08em !important }
   .resurface svg { width: 16px; height: 16px }
@@ -562,10 +563,37 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <a href="https://x.com/Maxyo66" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">X / @Maxyo66</a>
 <a href="https://maxyo66.itch.io" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">itch.io / maxyo66</a>
 </div>
+<div id="examples" class="examples" style="pointer-events: auto; scroll-margin-top: 110px; margin-top: 56px; max-width: 1080px; display: flex; flex-direction: column; gap: 18px; padding: 32px; border: 1px solid var(--line); background: var(--panel)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">Example sites</p>
+<h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">Sites I’ve made</h3>
+<p style="margin: 0; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dim)">Have a look around. Each one is built from scratch, and I can make you something in the same spirit, or something totally different.</p>
+<div class="ex-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px">
+<article class="card" style="display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--bg); overflow: hidden">
+<img src="/_blob/cf1c358b9942aec877fe7696d1d9be85" alt="Maximum Bandwidth: the cover of a yellow 90s web magazine with a starburst offering free 3-D specs" loading="lazy" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; border-bottom: 1px solid var(--line)">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 22px; flex-grow: 1">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">Ex. 01 · Portfolio</span><span style="color: var(--accent)">Live</span></div>
+<h4 style="margin: 0; font-family: 'Archivo Black', 'Arial Black', Impact, sans-serif; font-size: 26px; font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase">Maximum Bandwidth</h4>
+<p style="margin: 0; font-size: 15px; line-height: 1.5">A portfolio made to look like a 90s computer magazine. You drag the pages to turn them, tear out the subscription card, and punch out a pair of 3-D specs that show hidden notes in red pen.</p>
+<p style="margin: auto 0 0; padding-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">page turns · tear-outs · hidden notes · paper sounds</p>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px"><a href="/zine/" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px solid var(--hi); color: var(--hi)">Open the site ↗</a><a href="#hire" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px solid var(--line); color: var(--ink)">Get one like this</a></div>
+</div>
+</article>
+<article class="card" style="display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--bg); overflow: hidden">
+<img src="/_blob/008c1bd6efd8b7a6d0fff5d66e01ea0e" alt="Hollowmere Keep: a pixel-art castle at night with stained glass windows, banners and a torch-lit wooden door" loading="lazy" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; border-bottom: 1px solid var(--line)">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 22px; flex-grow: 1">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">Ex. 02 · Small business</span><span style="color: var(--dim)">Coming soon</span></div>
+<h4 style="margin: 0; font-family: 'Silkscreen', monospace; font-size: 24px; font-weight: 700">Hollowmere Keep</h4>
+<p style="margin: 0; font-size: 15px; line-height: 1.5">A pixel-art castle you knock on to get in. Inside, the menu is a wall of bricks you knock out, and the stained glass behind them lights up to show which room you’re in.</p>
+<p style="margin: auto 0 0; padding-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">pixel art · knock-out brick menu · stained glass · sound</p>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px"><span style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px dashed var(--line); color: var(--dim); cursor: default">Still being built</span><a href="#hire" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; border: 1px solid var(--line); color: var(--ink)">Get one like this</a></div>
+</div>
+</article>
+</div>
+</div>
 <div id="hire" class="hire" style="pointer-events: auto; scroll-margin-top: 110px; margin-top: 56px; max-width: 860px; display: flex; flex-direction: column; gap: 18px; padding: 32px; border: 1px solid var(--line); background: var(--panel)">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">Hire me</p>
 <h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">I build websites too</h3>
-<p style="margin: 0; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dim)">If you want a portfolio or a small site that doesn’t look like a template, I can make you one, built by hand like this page.</p>
+<p style="margin: 0; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dim)">If you want a portfolio or a small site that doesn’t look like a template, I can make you one, built by hand like this page. <a href="#examples" style="color: var(--hi); text-underline-offset: 3px">See example sites ↑</a></p>
 <div class="hire-grid" style="display: grid; gap: 12px">
 <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--hi); background: var(--bg)">
 <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hi)">Starter site</p>
