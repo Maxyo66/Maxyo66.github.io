@@ -8,6 +8,18 @@
 <body>
 <x-dc>
 <helmet>
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://maxyo66.github.io/">
+<meta property="og:title" content="Maxyo66 · Depth Log">
+<meta property="og:description" content="Max (Maxyo66): games, tools and a desktop ocean, from Florida. Dive in.">
+<meta property="og:image" content="https://maxyo66.github.io/assets/og-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Maxyo66 in big letters over a dithered teal ocean full of whale sharks and kelp">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Maxyo66">
+<meta name="theme-color" content="#020b12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23020b12'/%3E%3Cpath d='M16 3v6' stroke='%2388d4c4' stroke-width='2'/%3E%3Cpath d='M9 22a7 9 0 0 1 14 0z' fill='%2388d4c4'/%3E%3Crect x='7' y='22' width='18' height='3' rx='1.5' fill='%2388d4c4'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23020b12'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@600&amp;family=Silkscreen:wght@400;700&amp;family=Kaisei+Decol:wght@700&amp;family=Marcellus+SC&amp;family=Yuji+Syuku&amp;family=Michroma&amp;family=IM+Fell+English+SC&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
@@ -42,6 +54,19 @@ html{scroll-behavior:smooth}
 .ping-b .ring { animation: sonar-b 1.2s ease-out } .ping-b .r2 { animation-delay: 0.2s }
 @keyframes sonar-a { 0% { transform: scale(1); opacity: 0.9 } 100% { transform: scale(4.5); opacity: 0 } }
 @keyframes sonar-b { 0% { transform: scale(1); opacity: 0.9 } 100% { transform: scale(4.5); opacity: 0 } }
+/* Final polish pass */
+.cover { position: relative; width: 100%; aspect-ratio: 800 / 520; overflow: hidden; border-bottom: 1px solid var(--line); background: #0b1622 }
+.cover svg { display: block; width: 100%; height: 100% }
+.cover-toast { position: absolute; left: 18px; bottom: 18px; display: inline-flex; gap: 10px; align-items: baseline; padding: 8px 12px; border: 1px solid rgba(232,220,180,0.45); background: rgba(6,12,16,0.78); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #e8dcb4 }
+.cover-toast b { color: #c9a24a; font-weight: 700 }
+@media (min-width: 900px) {
+  .work-grid > .card:last-child:nth-child(odd) { grid-column: 1 / -1; flex-direction: row !important }
+  .work-grid > .card:last-child:nth-child(odd) > :first-child { width: 50%; flex: 0 0 50%; min-width: 0; aspect-ratio: auto !important; height: auto; border-bottom: 0; border-right: 1px solid var(--line) }
+}
+main section > p:first-child, .hero-name + p { text-shadow: 0 1px 10px rgba(2,11,18,0.95), 0 0 3px rgba(2,11,18,0.9) }
+.resurface { transition: opacity 0.45s ease }
+.card div[style*="space-between"] { gap: 12px } .card div[style*="space-between"] > span:last-child { white-space: nowrap }
+@media (max-width: 700px) { html.scroll-down:not(.near-end) .resurface { opacity: 0 !important; pointer-events: none } }
 a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .log-new { animation: log-pulse 0.9s ease-out } .log-new2 { animation: log-pulse2 0.9s ease-out }
 @keyframes log-pulse2 { 0% { box-shadow: 0 0 0 0 var(--accent) } 100% { box-shadow: 0 0 0 10px rgba(0,0,0,0) } }
@@ -122,6 +147,9 @@ html.ui-ghost .hdr { box-shadow: none }
   .hdr-btns .hdr-more.open > span { margin-left: 0 !important; width: 100% }
   .lg-long { display: none } .lg-short { display: inline }
 }
+.hire-grid { grid-template-columns: 1fr }
+@media (min-width: 720px) { .hire-grid { grid-template-columns: 1.15fr 1fr } }
+@media (max-width: 560px) { .hire { padding: 22px !important } .hire h3 { font-size: 28px !important } }
 @media (max-width: 560px) {
   .resurface { width: 62px !important; height: 62px !important; right: 14px !important; bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important; font-size: 8px !important; letter-spacing: 0.08em !important }
   .resurface svg { width: 16px; height: 16px }
@@ -135,9 +163,11 @@ html.ui-ghost .hdr { box-shadow: none }
   .surface.scene-sky .surf-ctl, .surface.scene-toSky .surf-ctl, .surface.scene-fromSky .surf-ctl { width: calc(100% - 28px) }
   .surf-ctl > button { flex: 1 1 0; min-width: 0; padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.08em !important; white-space: nowrap }
   .for-back, .for-look { top: 82px !important; width: calc((100% - 36px) / 2); padding: 0 !important; min-height: 34px !important; font-size: 10px !important; letter-spacing: 0.06em !important; white-space: nowrap }
-  .for-back { left: 14px !important } .for-look { left: auto !important; right: 14px }
+  .for-back { left: 14px !important; width: auto !important; padding: 0 14px !important }
 }
 @media (hover: none) { .peek-zone { pointer-events: none } .peek-btn { pointer-events: auto; transform: translate(-50%, 0); opacity: 1 } }
+/* Phones: the panels are ~85% opaque, so a live backdrop blur over the animated ocean bought almost nothing visible but cost a full blur pass every frame. The text hide/show keeps its fade and lift, minus a blur of the whole page. */
+@media (hover: none) and (pointer: coarse) { .hdr, .card { -webkit-backdrop-filter: none !important; backdrop-filter: none !important } main.text-off { filter: none } }
 .sc-sky { transform: translateY(-100%); transition: transform 1.3s cubic-bezier(.65,0,.35,1); background: #3f7fb8 }
 .surface.scene-toSky .sc-meadow, .surface.scene-sky .sc-meadow { transform: translateY(100%) }
 .surface.scene-toSky .sc-sky, .surface.scene-sky .sc-sky { transform: none }
@@ -326,7 +356,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <sc-if value="{{surfOn}}" hint-placeholder-val="{{false}}">
 <div class="surf-bubbles {{surfDir}}" aria-hidden="true"><i style="--x: 4%; --s: 10px; --d: 0.0s; --w: 8px"></i><i style="--x: 11%; --s: 6px; --d: 0.15s; --w: -6px"></i><i style="--x: 17%; --s: 14px; --d: 0.05s; --w: 10px"></i><i style="--x: 23%; --s: 8px; --d: 0.3s; --w: -8px"></i><i style="--x: 30%; --s: 12px; --d: 0.1s; --w: 6px"></i><i style="--x: 36%; --s: 6px; --d: 0.4s; --w: -4px"></i><i style="--x: 42%; --s: 16px; --d: 0.2s; --w: 12px"></i><i style="--x: 48%; --s: 9px; --d: 0.05s; --w: -10px"></i><i style="--x: 55%; --s: 12px; --d: 0.35s; --w: 8px"></i><i style="--x: 61%; --s: 7px; --d: 0.12s; --w: -6px"></i><i style="--x: 67%; --s: 15px; --d: 0.25s; --w: 10px"></i><i style="--x: 73%; --s: 8px; --d: 0.0s; --w: -8px"></i><i style="--x: 80%; --s: 11px; --d: 0.18s; --w: 6px"></i><i style="--x: 86%; --s: 6px; --d: 0.42s; --w: -6px"></i><i style="--x: 92%; --s: 13px; --d: 0.08s; --w: 8px"></i><i style="--x: 97%; --s: 8px; --d: 0.3s; --w: -4px"></i><i style="--x: 8%; --s: 7px; --d: 0.55s; --w: 5px"></i><i style="--x: 27%; --s: 9px; --d: 0.6s; --w: -5px"></i><i style="--x: 52%; --s: 7px; --d: 0.62s; --w: 6px"></i><i style="--x: 76%; --s: 10px; --d: 0.5s; --w: -6px"></i></div>
 <section class="surface {{surfDir}} scene-{{sceneCls}} {{surfCtlCls}}" aria-label="{{surfAria}}" style="position: fixed; inset: 0; z-index: 15; overflow: hidden; background: var(--bg)">
-<canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
+<canvas class="sc-meadow" ref="{{surfRef}}" onPointerDown="{{surfDown}}" onPointerUp="{{surfUp}}" onPointerCancel="{{surfUp}}" onPointerMove="{{surfMove}}" onPointerLeave="{{surfLeave}}" aria-label="Moonlit meadows by the sea, with a path up to a lighthouse and a little car parked at the far left." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-forest" ref="{{forRef}}" onPointerDown="{{forDown}}" onPointerUp="{{forUp}}" onPointerCancel="{{forUp}}" onPointerMove="{{forMove}}" onPointerLeave="{{forLeave}}" onContextMenu="{{forCtx}}" aria-label="A moonlit forest road painted in gouache brush strokes. The car drives past trees, a stream, a cabin, a campfire and woodland animals; click anything to play with it." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none"></canvas>
 <canvas class="sc-gl" ref="{{glRef}}" aria-hidden="true" style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 0.4s"></canvas>
 <canvas class="sc-sky" ref="{{skyRef}}" aria-label="The Storm Throne: a ruined palace on the clouds in black, white and gold. Drag to look around. Click the crown, the shields, the dragon, the golden cloud, or the anvil on the red balloon to fall back down." style="position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none"></canvas>
@@ -335,7 +365,6 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <sc-if value="{{surfUi}}"><div class="surf-lbl" style="position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none">
 <span style="color: var(--hi); font-weight: 700; {{surfLblStyle}}">{{surfLabel}}</span>
 </div></sc-if>
-<sc-if value="{{forestUi}}"><button class="for-look" onClick="{{cycleLook}}" title="Painting style" style="position: absolute; top: 88px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">Look: {{lookLabel}} ↻</button></sc-if>
 <sc-if value="{{forestUi}}"><button class="for-back" onClick="{{turnBack}}" style="position: absolute; top: 46px; left: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">↻ Back to the meadow</button></sc-if>
 <sc-if value="{{groundUi}}"><button class="surf-season" onClick="{{cycleSeason}}" title="Season" style="position: absolute; top: 18px; right: 24px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer">{{seasonLabel}} ↻</button>
 <div class="peek-zone"><button class="peek-btn" onClick="{{closeSurface}}" style="position: absolute; left: 50%; bottom: 22px; min-height: 44px; padding: 0 22px; border: 1px solid var(--hi); background: var(--panel); color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer">Dive back ↓</button></div></sc-if>
@@ -351,10 +380,11 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section id="surface" style="min-height: 920px; display: flex; flex-direction: column; justify-content: center; padding: 140px 6vw 80px; box-sizing: border-box; max-width: 1240px">
 <p style="pointer-events: auto; margin: 0 0 18px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hi)" aria-label="[01] Sunlight zone · 0 m">{{lbl.surface}}</p>
 <h1 class="hero-name" style="pointer-events: auto; margin: 0; font-size: 132px; line-height: 0.88; font-weight: 800; letter-spacing: -0.04em; color: var(--ink)">Maxyo66</h1>
-<p style="pointer-events: auto; margin: 32px 0 0; max-width: 620px; font-size: 22px; line-height: 1.45; color: var(--ink)">Hey, I’m Max, a game developer from Florida. I make games and build the tools I use to make them. Right now I’m working on a desktop ocean, an anime autobattler, a fantasy MMO for me and my friends, and a few other projects.</p>
+<p style="pointer-events: auto; margin: 32px 0 0; max-width: 620px; font-size: 22px; line-height: 1.45; color: var(--ink)">Hey, I’m Max, a game developer from Florida. I make games and build the tools I use to make them. Right now I’m working on a desktop ocean, an anime autobattler, a fantasy MMO for me and my friends, a grocery price app, and a few other projects.</p>
 <div style="pointer-events: auto; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px">
 <a href="#twilight" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: var(--hi); color: var(--bg); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Start the dive ↓</a>
 <a href="#hadal" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--panel)">Contact</a>
+<a href="#hire" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--hi); color: var(--hi); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Hire me</a>
 </div>
 </section>
 
@@ -382,7 +412,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section id="midnight" style="padding: 120px 6vw; box-sizing: border-box; max-width: 1240px">
 <p style="pointer-events: auto; margin: 0 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hi)" aria-label="[03] Midnight zone · 1,000 m · In development">{{lbl.midnight}}</p>
 <h2 class="{{wipe.midnight}}" style="pointer-events: auto; margin: 0 0 40px; font-size: 64px; line-height: 1; font-weight: 800; letter-spacing: -0.03em">Stuff I’m working on right now.</h2>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 24px">
+<div class="work-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 24px">
 
 <article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
 <video src="/_blob/54d802b04cb4308c57575115aa846066" poster="/_blob/0e08af7f51748a923bb57a7db17f3736" autoplay muted loop playsinline preload="metadata" aria-label="BLAME! diorama turntable: the camera orbits a pixel-art megastructure section as a lone gunman fires a beam through the wall" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; border-bottom: 1px solid var(--line); background: #000"></video>
@@ -419,13 +449,35 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </article>
 
 <article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
-<div role="img" aria-label="Screenshot placeholder for The Living World" style="display: flex; align-items: flex-end; width: 100%; aspect-ratio: 800 / 520; box-sizing: border-box; padding: 18px; border-bottom: 1px solid var(--line); background-color: var(--bg); background-image: radial-gradient(var(--deep) 1.2px, transparent 1.4px), linear-gradient(160deg, var(--deep), var(--bg)); background-size: 6px 6px, 100% 100%; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim)">[ Screenshot coming ]</div>
+<div class="cover cover-lw" role="img" aria-label="The Living World cover: a sword stuck in a hill under the stars, with a Skill discovered: Riposte notice"><svg viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<defs><pattern id="lwDots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.1" fill="#c9b27a" opacity="0.16"/></pattern>
+<linearGradient id="lwSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1622"/><stop offset="0.7" stop-color="#1b2a2c"/><stop offset="1" stop-color="#2a2a22"/></linearGradient></defs>
+<rect width="800" height="520" fill="url(#lwSky)"/><rect width="800" height="520" fill="url(#lwDots)"/>
+<g fill="#e8dcb4"><circle cx="120" cy="80" r="1.6"/><circle cx="210" cy="140" r="1.2"/><circle cx="330" cy="60" r="1.8"/><circle cx="470" cy="110" r="1.2"/><circle cx="560" cy="50" r="1.5"/><circle cx="690" cy="130" r="1.8"/><circle cx="740" cy="70" r="1.1"/><circle cx="60" cy="170" r="1.2"/></g>
+<circle cx="640" cy="120" r="44" fill="#e8dcb4" opacity="0.9"/><circle cx="660" cy="108" r="40" fill="#0f1b24"/>
+<path d="M0 400 C120 340 230 360 330 330 C430 300 520 340 620 320 C700 304 760 330 800 320 V520 H0Z" fill="#141f1c"/>
+<path d="M0 450 C160 410 300 440 420 410 C560 380 680 420 800 400 V520 H0Z" fill="#0b1411"/>
+<g transform="translate(410 330) rotate(8)"><rect x="-4" y="-150" width="8" height="150" fill="#d8d3c4"/><path d="M-4 -150 L0 -172 L4 -150Z" fill="#d8d3c4"/><rect x="-26" y="-6" width="52" height="8" rx="2" fill="#c9a24a"/><rect x="-4" y="2" width="8" height="34" fill="#5a3a22"/><circle cx="0" cy="40" r="6" fill="#c9a24a"/></g>
+<g opacity="0.55" stroke="#c9a24a" stroke-width="1.5" fill="none"><path d="M410 210 l0 -30"/><path d="M440 230 l22 -20"/><path d="M380 230 l-22 -20"/></g>
+</svg><span class="cover-toast"><b>Skill discovered</b> Riposte</span></div>
 <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; flex-grow: 1">
 <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">No. 005 · Unreal Engine 5</span><span style="color: var(--accent)">Prototype 0.1</span></div>
 <h3 style="margin: 0; font-family: 'IM Fell English SC', Georgia, serif; font-size: 36px; font-weight: 400">The Living World</h3>
 <p style="margin: 0; font-size: 17px; line-height: 1.55">A small fantasy MMO for me and my friends. You don’t pick skills from a menu, you find them by doing things. Fight with a sword long enough and sword skills start to show up, and time a counter just right and you might discover Riposte. Collect enough of one kind and you can switch into a class like Swordsman, then switch again whenever you want without losing anything. There’s no global chat, so secrets have to be found, not looked up, and the rarest classes can only belong to one player in the whole world.</p>
 <p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Friends-only MMO · hidden skills · one-of-a-kind classes</p>
 <button onClick="{{dzOpen.living}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
+</div>
+</article>
+
+<article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
+<img src="/_blob/ee4e803ee127200d8ea12c091bd824f0" alt="Unit Price compare screen: summary tiles for best value, store brand savings and real prices tracked, above milk sorted by price per ounce" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; object-position: top; border-bottom: 1px solid var(--line)">
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; flex-grow: 1">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">No. 006 · Web app</span><span style="color: var(--accent)">Live demo</span></div>
+<h3 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -0.02em">Unit Price</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.55">The number that actually matters on a grocery shelf tag is the price per ounce, so I built an app around it. It pulls the real in-store prices from the Walmart and Target nearest your zip code, not delivery-app markups. Scan a barcode or snap a shelf tag to check if it’s cheaper somewhere else, plan the cheapest one- or two-stop trip for your list, and see how much you’ve saved. It installs on your phone and the list still works offline in the store.</p>
+<p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Real store prices · barcode scan · savings tracker</p>
+<button onClick="{{dzOpen.unitprice}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
+<a href="https://unit-price-eight.vercel.app/demo" target="_blank" rel="noopener" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--hi); text-decoration: underline; text-underline-offset: 4px">Try the live demo →</a>
 </div>
 </article>
 
@@ -510,6 +562,37 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <a href="https://x.com/Maxyo66" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">X / @Maxyo66</a>
 <a href="https://maxyo66.itch.io" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: var(--panel); text-decoration: none">itch.io / maxyo66</a>
 </div>
+<div id="hire" class="hire" style="pointer-events: auto; scroll-margin-top: 110px; margin-top: 56px; max-width: 860px; display: flex; flex-direction: column; gap: 18px; padding: 32px; border: 1px solid var(--line); background: var(--panel)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">Hire me</p>
+<h3 style="margin: 0; font-size: 34px; font-weight: 800; line-height: 1.05">I build websites too</h3>
+<p style="margin: 0; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dim)">If you want a portfolio or a small site that doesn’t look like a template, I can make you one, built by hand like this page.</p>
+<div class="hire-grid" style="display: grid; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--hi); background: var(--bg)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hi)">Starter site</p>
+<p style="margin: 0; display: flex; align-items: baseline; gap: 8px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--dim)">from</span><span style="font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.03em">$100</span></p>
+<ul style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.45">
+<li>One page, designed and built for you</li>
+<li>One round of edits after you see it</li>
+<li>Free hosting set up, plus your own domain if you have one</li>
+<li>Looks right on phones</li>
+</ul>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border: 1px solid var(--line); background: var(--bg)">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim)">Extras</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: var(--dim)">Priced on top of the starter. I’ll give you a quote before I start.</p>
+<ul style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.45">
+<li>More pages</li>
+<li>Custom animation or interactive bits</li>
+<li>A contact or sign-up form</li>
+<li>More rounds of edits</li>
+</ul>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px">
+<a href="mailto:abyssalsharksgame@gmail.com?subject=Website%20build&amp;body=Hi%20Max!%20I%E2%80%99d%20like%20a%20site.%0A%0AWhat%20it%E2%80%99s%20for%3A%20%0ASites%20I%20like%3A%20%0AWhen%20I%20need%20it%3A%20" style="display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; background: var(--hi); color: var(--bg); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Ask about a site</a>
+<span style="font-size: 14px; line-height: 1.45; color: var(--dim)">Tell me what it’s for, a few sites you like, and when you need it.</span>
+</div>
+</div>
 <sc-if value="{{ghOn}}" hint-placeholder-val="{{true}}">
 <div class="gh" style="pointer-events: auto; margin-top: 56px; width: fit-content; max-width: 100%; font-family: 'JetBrains Mono', monospace">
 <p style="margin: 0 0 14px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent)">GitHub</p>
@@ -544,7 +627,8 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </fieldset>
 <label for="su-email" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim)">Your email</label>
 <div style="display: flex; flex-wrap: wrap; gap: 10px">
-<input id="su-email" type="email" autocomplete="email" placeholder="you@example.com" value="{{suEmail}}" onChange="{{onSuEmail}}" style="flex: 1 1 260px; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 16px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 15px">
+<input id="su-hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0">
+<input id="su-email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" value="{{suEmail}}" onChange="{{onSuEmail}}" style="flex: 1 1 260px; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 16px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 15px">
 <sc-if value="{{suPostReady}}" hint-placeholder-val="{{false}}">
 <button type="button" onClick="{{onSuPost}}" style="min-height: 48px; padding: 0 22px; border: 0; background: var(--hi); color: var(--bg); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">{{suPostLabel}}</button>
 </sc-if>
@@ -1056,6 +1140,9 @@ class Component extends DCLogic {
     const S = this.surf; if (!S || !this.surfCv || this.state.surface !== 'up') return;
     const [x, y] = this.surfXY(e);
     S.mouse.x = x; S.mouse.y = y; S.mouse.vx = 0; S.mouse.t = this.time; S.hold = true;
+    // Keep the drag on the meadow even when it passes over the Dive back button's hover strip,
+    // so holding to play the flowers isn't cut off near the bottom of the screen.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
     if ((this.state.scene || 'meadow') === 'meadow' && this.meadowCarHit(S, x, y)) { S.hold = false; this.carGo(); return; }
     if ((this.state.scene || 'meadow') === 'meadow' && this.thunderHit(S, x, y)) { S.hold = false; this.skyGo(); return; }
     if (this.anvilHit(S, x, y)) { S.hold = false; this.anvilClang(S); return; }
@@ -1398,8 +1485,9 @@ class Component extends DCLogic {
   }
   loadSky() {
     if (this.skyLoad) return this.skyLoad;
-    const add = (src) => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.async = true; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
-    this.skyLoad = (window.THREE ? Promise.resolve() : add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'))
+    // The CDN copy of three.js is pinned by hash, so a tampered file is refused instead of run.
+    const add = (src, sri) => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.async = true; if (sri) { el.integrity = sri; el.crossOrigin = 'anonymous'; el.referrerPolicy = 'no-referrer'; } el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+    this.skyLoad = (window.THREE ? Promise.resolve() : add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=='))
       .then(() => (window.SkyRealm ? null : add('assets/sky-realm.js?v=4')))
       .catch((e) => { this.skyLoad = null; throw e; });
     return this.skyLoad;
@@ -2443,8 +2531,10 @@ class Component extends DCLogic {
   // the tree is drawn in thin horizontal strips; each strip shifts by an amount that grows
   // with height, so the trunk bends from the roots instead of swinging like a stiff pole
   bendX(o, u, t) { return (o.ang + o.wind) * o.spr.h * u * u + o.shiver * Math.sin(t * 17 + u * 9 + o.ph) * u * u * u * 6; }
+  // A bending tree is drawn as horizontal strips, each nudged by the bend at its height.
+  // Phones and the light path use strips twice as tall: half the draw calls, same sway.
   drawTree(g, F, o, x, base, t) {
-    const sp = o.spr, d = F.d, still = Math.abs(o.ang + o.wind) * sp.h < 0.35 && o.shiver < 0.02, strip = (sp.near ? 6 : 10) * (o.shiver > 0.05 || Math.abs(o.ang) * sp.h > 4 ? 1 : 3);
+    const sp = o.spr, d = F.d, still = Math.abs(o.ang + o.wind) * sp.h < 0.35 && o.shiver < 0.02, strip = (sp.near ? 6 : 10) * (o.shiver > 0.05 || Math.abs(o.ang) * sp.h > 4 ? 1 : 3) * (this.coarse || this.lowPower ? 2 : 1);
     g.save(); g.translate(x, base); if (o.flip) g.scale(-1, 1);
     if (still) g.drawImage(sp.cv, -sp.ax, -sp.ay, sp.cw, sp.ch);
     else for (let y0 = 0; y0 < sp.ch; y0 += strip) {
@@ -3327,7 +3417,8 @@ void main() {
     if (!this.solidFade || A >= 0.99) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * A; return { c: ctx, a: A, a0 }; }
     const cv = ctx.canvas, T = this.fadeCv || (this.fadeCv = document.createElement('canvas'));
     if (T.width !== cv.width || T.height !== cv.height) { T.width = cv.width; T.height = cv.height; }
-    const tc = T.getContext('2d'); tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalCompositeOperation = 'source-over'; tc.globalAlpha = 1; tc.clearRect(0, 0, T.width, T.height);
+    // read back every frame while something fades, so keep it a CPU canvas (no GPU readback stall)
+    const tc = T.getContext('2d', { willReadFrequently: true }); tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalCompositeOperation = 'source-over'; tc.globalAlpha = 1; tc.clearRect(0, 0, T.width, T.height);
     tc.setTransform(ctx.getTransform());
     return { c: tc, a: 1, A, solid: true };
   }
@@ -3462,6 +3553,9 @@ void main() {
   }
   postSignup(email, chosen) {
     if (this.state.suSending) return;
+    // Bots fill every field, people never see this one: act as if it worked and send nothing.
+    const hp = document.getElementById('su-hp');
+    if (hp && hp.value) { this.setState({ suSent: true }); return; }
     this.setState({ suSending: true, suError: false });
     fetch('https://formsubmit.co/ajax/abyssalsharksgame@gmail.com', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -3550,7 +3644,13 @@ void main() {
       bg: '#0e140f', ink: '#e7eadb', dim: '#a9b29d', accent: '#a8cf7e', line: 'rgba(168,207,126,0.3)', type: 'none',
       about: 'A small fantasy MMO for me and my friends. Skills come from what you actually do, classes come from the skills you collect, and you can change class whenever you want without losing anything. There’s no global chat, so hidden skills and secrets have to be found by playing, and the rarest classes can only be unlocked by one player in the whole world.',
       log: ['Built in Unreal Engine 5 with C++, on a dedicated server you join by invite, up to four players for now.', 'Hybrid action and MMO combat with a behind-the-character camera. The server checks every hit for reach, facing, line of sight and timing.', 'Sword hits build mastery, and well-timed counters reveal the hidden Riposte skill.', 'Switch between Wanderer and Swordsman and keep every skill you’ve learned. Duels are opt-in, and progress saves per character.', 'Next up: the first playtest with friends, then quests and the one-of-a-kind legendary classes.'],
-      tags: ['Unreal Engine 5', 'C++', 'Multiplayer', 'Codex + Claude'], links: [] }
+      tags: ['Unreal Engine 5', 'C++', 'Multiplayer', 'Codex + Claude'], links: [] },
+    unitprice: { no: '006', title: 'Unit Price', status: 'Live demo', kind: 'Grocery price-per-ounce app', font: "'Bricolage Grotesque', sans-serif", weight: 800,
+      bg: '#0b0c0e', ink: '#e9ecef', dim: '#9aa3ad', accent: '#3ddc97', line: 'rgba(61,220,151,0.3)', media: '/_blob/ee4e803ee127200d8ea12c091bd824f0', type: 'img',
+      shots: [['img', '/_blob/ee4e803ee127200d8ea12c091bd824f0', 'Compare by price per ounce'], ['img', '/_blob/78891ebbcfa0722d6ce3063ccc5ab35d', 'Barcode scan, price drops and savings'], ['img', '/_blob/44cecfbda3c82d61aa9af45ebaee993f', 'Phone Compare, filters and in-store mode'], ['img', '/_blob/8ad33c3dc520bbf7945f0c60256446f3', 'A two-stop trip, real Walmart + Target prices'], ['img', '/_blob/c02995e8cfa0ca61880c74ca631fa5a8', 'Store brand vs name brand']],
+      about: 'Every grocery shelf tag has the price, and then the price per ounce underneath, which is the number that actually tells you what’s cheaper. Unit Price compares that number across stores near you. It uses real in-store prices for the exact store you’d walk into, not delivery-app prices that change from person to person, so you can plan which store to visit for the cheapest version of the brand and size you want.',
+      log: ['Compare milk, bread and cheese by price per ounce, with filters for store, brand, size and sort.', 'Walmart and Target prices come from the store nearest your zip code, about 77 real prices per weekly refresh, cached so the API bill stays tiny.', 'Snap a shelf tag and Claude vision reads the price, size and unit price for you. Every price goes into a shared database.', 'Store brand vs name brand shows how much you save by switching for each item.', 'The grocery list works out the cheapest one-stop or two-stop trip and suggests store-brand swaps.', 'Price history charts, plus a shrinkflation watch that flags packages that got smaller while the price didn’t.', 'Scan a barcode to see what that item costs at each store and whether a same-size option is cheaper.', 'A “you saved” tracker adds up every trip, and price drop alerts flag items on your list that got cheaper.', 'Installs like an app on your phone, keeps the list working offline, and has an in-store mode for checking items off.', '18 merged pull requests and 51 unit tests so far.'],
+      tags: ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Neon Postgres', 'Claude vision', 'SerpApi', 'PWA', 'Vercel'], links: [['Try the live demo', 'https://unit-price-eight.vercel.app/demo']] }
   };
   openDossier(key) { clearTimeout(this.dzT); this.setState({ dz: key, dzLeaving: false, dzShot: 0 }); this.sfx('blip'); }
   dzShots(d) { return d.shots || (d.type === 'none' ? [] : [[d.type, d.media, d.title, d.poster]]); }
@@ -3639,12 +3739,22 @@ void main() {
     // The tag is pinned where you clicked, so it gets out of the way the moment
     // the page scrolls instead of sliding over the text.
     this.onScroll = () => {
-      const tg = this.state.tag; if (!tg) return;
       const y = window.scrollY || (document.scrollingElement || {}).scrollTop || 0;
+      // Phones: the resurface bubble ducks out while you read downward and comes back
+      // when you scroll up (or reach the bottom), so it never sits on the text.
+      const dy = y - (this.lastSY || 0);
+      if (Math.abs(dy) > 6) {
+        const R = document.documentElement.classList;
+        R.toggle('scroll-down', dy > 0);
+        R.toggle('near-end', y + window.innerHeight > document.documentElement.scrollHeight - 160);
+        this.lastSY = y;
+      }
+      const tg = this.state.tag; if (!tg) return;
       if (Math.abs(y - tg.sy) > 12) this.dismissTag();
     };
     window.addEventListener('scroll', this.onScroll, { passive: true });
     this.reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     // Section reveals: when a section scrolls into view, its depth label decodes
     // from hiragana into the real text and its heading wipes in.
     this.setState({ armed: !this.reduce });
@@ -3660,7 +3770,19 @@ void main() {
       }, { threshold: 0.15 });
       setTimeout(() => this.ZONES.forEach((z) => { const el = document.getElementById(z.id); if (el) this.io.observe(el); }), 50);
     }
+    // ?fps in the address bar shows a small frame meter, for checking a phone by hand
+    if (/[?&]fps\b/.test(location.search || '')) {
+      const el = this.fpsEl = document.createElement('div');
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;padding:4px 8px;font:600 11px/1.3 "JetBrains Mono",monospace;color:#d8e7e7;background:rgba(0,0,0,.7);border-radius:4px;pointer-events:none;white-space:pre';
+      document.body.appendChild(el); this.fpsN = 0; this.fpsW = 0; this.fpsT = performance.now();
+    }
     this.raf = requestAnimationFrame(this.tick);
+  }
+  fpsCount(work) {
+    this.fpsN++; this.fpsW = Math.max(this.fpsW, work);
+    const now = performance.now(); if (now - this.fpsT < 1000) return;
+    this.fpsEl.textContent = Math.round(this.fpsN * 1000 / (now - this.fpsT)) + ' fps · ' + (this.wk || 0).toFixed(1) + ' ms avg · ' + this.fpsW.toFixed(0) + ' ms worst\n' + (this.lowPower ? 'light' : 'full') + ' quality' + (this.slowDz ? ' · dossier open' : '');
+    this.fpsN = 0; this.fpsW = 0; this.fpsT = now;
   }
   componentWillUnmount() {
     if (this.io) this.io.disconnect();
@@ -4979,25 +5101,53 @@ void main() {
     const sc = this.scratch;
     if (sc.width !== w || sc.height !== h) { sc.width = w; sc.height = h; }
     const m = sc.getContext('2d');
+    // The soft outline comes from painting the mask at half size and scaling it up
+    // with smoothing. A canvas blur filter here cost ~450 ms a frame on phones.
+    if (!this.scratchLo) this.scratchLo = document.createElement('canvas');
+    const lo = this.scratchLo, lw = Math.ceil(w / 2), lh = Math.ceil(h / 2);
+    if (lo.width !== lw || lo.height !== lh) { lo.width = lw; lo.height = lh; }
+    const l = lo.getContext('2d');
+    l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, lw, lh);
+    l.setTransform(dpr / 2, 0, 0, dpr / 2, 0, 0); paint(l);
     m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-over'; m.clearRect(0, 0, w, h);
-    m.setTransform(dpr, 0, 0, dpr, 0, 0); m.filter = 'blur(0.8px)'; paint(m); m.filter = 'none';
-    m.setTransform(1, 0, 0, 1, 0, 0); m.globalCompositeOperation = 'source-in'; m.drawImage(field, 0, 0);
+    m.imageSmoothingEnabled = true; m.drawImage(lo, 0, 0, w, h);
+    m.globalCompositeOperation = 'source-in'; m.drawImage(field, 0, 0);
     m.globalCompositeOperation = 'source-over';
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.drawImage(sc, 0, 0); ctx.restore();
   }
 
   tick = (now) => {
     this.raf = requestAnimationFrame(this.tick);
+    this.drew = false; const t0 = performance.now();
+    this.drawFrame(now);
+    if (this.drew) this.pace(performance.now() - t0);
+  };
+  // Quality follows the phone: frames that keep arriving late (ft) drop to the light
+  // path (30 fps, chunkier dither), and if the light path then runs with lots of room
+  // to spare for a few seconds, full quality comes back. It gives up flipping after a
+  // few tries so a borderline phone settles instead of see-sawing.
+  pace(work) {
+    this.wk = this.wk == null ? work : this.wk * 0.9 + work * 0.1;
+    if (this.fpsEl) this.fpsCount(work);
+    if (this.lowPower && !this.slowDz && this.wk < 7 && (this.lpFlips || 0) < 3) {
+      if ((this.fastN = (this.fastN || 0) + 1) > 120) { this.lowPower = false; this.ft = 16; this.fastN = 0; this.lpFlips = (this.lpFlips || 0) + 1; }
+    } else this.fastN = 0;
+  }
+  drawFrame(now) {
     const cv = this.cv; if (!cv) return;
     const mode = this.modeKey();
     if (document.hidden) { this.last = 0; return; }
     this.ghostTick(now);
-    if (now - this.last < (this.lowPower ? 31 : 15)) return;
+    // On a phone the dossier covers nearly the whole screen, so the ocean behind it
+    // only needs ~20 fps; that leaves the phone free to scroll the dossier smoothly.
+    const slowDz = this.slowDz = !!(this.coarse && this.state.dz && !this.state.surface);
+    if (now - this.last < (slowDz ? 48 : this.lowPower ? 31 : 15)) return;
+    this.drew = true;
     const dt = this.last ? Math.min(0.1, (now - this.last) / 1000) : 0.016;
     this.last = now;
     if (!this.reduce) this.time += dt;
-    this.ft = (this.ft || 16) * 0.95 + (dt * 1000) * 0.05;
-    if (!this.lowPower && this.time > 4 && this.ft > 30) { this.lowPower = true; this.snow.length = 60; }
+    if (!slowDz) this.ft = (this.ft || 16) * 0.95 + (dt * 1000) * 0.05;
+    if (!this.lowPower && this.time > 4 && this.ft > 30) { this.lowPower = true; if (this.snow.length > 60) this.snow.length = 60; }
 
     const vw = window.innerWidth || 1440, vh = window.innerHeight || 900;
     const dep = this.readDepth();
@@ -5046,7 +5196,7 @@ void main() {
       this.drawWater(ctx, vw, vh, this.prog, pal);
       for (const sh of sorted) this.fillShark(ctx, sh, sh._P.body, this.rgba(pal.mid, 0.6));
     }
-  };
+  }
 
   // Keeps the tag riding alongside the creature it names, clamped on screen.
   placeTag() {
@@ -5320,7 +5470,7 @@ void main() {
     const picks = this.state.suPicks || {};
     const chosen = SU.filter((x) => picks[x]);
     const em = (this.state.suEmail || '').trim();
-    const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+    const okEmail = em.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
     const suValid = okEmail && chosen.length > 0;
     const post = !!window.__STANDALONE__;
     const suMailto = 'mailto:abyssalsharksgame@gmail.com?subject=' + encodeURIComponent('Playtest sign-up') + '&body=' + encodeURIComponent('Hi Max! Please sign me up for: ' + chosen.join(', ') + '.\nMy email: ' + em);
