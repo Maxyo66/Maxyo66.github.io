@@ -71,7 +71,9 @@ body{
 .face > .shade{position:absolute; inset:0; pointer-events:none; z-index:10; opacity:0}
 .face.f-front > .shade{background:linear-gradient(to left, rgba(0,0,0,.55), rgba(0,0,0,.15) 60%, rgba(255,255,255,.08))}
 .face.f-back > .shade{background:linear-gradient(to right, rgba(0,0,0,.5), rgba(0,0,0,.12) 60%, rgba(255,255,255,.1))}
-.cast{position:absolute; top:0; bottom:0; width:var(--pw, 400px); pointer-events:none; z-index:50; opacity:0}
+.cast{position:absolute; top:0; bottom:0; width:var(--pw, 400px); pointer-events:none; z-index:50; opacity:0; transform-origin:0 50%; will-change:opacity,transform;
+  background:linear-gradient(to right, rgba(0,0,0,.45), transparent)}
+.cast.l{transform-origin:100% 50%; background:linear-gradient(to left, rgba(0,0,0,.45), transparent)}
 .page{background:var(--paper); color:var(--ink); overflow:hidden; container-type:size; position:relative;
   font-family:var(--f-body); line-height:1.28}
 .page > *{font-size:2.9cqw}
@@ -360,7 +362,7 @@ body.specs .pen{opacity:1}
           <p class="cl c"><b>889 links</b>One page. We investigate.</p>
           <p class="cl"><b>Is your modem lying to you?</b>p.47</p>
         </div>
-        <figure class="pic"><img src="img/ocean.jpg" alt="Max's portfolio homepage: a dark ocean with sharks, kelp and the name Maxyo66"></figure>
+        <figure class="pic"><img decoding="async" src="img/ocean.jpg" alt="Max's portfolio homepage: a dark ocean with sharks, kelp and the name Maxyo66"></figure>
         <div class="burst"><span>Free inside!<big>3-D</big>specs</span></div>
       </div>
       <div class="coverfoot">
@@ -415,7 +417,7 @@ body.specs .pen{opacity:1}
       <span class="kicker">Cover story</span>
       <h2 class="hl">The portfolio you can scuba dive</h2>
       <p class="deck">A game developer from Florida built his homepage as an ocean. The deeper you scroll, the stranger it gets. We put on a wetsuit.</p>
-      <figure class="pic"><img src="img/ocean.jpg" alt="The Sunlight Zone at 0 meters: sharks swim past kelp and coral behind the name Maxyo66"></figure>
+      <figure class="pic"><img decoding="async" src="img/ocean.jpg" alt="The Sunlight Zone at 0 meters: sharks swim past kelp and coral behind the name Maxyo66"></figure>
       <p class="cap"><b>Fig. 1.</b> The Sunlight Zone, 0 m. The depth meter in the top bar counts down as you scroll. Fish not to scale.</p>
     </div>
     <div class="folio"><span>03</span><span>Cover story</span></div>
@@ -431,8 +433,8 @@ body.specs .pen{opacity:1}
       </div>
       <p class="pull">“A portfolio that rewards you for poking it.”</p>
       <div class="grid">
-        <figure class="pic"><img src="img/forest.jpg" alt="An autumn forest road painted in brush strokes, with a small red car"></figure>
-        <figure class="pic"><img src="img/dossier.jpg" alt="The Living World project dossier on Max's portfolio"></figure>
+        <figure class="pic"><img decoding="async" src="img/forest.jpg" alt="An autumn forest road painted in brush strokes, with a small red car"></figure>
+        <figure class="pic"><img decoding="async" src="img/dossier.jpg" alt="The Living World project dossier on Max's portfolio"></figure>
       </div>
       <p class="cap"><b>Fig. 2.</b> Click the car; drive into the forest. <b>Fig. 3.</b> Projects are filed like specimens.</p>
       <div class="box small"><h4>Spec sheet</h4><ul><li>One design source, built into one HTML page</li><li>Canvas brushwork, painted live as you watch</li><li>Sound made in the browser with Web Audio</li><li>A live GitHub contribution graph at the bottom</li></ul></div>
@@ -502,7 +504,7 @@ body.specs .pen{opacity:1}
     <div class="inner">
       <span class="kicker">Investigation</span>
       <h2 class="hl">889 links. One page. No database.</h2>
-      <figure class="pic"><img style="object-position:center top" src="img/hub.jpg" alt="The Resource Library: a dark page reading Your next great find, with a search box and category chips"></figure>
+      <figure class="pic"><img decoding="async" style="object-position:center top" src="img/hub.jpg" alt="The Resource Library: a dark page reading Your next great find, with a search box and category chips"></figure>
       <div class="cols small">
         <p>Somewhere in Florida is a library with no building. The Hub holds 889 tools, fonts, effects and design references, every one of them checked by hand, then sorted into a single page you can search before your coffee cools.</p>
         <p>Readers can save favorites into their own lists, flip the whole thing between styles like “Midnight archive,” and suggest a find of their own. A second tab holds documents you can read right there.</p>
@@ -523,7 +525,7 @@ body.specs .pen{opacity:1}
       <hr class="rule">
       <span class="kicker">README remix</span>
       <h2 class="hl">Sharks on the profile page</h2>
-      <figure class="pic"><img src="img/banner.jpg" alt="GitHub profile banner: the name Maxyo66 over ASCII sharks drawn in kana characters"></figure>
+      <figure class="pic"><img decoding="async" src="img/banner.jpg" alt="GitHub profile banner: the name Maxyo66 over ASCII sharks drawn in kana characters"></figure>
       <p class="small">GitHub profiles are usually a list of badges. This one opens with ASCII sharks drawn in kana characters, borrowed from the editor's live-wallpaper ocean, Abyssal. Click them and you dive straight into the portfolio.</p>
     </div>
     <div class="folio"><span>Maximum Bandwidth</span><span>08</span></div>
@@ -645,11 +647,16 @@ const S = {
   init(){
     if (this.ctx) return this.ctx.state === 'suspended' && this.ctx.resume();
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-    this.ctx = new C();
+    // phones get a bigger output buffer so the audio thread never runs dry (crackles)
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    try { this.ctx = new C(coarse ? {latencyHint: 'playback'} : undefined); } catch (_) { this.ctx = new C(); }
     const len = this.ctx.sampleRate * 2, b = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noise = b;
     this.master = this.ctx.createGain(); this.master.gain.value = .8; this.master.connect(this.ctx.destination);
+    // the pink-noise page sound takes ~80 ms to build on a phone: do it now, while idle,
+    // instead of on the first page turn (that made the first flip stutter)
+    (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => this.paperBuf());
   },
   ok(){ return this.on && this.ctx && this.ctx.state === 'running'; },
   burst({t=0, dur=.2, type='bandpass', f=1500, f2, q=1, vol=.4, attack=.01}){
@@ -867,12 +874,11 @@ function bookShift(){
   return flipped === 0 ? -pw / 2 : flipped === L ? pw / 2 : 0;
 }
 function paintLeaf(i){
-  const a = angle[i], leaf = leaves[i], r = Math.sin(a * Math.PI / 180);
+  const a = angle[i], leaf = leaves[i];
   leaf.style.transform = `rotateY(${-a}deg)`;
   const f = leaf.children[0], b = leaf.children[1];
   if (f) f.querySelector('.shade').style.opacity = (a / 180 * .55).toFixed(3);
   if (b) b.querySelector('.shade').style.opacity = ((1 - a / 180) * .55).toFixed(3);
-  leaf.style.setProperty('--lift', (r * 22).toFixed(1) + 'px');
 }
 function layout(instant){
   bookEl.style.transition = instant ? 'none' : '';
@@ -899,11 +905,12 @@ function turn(i, to, ms, done){
 }
 function castShadow(i){
   const a = angle[i], s = Math.sin(a * Math.PI / 180);
+  // the shadow's reach shrinks as the page lifts: a scaleX of a fixed gradient, so each
+  // frame is a cheap compositor change instead of repainting a new gradient
   cast.style.opacity = (s * .6).toFixed(3);
-  cast.style.left = a < 90 ? '50%' : `calc(50% - ${pw}px)`;
-  cast.style.background = a < 90
-    ? `linear-gradient(to right, rgba(0,0,0,.45), transparent ${Math.max(10, (1 - a / 90) * 100)}%)`
-    : `linear-gradient(to left, rgba(0,0,0,.45), transparent ${Math.max(10, ((a - 90) / 90) * 100)}%)`;
+  const over = a >= 90, left = over ? `calc(50% - ${pw}px)` : '50%';
+  if (cast.style.left !== left) { cast.style.left = left; cast.classList.toggle('l', over); }
+  cast.style.transform = `scaleX(${Math.max(.1, over ? (a - 90) / 90 : 1 - a / 90).toFixed(3)})`;
 }
 function next(fromDrag){
   if (busy) return;
@@ -954,7 +961,7 @@ addEventListener('pointermove', e => {
     try { bookEl.setPointerCapture(e.pointerId); } catch (_) {}
   }
   if (drag.slide) return;
-  const spine = bookEl.getBoundingClientRect().left + pw;
+  const spine = drag.spine ?? (drag.spine = bookEl.getBoundingClientRect().left + pw);
   // keep the grabbed point under the pointer: the page edge moves by as much as the pointer does
   const edge0 = drag.dir === 'next' ? spine + pw : spine - pw;
   const c = Math.max(-1, Math.min(1, (edge0 + dx - spine) / pw));
@@ -1125,6 +1132,15 @@ document.getElementById('dial').onclick = () => {
   }, 30);
 };
 
+// ?fps in the address bar shows a small frame meter, for checking a phone by hand
+if (/[?&]fps\b/.test(location.search)) {
+  const el = document.createElement('div'); let n = 0, worst = 0, last = 0, t0 = performance.now();
+  el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999;padding:4px 8px;font:600 11px/1.3 monospace;color:#fff;background:rgba(0,0,0,.75);border-radius:4px;pointer-events:none';
+  document.body.appendChild(el);
+  (function f(now){ n++; if (last) worst = Math.max(worst, now - last); last = now;
+    if (now - t0 >= 1000) { el.textContent = Math.round(n * 1000 / (now - t0)) + ' fps · longest frame ' + Math.round(worst) + ' ms'; n = 0; worst = 0; t0 = now; }
+    requestAnimationFrame(f); })(t0);
+}
 })();
 </script>
 </body>
