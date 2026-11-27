@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@600&amp;family=Silkscreen:wght@400;700&amp;family=Kaisei+Decol:wght@700&amp;family=Marcellus+SC&amp;family=Yuji+Syuku&amp;family=Cinzel:wght@900&amp;family=Michroma&amp;family=IM+Fell+English+SC&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@600&amp;family=Silkscreen:wght@400;700&amp;family=Kaisei+Decol:wght@700&amp;family=Marcellus+SC&amp;family=Yuji+Syuku&amp;family=Michroma&amp;family=IM+Fell+English+SC&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0;background:#020b12;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -426,17 +426,6 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <p style="margin: 0; font-size: 17px; line-height: 1.55">A small fantasy MMO for me and my friends. You don’t pick skills from a menu, you find them by doing things. Fight with a sword long enough and sword skills start to show up, and time a counter just right and you might discover Riposte. Collect enough of one kind and you can switch into a class like Swordsman, then switch again whenever you want without losing anything. There’s no global chat, so secrets have to be found, not looked up, and the rarest classes can only belong to one player in the whole world.</p>
 <p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Friends-only MMO · hidden skills · one-of-a-kind classes</p>
 <button onClick="{{dzOpen.living}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
-</div>
-</article>
-
-<article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
-<div role="img" aria-label="Screenshot placeholder for Anime Defense" style="display: flex; align-items: flex-end; width: 100%; aspect-ratio: 800 / 520; box-sizing: border-box; padding: 18px; border-bottom: 1px solid var(--line); background-color: var(--bg); background-image: radial-gradient(var(--deep) 1.2px, transparent 1.4px), linear-gradient(200deg, var(--deep), var(--bg)); background-size: 6px 6px, 100% 100%; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim)">[ Screenshot coming ]</div>
-<div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; flex-grow: 1">
-<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">No. 006 · Warcraft III</span><span style="color: var(--accent)">On hold</span></div>
-<h3 style="margin: 0; font-family: 'Cinzel', Georgia, serif; font-size: 34px; font-weight: 900; letter-spacing: 0.01em">Anime Defense</h3>
-<p style="margin: 0; font-size: 17px; line-height: 1.55">Where it all started. Team up with your favorite anime heroes and hold the line against wave after wave of enemies and some pretty brutal bosses. Level up, power up and cover each other, because the team only makes it if everyone pulls their weight.</p>
-<p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Warcraft III custom map · co-op hero defense</p>
-<button onClick="{{dzOpen.defense}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
 </div>
 </article>
 
@@ -3561,12 +3550,7 @@ void main() {
       bg: '#0e140f', ink: '#e7eadb', dim: '#a9b29d', accent: '#a8cf7e', line: 'rgba(168,207,126,0.3)', type: 'none',
       about: 'A small fantasy MMO for me and my friends. Skills come from what you actually do, classes come from the skills you collect, and you can change class whenever you want without losing anything. There’s no global chat, so hidden skills and secrets have to be found by playing, and the rarest classes can only be unlocked by one player in the whole world.',
       log: ['Built in Unreal Engine 5 with C++, on a dedicated server you join by invite, up to four players for now.', 'Hybrid action and MMO combat with a behind-the-character camera. The server checks every hit for reach, facing, line of sight and timing.', 'Sword hits build mastery, and well-timed counters reveal the hidden Riposte skill.', 'Switch between Wanderer and Swordsman and keep every skill you’ve learned. Duels are opt-in, and progress saves per character.', 'Next up: the first playtest with friends, then quests and the one-of-a-kind legendary classes.'],
-      tags: ['Unreal Engine 5', 'C++', 'Multiplayer', 'Codex + Claude'], links: [] },
-    defense: { no: '006', title: 'Anime Defense', status: 'On hold', kind: 'Warcraft III custom map', font: "'Cinzel', Georgia, serif", weight: 900,
-      bg: '#15140f', ink: '#ece6d4', dim: '#b8af96', accent: '#c9a45a', line: 'rgba(201,164,90,0.3)', type: 'none',
-      about: 'Where it all started. Team up with your favorite anime heroes and hold the line against wave after wave of enemies and some pretty brutal bosses. Level up, power up and cover each other, because the team only makes it if everyone pulls their weight.',
-      log: ['A co-op hero defense map for Warcraft III: Reforged.', 'Custom heroes and systems.', 'On hold while newer games take the spotlight.'],
-      tags: ['Warcraft III Reforged', 'Co-op'], links: [] }
+      tags: ['Unreal Engine 5', 'C++', 'Multiplayer', 'Codex + Claude'], links: [] }
   };
   openDossier(key) { clearTimeout(this.dzT); this.setState({ dz: key, dzLeaving: false, dzShot: 0 }); this.sfx('blip'); }
   dzShots(d) { return d.shots || (d.type === 'none' ? [] : [[d.type, d.media, d.title, d.poster]]); }
@@ -5332,7 +5316,7 @@ void main() {
     const modes = [['dither', 'Dither'], ['ascii', 'ASCII']].map(([k, label]) => ({ label, on: k === mode, off: k !== mode, pick: () => this.setState({ mode: k }) }));
     const zi = this.state.zone || 0;
     const zones = this.ZONES.map((z, i) => ({ href: '#' + z.id, name: z.name, m: z.m.toLocaleString('en-US') + ' m', cls: i === zi ? 'on' : '', cur: i === zi ? 'location' : 'false' }));
-    const SU = ['Resource Hub access', 'Anime Bazaar', 'DuelTaka', 'The Living World', 'Anime Defense'];
+    const SU = ['Resource Hub access', 'Anime Bazaar', 'DuelTaka', 'The Living World'];
     const picks = this.state.suPicks || {};
     const chosen = SU.filter((x) => picks[x]);
     const em = (this.state.suEmail || '').trim();
