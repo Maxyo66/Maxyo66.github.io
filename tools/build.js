@@ -85,11 +85,31 @@ document.addEventListener('click', function (e) {
 }, true);
 </script>`;
 
+// Content Security Policy: GitHub Pages can't send headers, so it goes in a meta tag. The page
+// is one big inline script, so inline code has to stay allowed; what this does is limit where
+// scripts, fonts and requests can come from, so an injected or swapped third-party script
+// can't pull in more code or send data anywhere else.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://gc.zgo.at",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://maxyo66.goatcounter.com",
+  "media-src 'self' blob:",
+  "connect-src 'self' https://maxyo66.goatcounter.com https://github-contributions-api.jogruber.de https://formsubmit.co",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
 const page = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>${title}</title>
 <meta name="description" content="Max (Maxyo66): games, tools and a desktop ocean, from Florida.">
 ${swap(helmet)}
