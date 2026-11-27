@@ -381,7 +381,7 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <section id="surface" style="min-height: 920px; display: flex; flex-direction: column; justify-content: center; padding: 140px 6vw 80px; box-sizing: border-box; max-width: 1240px">
 <p style="pointer-events: auto; margin: 0 0 18px; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hi)" aria-label="[01] Sunlight zone · 0 m">{{lbl.surface}}</p>
 <h1 class="hero-name" style="pointer-events: auto; margin: 0; font-size: 132px; line-height: 0.88; font-weight: 800; letter-spacing: -0.04em; color: var(--ink)">Maxyo66</h1>
-<p style="pointer-events: auto; margin: 32px 0 0; max-width: 620px; font-size: 22px; line-height: 1.45; color: var(--ink)">Hey, I’m Max, a game developer from Florida. I make games and build the tools I use to make them. Right now I’m working on a desktop ocean, an anime autobattler, a fantasy MMO for me and my friends, and a few other projects.</p>
+<p style="pointer-events: auto; margin: 32px 0 0; max-width: 620px; font-size: 22px; line-height: 1.45; color: var(--ink)">Hey, I’m Max, a game developer from Florida. I make games and build the tools I use to make them. Right now I’m working on a desktop ocean, an anime autobattler, a fantasy MMO for me and my friends, a grocery price app, and a few other projects.</p>
 <div style="pointer-events: auto; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px">
 <a href="#twilight" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; background: var(--hi); color: var(--bg); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase">Start the dive ↓</a>
 <a href="#hadal" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--panel)">Contact</a>
@@ -488,6 +488,18 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 <p style="margin: 0; font-size: 17px; line-height: 1.55">Where it all started. Team up with your favorite anime heroes and hold the line against wave after wave of enemies and some pretty brutal bosses. Level up, power up and cover each other, because the team only makes it if everyone pulls their weight.</p>
 <p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Warcraft III custom map · co-op hero defense</p>
 <button onClick="{{dzOpen.defense}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
+</div>
+</article>
+
+<article class="card" style="pointer-events: auto; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden">
+<img src="/_blob/d68d20c74802b7b3561658444a6c1db6" alt="Unit Price compare screen: milk sorted by price per ounce across Aldi, Walmart, Target, Winn-Dixie and Publix" style="display: block; width: 100%; aspect-ratio: 800 / 520; object-fit: cover; object-position: top; border-bottom: 1px solid var(--line)">
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; flex-grow: 1">
+<div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase"><span style="color: var(--dim)">No. 007 · Web app</span><span style="color: var(--accent)">Private demo</span></div>
+<h3 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -0.02em">Unit Price</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.55">The number that actually matters on a grocery shelf tag is the price per ounce, so I built an app around it. It pulls the real in-store prices from the Walmart and Target nearest your zip code, not delivery-app markups. Snap a photo of any shelf tag and it reads the price for you, then it plans the cheapest one- or two-stop trip for your whole grocery list.</p>
+<p style="margin: auto 0 0; padding-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim)">Real store prices · shelf-tag photos · cheapest trip</p>
+<button onClick="{{dzOpen.unitprice}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; margin-top: 6px; border: 1px solid var(--hi); background: transparent; color: var(--hi); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">Open dossier →</button>
+<a href="https://unit-price-eight.vercel.app/" target="_blank" rel="noopener" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--hi); text-decoration: underline; text-underline-offset: 4px">Open the live app (password protected) →</a>
 </div>
 </article>
 
@@ -3659,7 +3671,13 @@ void main() {
       bg: '#15140f', ink: '#ece6d4', dim: '#b8af96', accent: '#c9a45a', line: 'rgba(201,164,90,0.3)', type: 'none',
       about: 'Where it all started. Team up with your favorite anime heroes and hold the line against wave after wave of enemies and some pretty brutal bosses. Level up, power up and cover each other, because the team only makes it if everyone pulls their weight.',
       log: ['A co-op hero defense map for Warcraft III: Reforged.', 'Custom heroes and systems.', 'On hold while newer games take the spotlight.'],
-      tags: ['Warcraft III Reforged', 'Co-op'], links: [] }
+      tags: ['Warcraft III Reforged', 'Co-op'], links: [] },
+    unitprice: { no: '007', title: 'Unit Price', status: 'Private demo', kind: 'Grocery price-per-ounce app', font: "'Bricolage Grotesque', sans-serif", weight: 800,
+      bg: '#0b0c0e', ink: '#e9ecef', dim: '#9aa3ad', accent: '#3ddc97', line: 'rgba(61,220,151,0.3)', media: '/_blob/d68d20c74802b7b3561658444a6c1db6', type: 'img',
+      shots: [['img', '/_blob/d68d20c74802b7b3561658444a6c1db6', 'Compare by price per ounce'], ['img', '/_blob/36e61b2ec069bc55406c2bd52d518c63', 'Store brand vs name brand'], ['img', '/_blob/20c37a6ae2282fb25d4d73365aee0dc8', 'The cheapest trip for your list'], ['img', '/_blob/b72bb66b59db0fb369a1a2e0618704ea', 'Built for your phone first']],
+      about: 'Every grocery shelf tag has the price, and then the price per ounce underneath, which is the number that actually tells you what’s cheaper. Unit Price compares that number across stores near you. It uses real in-store prices for the exact store you’d walk into, not delivery-app prices that change from person to person, so you can plan which store to visit for the cheapest version of the brand and size you want.',
+      log: ['Compare milk, bread and cheese by price per ounce, with filters for store, brand, size and sort.', 'Walmart and Target prices come from the store nearest your zip code and refresh weekly, so they match the shelf, not the delivery app.', 'Snap a shelf tag and Claude vision reads the price, size and unit price for you. Every price goes into a shared database.', 'Store brand vs name brand shows how much you save by switching for each item.', 'The grocery list works out the cheapest one-stop or two-stop trip and suggests store-brand swaps.', 'Price history charts, plus a shrinkflation watch that flags packages that got smaller while the price didn’t.'],
+      tags: ['Next.js', 'TypeScript', 'Neon Postgres', 'Claude vision', 'SerpApi', 'Vercel'], links: [['Open the live app', 'https://unit-price-eight.vercel.app/']] }
   };
   openDossier(key) { clearTimeout(this.dzT); this.setState({ dz: key, dzLeaving: false, dzShot: 0 }); this.sfx('blip'); }
   dzShots(d) { return d.shots || (d.type === 'none' ? [] : [[d.type, d.media, d.title, d.poster]]); }
@@ -5475,7 +5493,7 @@ void main() {
     const modes = [['dither', 'Dither'], ['ascii', 'ASCII']].map(([k, label]) => ({ label, on: k === mode, off: k !== mode, pick: () => this.setState({ mode: k }) }));
     const zi = this.state.zone || 0;
     const zones = this.ZONES.map((z, i) => ({ href: '#' + z.id, name: z.name, m: z.m.toLocaleString('en-US') + ' m', cls: i === zi ? 'on' : '', cur: i === zi ? 'location' : 'false' }));
-    const SU = ['Resource Hub access', 'Anime Bazaar', 'DuelTaka', 'The Living World', 'Anime Defense'];
+    const SU = ['Resource Hub access', 'Anime Bazaar', 'DuelTaka', 'The Living World', 'Anime Defense', 'Unit Price demo'];
     const picks = this.state.suPicks || {};
     const chosen = SU.filter((x) => picks[x]);
     const em = (this.state.suEmail || '').trim();
