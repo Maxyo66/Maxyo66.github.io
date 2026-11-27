@@ -637,7 +637,8 @@ main h1, main h2, main section > p { text-shadow: 0 0 2px var(--bg), 0 2px 18px 
 </fieldset>
 <label for="su-email" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim)">Your email</label>
 <div style="display: flex; flex-wrap: wrap; gap: 10px">
-<input id="su-email" type="email" autocomplete="email" placeholder="you@example.com" value="{{suEmail}}" onChange="{{onSuEmail}}" style="flex: 1 1 260px; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 16px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 15px">
+<input id="su-hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0">
+<input id="su-email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" value="{{suEmail}}" onChange="{{onSuEmail}}" style="flex: 1 1 260px; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 16px; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 15px">
 <sc-if value="{{suPostReady}}" hint-placeholder-val="{{false}}">
 <button type="button" onClick="{{onSuPost}}" style="min-height: 48px; padding: 0 22px; border: 0; background: var(--hi); color: var(--bg); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer">{{suPostLabel}}</button>
 </sc-if>
@@ -1494,8 +1495,9 @@ class Component extends DCLogic {
   }
   loadSky() {
     if (this.skyLoad) return this.skyLoad;
-    const add = (src) => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.async = true; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
-    this.skyLoad = (window.THREE ? Promise.resolve() : add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'))
+    // The CDN copy of three.js is pinned by hash, so a tampered file is refused instead of run.
+    const add = (src, sri) => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.async = true; if (sri) { el.integrity = sri; el.crossOrigin = 'anonymous'; el.referrerPolicy = 'no-referrer'; } el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+    this.skyLoad = (window.THREE ? Promise.resolve() : add('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=='))
       .then(() => (window.SkyRealm ? null : add('assets/sky-realm.js?v=4')))
       .catch((e) => { this.skyLoad = null; throw e; });
     return this.skyLoad;
@@ -3561,6 +3563,9 @@ void main() {
   }
   postSignup(email, chosen) {
     if (this.state.suSending) return;
+    // Bots fill every field, people never see this one: act as if it worked and send nothing.
+    const hp = document.getElementById('su-hp');
+    if (hp && hp.value) { this.setState({ suSent: true }); return; }
     this.setState({ suSending: true, suError: false });
     fetch('https://formsubmit.co/ajax/abyssalsharksgame@gmail.com', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -5474,7 +5479,7 @@ void main() {
     const picks = this.state.suPicks || {};
     const chosen = SU.filter((x) => picks[x]);
     const em = (this.state.suEmail || '').trim();
-    const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+    const okEmail = em.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
     const suValid = okEmail && chosen.length > 0;
     const post = !!window.__STANDALONE__;
     const suMailto = 'mailto:abyssalsharksgame@gmail.com?subject=' + encodeURIComponent('Playtest sign-up') + '&body=' + encodeURIComponent('Hi Max! Please sign me up for: ' + chosen.join(', ') + '.\nMy email: ' + em);
